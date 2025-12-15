@@ -1,14 +1,20 @@
 # Dietetic (Login + Dashboard)
 
-## Estructura
-- `public/`: subir a `public_html/` (root del sitio)
-- `src/`: subir **fuera** de `public_html/` (mismo nivel)
-- `database/schema.sql`: crear tabla `users`
+## Estructura (opciones)
+
+### Opción A (recomendada)
+- Subir el contenido de `public/` a `public_html/`
+- Subir `src/` fuera de `public_html/` (mismo nivel)
+
+### Opción B (la que tenés ahora: todo dentro de `public_html/`)
+- Subir TODO el proyecto dentro de `public_html/`
+- Asegurarte de que existan en la raíz: `index.php`, `login.php`, `dashboard.php`, `logout.php`
+- Subir `.htaccess` en la raíz para bloquear `src/` y `database/`
 
 ## Config (Hostinger)
-1. En el File Manager, al mismo nivel que `public_html/`, creá la carpeta `src` y subí ahí el contenido de `src/`.
-2. Subí el contenido de `public/` dentro de `public_html/`.
-3. Creá `config.local.php` al mismo nivel que `public_html/` (root) usando `config.local.php.example` como guía.
+1. Creá `config.local.php` usando `config.local.php.example` como guía.
+2. Si usás Opción A: `config.local.php` va al mismo nivel que `public_html/`.
+3. Si usás Opción B: `config.local.php` va dentro de `public_html/`.
 
 ## Base de datos
 1. En phpMyAdmin ejecutá `database/schema.sql` en tu DB.
