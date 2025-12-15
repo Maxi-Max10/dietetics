@@ -20,12 +20,26 @@
 1. En phpMyAdmin ejecutá `database/schema.sql` en tu DB.
 2. Creá un usuario inicial en la tabla `users`.
 
+### DNI (opcional)
+Si querés poder **guardar y buscar por DNI** en Ventas, asegurate de tener la columna `customer_dni` en `invoices`.
+
+Si ya tenías la tabla creada, podés migrar con:
+
+```sql
+ALTER TABLE invoices
+	ADD COLUMN customer_dni VARCHAR(32) NULL AFTER customer_email,
+	ADD KEY idx_invoices_customer_dni (customer_dni);
+```
+
 ## Dependencias (PDF + Email)
 Para **descargar en PDF** y **enviar por email con adjunto** se usan librerías via Composer:
 
 ```bash
 composer install --no-dev --optimize-autoloader
 ```
+
+### Reportes (CSV / XML / XLSX)
+La pantalla **Ventas** permite exportar reportes. Para generar **XLSX** se usa `phpoffice/phpspreadsheet` (vía Composer).
 
 Luego subí la carpeta `vendor/` al hosting (si no podés ejecutar Composer en Hostinger).
 

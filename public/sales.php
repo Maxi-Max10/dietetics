@@ -12,12 +12,47 @@ $userId = (int)auth_user_id();
 $csrf = csrf_token();
 
 $period = (string)($_GET['period'] ?? 'day');
+$q = trim((string)($_GET['q'] ?? ''));
+$format = strtolower(trim((string)($_GET['format'] ?? '')));
 
 try {
     $pdo = db($config);
     $p = sales_period($period);
-    $summary = sales_summary($pdo, $userId, $p['start'], $p['end']);
-    $rows = sales_list($pdo, $userId, $p['start'], $p['end']);
+
+  $hasDni = invoices_supports_customer_dni($pdo);
+  $summary = sales_summary_filtered($pdo, $userId, $p['start'], $p['end'], $q, $hasDni);
+  $rows = sales_list_filtered($pdo, $userId, $p['start'], $p['end'], $q, $hasDni);
+
+  if (in_array($format, ['csv', 'xml', 'xlsx'], true)) {
+    try {
+      $stamp = date('Ymd-His');
+      $base = 'ventas-' . $p['key'] . '-' . $stamp;
+      if ($format === 'csv') {
+        sales_export_csv($rows, $base . '.csv');
+        exit;
+      }
+      if ($format === 'xml') {
+        sales_export_xml($rows, [
+          'period' => $p['key'],
+          'start' => $p['start']->format('Y-m-d H:i:s'),
+          'end' => $p['end']->format('Y-m-d H:i:s'),
+          'q' => $q,
+        ], $base . '.xml');
+        exit;
+      }
+
+      sales_export_xlsx($rows, $base . '.xlsx');
+      exit;
+    } catch (Throwable $exportError) {
+      http_response_code(500);
+      header('Content-Type: text/plain; charset=UTF-8');
+      $msg = ($config['app']['env'] ?? 'production') === 'production'
+        ? 'No se pudo generar el reporte.'
+        : ('Error: ' . $exportError->getMessage());
+      echo $msg;
+      exit;
+    }
+  }
 } catch (Throwable $e) {
     $p = sales_period('day');
     $summary = [];
@@ -27,9 +62,20 @@ try {
         : ('Error: ' . $e->getMessage());
 }
 
-function sales_period_link(string $key): string
+function sales_build_url(array $params): string
 {
-    return '/sales.php?period=' . urlencode($key);
+  $clean = [];
+  foreach ($params as $k => $v) {
+    if ($v === null) {
+      continue;
+    }
+    $v = (string)$v;
+    if ($v === '') {
+      continue;
+    }
+    $clean[$k] = $v;
+  }
+  return '/sales.php' . (count($clean) ? ('?' . http_build_query($clean)) : '');
 }
 
 function sales_active(string $current, string $key): string
@@ -198,10 +244,10 @@ function sales_active(string $current, string $key): string
             <h2 class="h5 mb-0">Seleccionar período</h2>
           </div>
           <div class="d-flex flex-wrap gap-2">
-            <a class="btn btn-sm action-btn <?= e(sales_active($p['key'], 'day')) ?>" href="<?= e(sales_period_link('day')) ?>">Día</a>
-            <a class="btn btn-sm action-btn <?= e(sales_active($p['key'], 'week')) ?>" href="<?= e(sales_period_link('week')) ?>">Semana</a>
-            <a class="btn btn-sm action-btn <?= e(sales_active($p['key'], 'month')) ?>" href="<?= e(sales_period_link('month')) ?>">Mes</a>
-            <a class="btn btn-sm action-btn <?= e(sales_active($p['key'], 'year')) ?>" href="<?= e(sales_period_link('year')) ?>">Año</a>
+            <a class="btn btn-sm action-btn <?= e(sales_active($p['key'], 'day')) ?>" href="<?= e(sales_build_url(['period' => 'day', 'q' => $q])) ?>">Día</a>
+            <a class="btn btn-sm action-btn <?= e(sales_active($p['key'], 'week')) ?>" href="<?= e(sales_build_url(['period' => 'week', 'q' => $q])) ?>">Semana</a>
+            <a class="btn btn-sm action-btn <?= e(sales_active($p['key'], 'month')) ?>" href="<?= e(sales_build_url(['period' => 'month', 'q' => $q])) ?>">Mes</a>
+            <a class="btn btn-sm action-btn <?= e(sales_active($p['key'], 'year')) ?>" href="<?= e(sales_build_url(['period' => 'year', 'q' => $q])) ?>">Año</a>
           </div>
         </div>
         <div class="card-body px-4 py-4">
@@ -234,6 +280,19 @@ function sales_active(string $current, string $key): string
           <h2 class="h5 mb-0">Ventas del período</h2>
         </div>
         <div class="card-body px-4 py-4">
+          <form method="get" action="/sales.php" class="d-flex flex-column flex-md-row gap-2 align-items-md-center justify-content-between mb-3">
+            <input type="hidden" name="period" value="<?= e($p['key']) ?>">
+            <div class="d-flex gap-2 flex-grow-1">
+              <input class="form-control" name="q" value="<?= e($q) ?>" placeholder="Buscar por nombre, email o DNI" aria-label="Buscar">
+              <button class="btn btn-outline-primary action-btn" type="submit">Buscar</button>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+              <a class="btn btn-outline-secondary btn-sm" href="<?= e(sales_build_url(['period' => $p['key'], 'q' => $q, 'format' => 'csv'])) ?>">CSV</a>
+              <a class="btn btn-outline-secondary btn-sm" href="<?= e(sales_build_url(['period' => $p['key'], 'q' => $q, 'format' => 'xml'])) ?>">XML</a>
+              <a class="btn btn-outline-secondary btn-sm" href="<?= e(sales_build_url(['period' => $p['key'], 'q' => $q, 'format' => 'xlsx'])) ?>">XLSX</a>
+            </div>
+          </form>
+
           <div class="table-responsive">
             <table class="table align-middle">
               <thead>

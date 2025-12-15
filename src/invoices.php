@@ -5,7 +5,7 @@ declare(strict_types=1);
 /**
  * @param array<int, array{description:string, quantity:string|float|int, unit_price:string|float|int}> $items
  */
-function invoices_create(PDO $pdo, int $createdBy, string $customerName, string $customerEmail, string $detail, array $items, string $currency = 'ARS'): int
+function invoices_create(PDO $pdo, int $createdBy, string $customerName, string $customerEmail, string $detail, array $items, string $currency = 'ARS', string $customerDni = ''): int
 {
     if ($customerName === '' || $customerEmail === '') {
         throw new InvalidArgumentException('Cliente inválido.');
@@ -17,6 +17,11 @@ function invoices_create(PDO $pdo, int $createdBy, string $customerName, string 
 
     if (count($items) === 0) {
         throw new InvalidArgumentException('Agregá al menos 1 producto.');
+    }
+
+    $dni = trim($customerDni);
+    if ($dni !== '' && mb_strlen($dni, 'UTF-8') > 32) {
+        throw new InvalidArgumentException('DNI demasiado largo.');
     }
 
     $normalized = [];
@@ -56,15 +61,30 @@ function invoices_create(PDO $pdo, int $createdBy, string $customerName, string 
 
     $pdo->beginTransaction();
     try {
-        $stmt = $pdo->prepare('INSERT INTO invoices (created_by, customer_name, customer_email, detail, currency, total_cents) VALUES (:created_by, :customer_name, :customer_email, :detail, :currency, :total_cents)');
-        $stmt->execute([
-            'created_by' => $createdBy,
-            'customer_name' => $customerName,
-            'customer_email' => $customerEmail,
-            'detail' => $detail === '' ? null : $detail,
-            'currency' => strtoupper($currency) ?: 'USD',
-            'total_cents' => $totalCents,
-        ]);
+        $supportsDni = invoices_supports_customer_dni($pdo);
+
+        if ($supportsDni) {
+            $stmt = $pdo->prepare('INSERT INTO invoices (created_by, customer_name, customer_email, customer_dni, detail, currency, total_cents) VALUES (:created_by, :customer_name, :customer_email, :customer_dni, :detail, :currency, :total_cents)');
+            $stmt->execute([
+                'created_by' => $createdBy,
+                'customer_name' => $customerName,
+                'customer_email' => $customerEmail,
+                'customer_dni' => $dni === '' ? null : $dni,
+                'detail' => $detail === '' ? null : $detail,
+                'currency' => strtoupper($currency) ?: 'USD',
+                'total_cents' => $totalCents,
+            ]);
+        } else {
+            $stmt = $pdo->prepare('INSERT INTO invoices (created_by, customer_name, customer_email, detail, currency, total_cents) VALUES (:created_by, :customer_name, :customer_email, :detail, :currency, :total_cents)');
+            $stmt->execute([
+                'created_by' => $createdBy,
+                'customer_name' => $customerName,
+                'customer_email' => $customerEmail,
+                'detail' => $detail === '' ? null : $detail,
+                'currency' => strtoupper($currency) ?: 'USD',
+                'total_cents' => $totalCents,
+            ]);
+        }
 
         $invoiceId = (int)$pdo->lastInsertId();
 
@@ -84,6 +104,25 @@ function invoices_create(PDO $pdo, int $createdBy, string $customerName, string 
     } catch (Throwable $e) {
         $pdo->rollBack();
         throw $e;
+    }
+}
+
+function invoices_supports_customer_dni(PDO $pdo): bool
+{
+    static $cache = null;
+    if (is_bool($cache)) {
+        return $cache;
+    }
+
+    try {
+        $stmt = $pdo->prepare("SHOW COLUMNS FROM invoices LIKE :col");
+        $stmt->execute(['col' => 'customer_dni']);
+        $cache = (bool)$stmt->fetch();
+        return $cache;
+    } catch (Throwable $e) {
+        // Si no se puede consultar metadata, asumimos que no existe.
+        $cache = false;
+        return false;
     }
 }
 

@@ -22,6 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string)($_POST['action'] ?? '');
     $customerName = trim((string)($_POST['customer_name'] ?? ''));
     $customerEmail = trim((string)($_POST['customer_email'] ?? ''));
+    $customerDni = trim((string)($_POST['customer_dni'] ?? ''));
     $detail = trim((string)($_POST['detail'] ?? ''));
 
     $descs = $_POST['item_description'] ?? [];
@@ -44,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
       $pdo = db($config);
-            $invoiceId = invoices_create($pdo, $userId, $customerName, $customerEmail, $detail, $items, 'ARS');
+      $invoiceId = invoices_create($pdo, $userId, $customerName, $customerEmail, $detail, $items, 'ARS', $customerDni);
       $data = invoices_get($pdo, $invoiceId, $userId);
       $download = invoice_build_download($data);
 
@@ -242,6 +243,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               <div class="col-12 col-md-6">
                 <label class="form-label" for="customer_email">Email del cliente</label>
                 <input class="form-control" id="customer_email" name="customer_email" type="email" required>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label" for="customer_dni">DNI del cliente (opcional)</label>
+                <input class="form-control" id="customer_dni" name="customer_dni" inputmode="numeric" autocomplete="off">
               </div>
               <div class="col-12">
                 <label class="form-label" for="detail">Detalle</label>
