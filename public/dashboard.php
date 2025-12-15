@@ -49,6 +49,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $download = invoice_build_download($data);
 
       if ($action === 'download') {
+          // Defensa extra contra caché (algunos hosts/proxies)
+          header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+          header('Pragma: no-cache');
+          header('Expires: 0');
         invoice_send_download($download);
         exit;
       }

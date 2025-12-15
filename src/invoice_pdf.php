@@ -15,10 +15,15 @@ function invoice_build_download(array $data): array
     $invoiceId = (int)($data['invoice']['id'] ?? 0);
     $html = invoice_render_html($data);
 
+    $ts = date('Ymd-His');
+
     // PDF usando plantilla (FPDI) si está disponible.
     if (function_exists('invoice_build_pdf_from_template')) {
         try {
-            return invoice_build_pdf_from_template($data);
+            $download = invoice_build_pdf_from_template($data);
+            // Forzar nombre único para evitar caché del navegador
+            $download['filename'] = 'factura-' . $invoiceId . '-' . $ts . '.pdf';
+            return $download;
         } catch (Throwable $e) {
             error_log('Invoice template PDF error: ' . $e->getMessage());
             // Continúa a otros métodos
@@ -44,7 +49,7 @@ function invoice_build_download(array $data): array
 
         return [
             'bytes' => $output,
-            'filename' => 'factura-' . $invoiceId . '.pdf',
+            'filename' => 'factura-' . $invoiceId . '-' . $ts . '.pdf',
             'mime' => 'application/pdf',
         ];
     }
@@ -52,13 +57,19 @@ function invoice_build_download(array $data): array
     // Fallback: HTML descargable
     return [
         'bytes' => $html,
-        'filename' => 'factura-' . $invoiceId . '.html',
+        'filename' => 'factura-' . $invoiceId . '-' . $ts . '.html',
         'mime' => 'text/html; charset=UTF-8',
     ];
 }
 
 function invoice_send_download(array $download): void
 {
+    // Evita que el navegador cachee descargas y muestre un PDF viejo.
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Cache-Control: post-check=0, pre-check=0', false);
+    header('Pragma: no-cache');
+    header('Expires: 0');
+
     header('Content-Type: ' . $download['mime']);
     header('Content-Disposition: attachment; filename="' . $download['filename'] . '"');
     header('X-Content-Type-Options: nosniff');
