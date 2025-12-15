@@ -184,5 +184,6 @@ function invoice_build_pdf_from_template(array $data): array
         'bytes' => $bytes,
         'filename' => 'factura-' . $invoiceId . '.pdf',
         'mime' => 'application/pdf',
+        'generator' => 'template-fpdi',
     ];
 }
