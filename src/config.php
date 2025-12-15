@@ -21,12 +21,14 @@ return [
     ],
     'db' => [
         'host' => getenv('DB_HOST') ?: (defined('DB_HOST') ? DB_HOST : 'localhost'),
-        'name' => getenv('DB_NAME') ?: (defined('DB_NAME') ? DB_NAME : ''),
-        'user' => getenv('DB_USER') ?: (defined('DB_USER') ? DB_USER : ''),
-        'pass' => getenv('DB_PASS') ?: (defined('DB_PASS') ? DB_PASS : ''),
+        'name' => getenv('DB_NAME') ?: (defined('DB_NAME') ? DB_NAME : 'u404968876_dietetics'),
+        'user' => getenv('DB_USER') ?: (defined('DB_USER') ? DB_USER : 'u404968876_dietetics'),
+        'pass' => getenv('DB_PASS') ?: (defined('DB_PASS') ? DB_PASS : 'Dietetics2025@'),
         'charset' => getenv('DB_CHARSET') ?: (defined('DB_CHARSET') ? DB_CHARSET : 'utf8mb4'),
     ],
     'security' => [
         'session_name' => getenv('SESSION_NAME') ?: (defined('SESSION_NAME') ? SESSION_NAME : 'dietetic_session'),
     ],
 ];
+
+echo password_hash('TU_PASSWORD', PASSWORD_DEFAULT);

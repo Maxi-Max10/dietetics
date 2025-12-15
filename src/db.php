@@ -12,9 +12,9 @@ function db(array $config): PDO
     $db = $config['db'] ?? [];
 
     $host = (string)($db['host'] ?? 'localhost');
-    $name = (string)($db['name'] ?? '');
-    $user = (string)($db['user'] ?? '');
-    $pass = (string)($db['pass'] ?? '');
+    $name = (string)($db['name'] ?? 'u404968876_dietetics');
+    $user = (string)($db['user'] ?? 'u404968876_dietetics');
+    $pass = (string)($db['pass'] ?? 'Dietetics2025@');
     $charset = (string)($db['charset'] ?? 'utf8mb4');
 
     if ($name === '' || $user === '') {
