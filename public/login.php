@@ -32,9 +32,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $error = 'Credenciales incorrectas.';
         } catch (Throwable $e) {
-            $error = ($config['app']['env'] ?? 'production') === 'production'
-                ? 'No se pudo conectar a la base de datos.'
-                : ('DB error: ' . $e->getMessage());
+          // Loguea el error real (útil en Hostinger: revisá "Errors" / "error_log").
+          error_log('Login DB error: ' . $e->getMessage());
+
+          $env = (string)($config['app']['env'] ?? 'production');
+          $msg = (string)$e->getMessage();
+
+          // Mensajes seguros para producción (sin revelar detalles sensibles).
+          if (str_contains($msg, 'Falta configurar la base de datos')) {
+            $error = 'Falta configurar la base de datos: creá `config.local.php` y completá DB_HOST/DB_NAME/DB_USER/DB_PASS.';
+          } elseif (stripos($msg, 'Access denied') !== false) {
+            $error = 'No se pudo conectar: usuario/contraseña de MySQL incorrectos (DB_USER/DB_PASS).';
+          } elseif (stripos($msg, 'Unknown database') !== false) {
+            $error = 'No se pudo conectar: el nombre de la base (DB_NAME) no existe o está mal.';
+          } elseif (stripos($msg, 'getaddrinfo') !== false || stripos($msg, 'Name or service not known') !== false) {
+            $error = 'No se pudo conectar: el host de MySQL (DB_HOST) es incorrecto.';
+          } elseif (stripos($msg, 'Connection refused') !== false) {
+            $error = 'No se pudo conectar: MySQL rechazó la conexión (host/puerto).';
+          } else {
+            $error = 'No se pudo conectar a la base de datos.';
+          }
+
+          if ($env !== 'production') {
+            $error .= ' (Detalle: ' . $msg . ')';
+          }
         }
     }
 }
