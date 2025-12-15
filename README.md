@@ -33,6 +33,11 @@ Si NO instalás Composer:
 - Descargar funciona igual, pero como HTML (`.html`) en vez de PDF.
 - Enviar por email intenta usar `mail()` (puede depender de la configuración del hosting).
 
+## PDF con plantilla (boceto)
+Si querés que la factura se imprima arriba de un PDF existente, el sistema usa `src/pdf/boceto.pdf` con FPDI.
+- Dependencia: `setasign/fpdi` (via Composer)
+- Las coordenadas de impresión se ajustan en `src/invoice_pdf_template.php`
+
 ### SMTP (opcional)
 Si querés usar SMTP (más confiable), definí en `config.local.php`:
 - `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `SMTP_PORT` (ej. 587), `SMTP_SECURE` (tls)

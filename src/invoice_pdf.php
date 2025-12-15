@@ -15,6 +15,16 @@ function invoice_build_download(array $data): array
     $invoiceId = (int)($data['invoice']['id'] ?? 0);
     $html = invoice_render_html($data);
 
+    // PDF usando plantilla (FPDI) si está disponible.
+    if (function_exists('invoice_build_pdf_from_template')) {
+        try {
+            return invoice_build_pdf_from_template($data);
+        } catch (Throwable $e) {
+            error_log('Invoice template PDF error: ' . $e->getMessage());
+            // Continúa a otros métodos
+        }
+    }
+
     // PDF si existe Dompdf
     if (class_exists('Dompdf\\Dompdf')) {
         // Render especial para PDF: usar rutas locales para assets (logo).
