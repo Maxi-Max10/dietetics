@@ -39,6 +39,7 @@ require_once __DIR__ . DIRECTORY_SEPARATOR . 'invoice_render.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'invoice_pdf.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'invoice_pdf_template.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'mailer.php';
+require_once __DIR__ . DIRECTORY_SEPARATOR . 'sales.php';
 
 function app_config(): array
 {

@@ -194,6 +194,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <span class="navbar-brand fw-bold text-dark mb-0 h4"><?= e($appName) ?></span>
     <div class="d-flex align-items-center gap-2 ms-auto">
       <span class="pill">Admin</span>
+      <a class="btn btn-outline-primary btn-sm" href="/sales.php">Ventas</a>
       <form method="post" action="/logout.php" class="d-flex">
         <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
         <button type="submit" class="btn btn-outline-secondary btn-sm">Salir</button>
