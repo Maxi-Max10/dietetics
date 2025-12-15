@@ -77,9 +77,7 @@ $csrf = csrf_token();
               <div class="auth-left bg-primary bg-gradient text-white position-relative d-flex align-items-center justify-content-center p-4">
                 <div class="position-absolute auth-blob"></div>
                 <div class="position-relative text-center">
-                  <h2 class="h3 fw-semibold mb-2">Hello, Welcome!</h2>
-                  <p class="mb-3 opacity-75">¿No tenés una cuenta?</p>
-                  <button type="button" class="btn btn-outline-light btn-sm" disabled>Register</button>
+                  <h2 class="h3 fw-semibold mb-2">Hola, Bienvenida!</h2>
                 </div>
               </div>
             </div>
