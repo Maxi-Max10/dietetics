@@ -57,3 +57,7 @@ VALUES ('admin@tu-dominio.com', 'PEGAR_HASH_AQUI');
 - Login: `/login.php`
 - Dashboard: `/dashboard.php`
 - Logout: botón "Salir" en el dashboard
+
+## Logo en factura
+La factura usa el logo desde `src/img/logo.jpg` (se incrusta en base64 para que funcione en PDF/email).
+Reemplazá ese archivo por tu logo manteniendo el nombre `logo.jpg`.
