@@ -17,9 +17,16 @@ function invoice_build_download(array $data): array
 
     // PDF si existe Dompdf
     if (class_exists('Dompdf\\Dompdf')) {
-        $dompdf = new Dompdf\Dompdf([
-            'isRemoteEnabled' => true,
-        ]);
+        // Render especial para PDF: usar rutas locales para assets (logo).
+        $html = invoice_render_html($data, ['asset_mode' => 'file']);
+
+        $options = new Dompdf\Options();
+        $options->set('isRemoteEnabled', true);
+        $options->set('isHtml5ParserEnabled', true);
+        // Permite leer archivos locales dentro del proyecto.
+        $options->setChroot(dirname(__DIR__));
+
+        $dompdf = new Dompdf\Dompdf($options);
         $dompdf->loadHtml($html, 'UTF-8');
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();

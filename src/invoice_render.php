@@ -5,7 +5,7 @@ declare(strict_types=1);
 /**
  * @param array{invoice:array, items:array<int, array>} $data
  */
-function invoice_render_html(array $data): string
+function invoice_render_html(array $data, array $options = []): string
 {
     $invoice = $data['invoice'];
     $items = $data['items'];
@@ -18,14 +18,97 @@ function invoice_render_html(array $data): string
     $totalCents = (int)($invoice['total_cents'] ?? 0);
     $createdAt = (string)($invoice['created_at'] ?? '');
 
-    // Logo embebido (data URI) para que funcione en email y PDF.
+    $assetMode = (string)($options['asset_mode'] ?? 'data'); // data | file
+
+    $path_to_file_url = static function (string $path): string {
+      $real = realpath($path);
+      if ($real === false) {
+        $real = $path;
+      }
+
+      // Normalizar separadores para URL
+      $real = str_replace('\\', '/', $real);
+
+      // Si es ruta Windows tipo C:/...
+      if (preg_match('/^[A-Za-z]:\//', $real) === 1) {
+        return 'file:///' . str_replace(' ', '%20', $real);
+      }
+
+      // Linux/Unix
+      if (!str_starts_with($real, '/')) {
+        $real = '/' . $real;
+      }
+      return 'file://' . str_replace(' ', '%20', $real);
+    };
+
+    // Logo (data-uri para email/HTML; file:// para PDF con Dompdf si hace falta).
     $logoHtml = '';
     $logoPath = __DIR__ . DIRECTORY_SEPARATOR . 'img' . DIRECTORY_SEPARATOR . 'logo.jpg';
-    if (is_file($logoPath)) {
+    if (!is_file($logoPath)) {
+      error_log('Invoice logo missing: ' . $logoPath);
+    } elseif (!is_readable($logoPath)) {
+      error_log('Invoice logo not readable: ' . $logoPath);
+    } else {
+      if ($assetMode === 'file') {
+        $logoHtml = '<img class="logo" alt="Logo" src="' . htmlspecialchars($path_to_file_url($logoPath), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '">';
+      } else {
       $bytes = @file_get_contents($logoPath);
-      if (is_string($bytes) && $bytes !== '') {
+      if (!is_string($bytes) || $bytes === '') {
+        error_log('Invoice logo empty/unreadable bytes: ' . $logoPath);
+      } else {
+        // Detectar MIME real
+        $mime = 'image/jpeg';
+        if (function_exists('finfo_open')) {
+          $finfo = finfo_open(FILEINFO_MIME_TYPE);
+          if ($finfo) {
+            $detected = finfo_file($finfo, $logoPath);
+            finfo_close($finfo);
+            if (is_string($detected) && $detected !== '') {
+              $mime = $detected;
+            }
+          }
+        }
+
+        // Si el logo es muy grande, algunos clientes/PDF pueden fallar.
+        $maxBytes = 1024 * 1024 * 2; // 2MB
+        if (strlen($bytes) > $maxBytes) {
+          error_log('Invoice logo too large (' . strlen($bytes) . ' bytes): ' . $logoPath);
+        }
+
+        // Intentar re-encode con GD para mejorar compatibilidad (si está disponible)
+        if ($mime === 'image/jpeg' && extension_loaded('gd') && function_exists('imagecreatefromstring')) {
+          $img = @imagecreatefromstring($bytes);
+          if ($img !== false && function_exists('imagesx') && function_exists('imagesy')) {
+            $w = imagesx($img);
+            $h = imagesy($img);
+            $targetW = 320;
+            $scale = ($w > $targetW) ? ($targetW / max(1, $w)) : 1.0;
+            $newW = (int)max(1, round($w * $scale));
+            $newH = (int)max(1, round($h * $scale));
+
+            $dst = imagecreatetruecolor($newW, $newH);
+            imagealphablending($dst, false);
+            imagesavealpha($dst, true);
+            imagecopyresampled($dst, $img, 0, 0, 0, 0, $newW, $newH, $w, $h);
+
+            ob_start();
+            imagepng($dst);
+            $pngBytes = ob_get_clean();
+            imagedestroy($dst);
+            imagedestroy($img);
+
+            if (is_string($pngBytes) && $pngBytes !== '') {
+              $bytes = $pngBytes;
+              $mime = 'image/png';
+            }
+          } elseif ($img !== false) {
+            imagedestroy($img);
+          }
+        }
+
         $logoBase64 = base64_encode($bytes);
-        $logoHtml = '<img class="logo" alt="Logo" src="data:image/jpeg;base64,' . $logoBase64 . '">';
+        $logoHtml = '<img class="logo" alt="Logo" src="data:' . htmlspecialchars($mime, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . ';base64,' . $logoBase64 . '">';
+      }
       }
     }
 

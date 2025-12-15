@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
       $pdo = db($config);
-      $invoiceId = invoices_create($pdo, $userId, $customerName, $customerEmail, $detail, $items, 'USD');
+            $invoiceId = invoices_create($pdo, $userId, $customerName, $customerEmail, $detail, $items, 'ARS');
       $data = invoices_get($pdo, $invoiceId, $userId);
       $download = invoice_build_download($data);
 

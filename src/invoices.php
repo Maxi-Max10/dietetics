@@ -5,7 +5,7 @@ declare(strict_types=1);
 /**
  * @param array<int, array{description:string, quantity:string|float|int, unit_price:string|float|int}> $items
  */
-function invoices_create(PDO $pdo, int $createdBy, string $customerName, string $customerEmail, string $detail, array $items, string $currency = 'USD'): int
+function invoices_create(PDO $pdo, int $createdBy, string $customerName, string $customerEmail, string $detail, array $items, string $currency = 'ARS'): int
 {
     if ($customerName === '' || $customerEmail === '') {
         throw new InvalidArgumentException('Cliente inválido.');
