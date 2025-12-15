@@ -7,6 +7,6 @@ define('APP_NAME', 'Dietetic');
 // define('APP_BASE_URL', 'https://lightslategrey-swan-233172.hostingersite.com');
 
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'u404968876_dietetics');
-define('DB_USER', 'u404968876_dietetics');
-// define('DB_PASS', 'PONER_TU_PASSWORD_AQUI');
+define('DB_NAME', 'TU_DB_NAME');
+define('DB_USER', 'TU_DB_USER');
+define('DB_PASS', 'TU_DB_PASS');

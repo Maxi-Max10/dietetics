@@ -10,5 +10,10 @@ RewriteRule ^(src|database|vendor)/ - [F,L]
   Require all denied
 </FilesMatch>
 
+# Bloquear scripts auxiliares
+<Files "hash.php">
+  Require all denied
+</Files>
+
 # Deshabilitar listado de directorios
 Options -Indexes

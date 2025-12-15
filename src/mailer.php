@@ -16,6 +16,15 @@ function mail_send_with_attachment(array $config, string $toEmail, string $toNam
     $fromEmail = getenv('MAIL_FROM') ?: (defined('MAIL_FROM') ? MAIL_FROM : 'no-reply@' . ($_SERVER['HTTP_HOST'] ?? 'localhost'));
     $fromName = getenv('MAIL_FROM_NAME') ?: (defined('MAIL_FROM_NAME') ? MAIL_FROM_NAME : ($config['app']['name'] ?? 'Dietetic'));
 
+    // Prevención básica de header injection
+    $subject = str_replace(["\r", "\n"], '', $subject);
+    $fromEmail = str_replace(["\r", "\n"], '', (string)$fromEmail);
+    $fromName = str_replace(["\r", "\n"], '', (string)$fromName);
+
+    if (!filter_var($fromEmail, FILTER_VALIDATE_EMAIL)) {
+        $fromEmail = 'no-reply@' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+    }
+
     // PHPMailer (recomendado)
     if (class_exists('PHPMailer\\PHPMailer\\PHPMailer')) {
         $mail = new PHPMailer\PHPMailer\PHPMailer(true);
@@ -49,7 +58,11 @@ function mail_send_with_attachment(array $config, string $toEmail, string $toNam
 
     $headers = [];
     $headers[] = 'MIME-Version: 1.0';
-    $headers[] = 'From: ' . mb_encode_mimeheader((string)$fromName) . " <{$fromEmail}>";
+    if (function_exists('mb_encode_mimeheader')) {
+        $headers[] = 'From: ' . mb_encode_mimeheader((string)$fromName) . " <{$fromEmail}>";
+    } else {
+        $headers[] = 'From: ' . (string)$fromName . " <{$fromEmail}>";
+    }
     $headers[] = 'Content-Type: multipart/mixed; boundary="' . $boundary . '"';
 
     $body = "--{$boundary}\r\n";

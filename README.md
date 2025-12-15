@@ -29,9 +29,29 @@ composer install --no-dev --optimize-autoloader
 
 Luego subí la carpeta `vendor/` al hosting (si no podés ejecutar Composer en Hostinger).
 
+### Si en Hostinger te descarga un HTML que dice “Error de PDF (plantilla)”
+Eso significa que **sí encontró** `src/pdf/boceto.pdf`, pero **NO encontró FPDI** (porque falta `vendor/`).
+
+Solución (la más simple y confiable):
+1. En tu PC (Windows), instalá Composer y ejecutá en la carpeta del proyecto:
+
+```bash
+composer install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader
+```
+
+2. Verificá que exista `vendor/autoload.php` y `vendor/setasign/fpdi/`.
+3. Subí la carpeta `vendor/` al hosting en el mismo nivel que `composer.json`.
+	- Opción A: `vendor/` va al mismo nivel que `src/` (fuera de `public_html/`).
+	- Opción B: `vendor/` va dentro de `public_html/vendor/` (porque `src/bootstrap.php` busca `public_html/vendor/autoload.php`).
+
+Nota: si estás usando Git Deployments y Hostinger intenta correr Composer y falla, igualmente podés subir `vendor/` por File Manager/FTP después del deploy.
+
 Si NO instalás Composer:
 - Descargar funciona igual, pero como HTML (`.html`) en vez de PDF.
 - Enviar por email intenta usar `mail()` (puede depender de la configuración del hosting).
+
+### composer.lock
+Si usás deploy por Git en Hostinger, conviene versionar `composer.lock` (commitearlo) para que las instalaciones sean reproducibles.
 
 ## PDF con plantilla (boceto)
 Si querés que la factura se imprima arriba de un PDF existente, el sistema usa `src/pdf/boceto.pdf` con FPDI.
