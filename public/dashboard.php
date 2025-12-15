@@ -80,24 +80,137 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><?= e($appName) ?> - Dashboard</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --accent: #0f766e;
+      --accent-2: #f97316;
+      --ink: #0b1727;
+      --muted: #6b7280;
+      --card: rgba(255, 255, 255, 0.9);
+    }
+
+    body {
+      font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+      background: radial-gradient(circle at 10% 20%, rgba(15, 118, 110, 0.18), transparent 35%),
+        radial-gradient(circle at 90% 10%, rgba(249, 115, 22, 0.18), transparent 35%),
+        linear-gradient(120deg, #f7fafc, #eef2ff);
+      color: var(--ink);
+      min-height: 100vh;
+    }
+
+    .navbar-glass {
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(15, 23, 42, 0.06);
+      box-shadow: 0 10px 40px rgba(15, 23, 42, 0.08);
+    }
+
+    .page-shell {
+      padding: 2.5rem 0;
+    }
+
+    .card-lift {
+      background: var(--card);
+      border: 1px solid rgba(15, 23, 42, 0.06);
+      box-shadow: 0 18px 50px rgba(15, 23, 42, 0.07);
+      border-radius: 18px;
+    }
+
+    .card-header-clean {
+      border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      background: rgba(15, 118, 110, 0.1);
+      color: var(--accent);
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .action-btn {
+      border-radius: 12px;
+      padding-inline: 1.25rem;
+      font-weight: 600;
+    }
+
+    .btn-primary, .btn-primary:hover, .btn-primary:focus {
+      background: linear-gradient(135deg, var(--accent), #115e59);
+      border: none;
+      box-shadow: 0 10px 30px rgba(15, 118, 110, 0.25);
+    }
+
+    .btn-outline-primary {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .btn-outline-primary:hover, .btn-outline-primary:focus {
+      background: rgba(15, 118, 110, 0.1);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .table thead th {
+      background: rgba(15, 118, 110, 0.08);
+      border-bottom: none;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .table td, .table th {
+      border-color: rgba(148, 163, 184, 0.35);
+    }
+
+    .muted-label {
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-size: 0.8rem;
+    }
+
+    @media (max-width: 768px) {
+      .page-shell {
+        padding: 1.5rem 0;
+      }
+
+      .card-lift {
+        border-radius: 14px;
+      }
+    }
+  </style>
 </head>
 <body>
-<nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
-  <div class="container">
-    <span class="navbar-brand mb-0 h1"><?= e($appName) ?></span>
-    <form method="post" action="/logout.php" class="ms-auto">
-      <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
-      <button type="submit" class="btn btn-outline-secondary btn-sm">Salir</button>
-    </form>
+<nav class="navbar navbar-expand-lg navbar-glass sticky-top">
+  <div class="container py-2">
+    <span class="navbar-brand fw-bold text-dark mb-0 h4"><?= e($appName) ?></span>
+    <div class="d-flex align-items-center gap-2 ms-auto">
+      <span class="pill">Admin</span>
+      <form method="post" action="/logout.php" class="d-flex">
+        <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
+        <button type="submit" class="btn btn-outline-secondary btn-sm">Salir</button>
+      </form>
+    </div>
   </div>
 </nav>
 
-<main class="container py-4">
+<main class="container page-shell">
   <div class="row justify-content-center">
-    <div class="col-12 col-lg-10">
-      <div class="d-flex align-items-center justify-content-between mb-3">
-        <h1 class="h4 mb-0">Administración - Facturas</h1>
-        <span class="text-muted small">Usuario #<?= e((string)$userId) ?></span>
+    <div class="col-12 col-lg-10 col-xl-9">
+      <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4 gap-3">
+        <div>
+          <p class="muted-label mb-1">Panel</p>
+          <h1 class="h3 mb-0">Administración de facturas</h1>
+        </div>
+        <span class="text-muted">Usuario #<?= e((string)$userId) ?></span>
       </div>
 
       <?php if ($flash !== ''): ?>
@@ -107,9 +220,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="alert alert-danger" role="alert"><?= e($error) ?></div>
       <?php endif; ?>
 
-      <div class="card">
-        <div class="card-body">
-          <h2 class="h5 mb-3">Crear factura</h2>
+      <div class="card card-lift">
+        <div class="card-header card-header-clean bg-white px-4 py-3 d-flex align-items-center justify-content-between">
+          <div>
+            <p class="muted-label mb-1">Nueva factura</p>
+            <h2 class="h5 mb-0">Crear y enviar</h2>
+          </div>
+          <span class="badge text-bg-light border">Protegido con CSRF</span>
+        </div>
+        <div class="card-body px-4 py-4">
 
           <form method="post" action="/dashboard.php" id="invoiceForm">
             <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
@@ -133,7 +252,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <div class="d-flex align-items-center justify-content-between mb-2">
               <h3 class="h6 mb-0">Productos</h3>
-              <button type="button" class="btn btn-outline-primary btn-sm" id="addItem">Agregar producto</button>
+              <button type="button" class="btn btn-outline-primary btn-sm action-btn" id="addItem">Agregar producto</button>
             </div>
 
             <div class="table-responsive">
@@ -157,9 +276,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               </table>
             </div>
 
-            <div class="d-flex gap-2 justify-content-end mt-3">
-              <button class="btn btn-primary" type="submit" name="action" value="download">Guardar y descargar</button>
-              <button class="btn btn-outline-primary" type="submit" name="action" value="email">Guardar y enviar por email</button>
+            <div class="d-flex flex-wrap gap-2 justify-content-end mt-3">
+              <button class="btn btn-primary action-btn" type="submit" name="action" value="download">Guardar y descargar</button>
+              <button class="btn btn-outline-primary action-btn" type="submit" name="action" value="email">Guardar y enviar por email</button>
             </div>
           </form>
         </div>
