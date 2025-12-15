@@ -1,0 +1,10 @@
+{
+  "name": "maxi-max10/dietetics",
+  "description": "Dietetic - login y facturación",
+  "type": "project",
+  "require": {
+    "php": ">=8.0",
+    "dompdf/dompdf": "^2.0",
+    "phpmailer/phpmailer": "^6.9"
+  }
+}

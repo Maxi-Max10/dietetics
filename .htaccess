@@ -3,7 +3,7 @@
 
 # Bloquear acceso directo a carpetas internas
 RewriteEngine On
-RewriteRule ^(src|database)/ - [F,L]
+RewriteRule ^(src|database|vendor)/ - [F,L]
 
 # Bloquear archivos de config y docs
 <FilesMatch "^(config\.local\.php|config\.local\.php\.example|README\.md|composer\.(json|lock))$">

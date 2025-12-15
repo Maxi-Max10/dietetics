@@ -4,5 +4,8 @@ Thumbs.db
 # Local secrets
 config.local.php
 
+# Composer
+vendor/
+
 # Logs
 *.log

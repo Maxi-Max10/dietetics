@@ -24,9 +24,20 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
+// Autoload de Composer (si existe en el hosting).
+$autoload = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR . 'autoload.php';
+if (is_file($autoload)) {
+    /** @noinspection PhpIncludeInspection */
+    require_once $autoload;
+}
+
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'db.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'auth.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'csrf.php';
+require_once __DIR__ . DIRECTORY_SEPARATOR . 'invoices.php';
+require_once __DIR__ . DIRECTORY_SEPARATOR . 'invoice_render.php';
+require_once __DIR__ . DIRECTORY_SEPARATOR . 'invoice_pdf.php';
+require_once __DIR__ . DIRECTORY_SEPARATOR . 'mailer.php';
 
 function app_config(): array
 {

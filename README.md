@@ -20,6 +20,24 @@
 1. En phpMyAdmin ejecutá `database/schema.sql` en tu DB.
 2. Creá un usuario inicial en la tabla `users`.
 
+## Dependencias (PDF + Email)
+Para **descargar en PDF** y **enviar por email con adjunto** se usan librerías via Composer:
+
+```bash
+composer install --no-dev --optimize-autoloader
+```
+
+Luego subí la carpeta `vendor/` al hosting (si no podés ejecutar Composer en Hostinger).
+
+Si NO instalás Composer:
+- Descargar funciona igual, pero como HTML (`.html`) en vez de PDF.
+- Enviar por email intenta usar `mail()` (puede depender de la configuración del hosting).
+
+### SMTP (opcional)
+Si querés usar SMTP (más confiable), definí en `config.local.php`:
+- `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `SMTP_PORT` (ej. 587), `SMTP_SECURE` (tls)
+- `MAIL_FROM`, `MAIL_FROM_NAME`
+
 ### Crear password hash
 Necesitás guardar `password_hash` (bcrypt). Podés generar el hash con este snippet en un entorno con PHP:
 
