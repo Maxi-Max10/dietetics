@@ -1,0 +1,12 @@
+<?php
+
+// Copiá este archivo como config.local.php (NO se versiona) y completá.
+
+define('APP_NAME', 'Dietetic');
+// define('APP_ENV', 'production');
+// define('APP_BASE_URL', 'https://lightslategrey-swan-233172.hostingersite.com');
+
+define('DB_HOST', 'localhost');
+define('DB_NAME', 'u404968876_dietetics');
+define('DB_USER', 'u404968876_dietetics');
+// define('DB_PASS', 'PONER_TU_PASSWORD_AQUI');
