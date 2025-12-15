@@ -50,6 +50,20 @@ function invoice_build_pdf_from_template(array $data): array
         return $text;
     };
 
+    $trimDesc = static function (string $text, int $maxChars = 60): string {
+        // Evita depender de mbstring en hosting.
+        if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+            if (mb_strlen($text, 'UTF-8') > $maxChars) {
+                return mb_substr($text, 0, $maxChars - 1, 'UTF-8') . '…';
+            }
+            return $text;
+        }
+        if (strlen($text) > $maxChars) {
+            return substr($text, 0, $maxChars - 3) . '...';
+        }
+        return $text;
+    };
+
     $debugGrid = (getenv('INVOICE_PDF_DEBUG') === '1') || (defined('INVOICE_PDF_DEBUG') && INVOICE_PDF_DEBUG);
 
     // Coordenadas (mm) - ajustadas en base a una hoja A4 típica.
@@ -159,7 +173,7 @@ function invoice_build_pdf_from_template(array $data): array
             $drawTableHeader($pdf, $colDesc, $colQty, $colUnit, $colSub, $toPdfText);
         }
 
-        $pdf->Cell($colDesc, 7, $toPdfText(mb_strimwidth($desc, 0, 60, '…', 'UTF-8')), 1, 0, 'L');
+        $pdf->Cell($colDesc, 7, $toPdfText($trimDesc($desc, 60)), 1, 0, 'L');
         $pdf->Cell($colQty, 7, $toPdfText($qty), 1, 0, 'R');
         $pdf->Cell($colUnit, 7, $toPdfText($unit), 1, 0, 'R');
         $pdf->Cell($colSub, 7, $toPdfText($sub), 1, 1, 'R');
