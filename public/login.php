@@ -60,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$appName = (string)($config['app']['name'] ?? 'Dietetic');
+$appName = (string)($config['app']['name'] ?? 'Dietetics');
 $csrf = csrf_token();
 ?>
 <!doctype html>

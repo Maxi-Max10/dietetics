@@ -14,7 +14,7 @@ function mail_send_with_attachment(array $config, string $toEmail, string $toNam
     }
 
     $fromEmail = getenv('MAIL_FROM') ?: (defined('MAIL_FROM') ? MAIL_FROM : 'no-reply@' . ($_SERVER['HTTP_HOST'] ?? 'localhost'));
-    $fromName = getenv('MAIL_FROM_NAME') ?: (defined('MAIL_FROM_NAME') ? MAIL_FROM_NAME : ($config['app']['name'] ?? 'Dietetic'));
+    $fromName = getenv('MAIL_FROM_NAME') ?: (defined('MAIL_FROM_NAME') ? MAIL_FROM_NAME : ($config['app']['name'] ?? 'Dietetics'));
 
     // Prevención básica de header injection
     $subject = str_replace(["\r", "\n"], '', $subject);

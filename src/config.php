@@ -15,7 +15,7 @@ if (is_file($localConfigPath)) {
  */
 return [
     'app' => [
-        'name' => getenv('APP_NAME') ?: (defined('APP_NAME') ? APP_NAME : 'Dietetic'),
+        'name' => getenv('APP_NAME') ?: (defined('APP_NAME') ? APP_NAME : 'Dietetics'),
         'env' => getenv('APP_ENV') ?: (defined('APP_ENV') ? APP_ENV : 'production'),
         'base_url' => getenv('APP_BASE_URL') ?: (defined('APP_BASE_URL') ? APP_BASE_URL : ''),
     ],
