@@ -115,9 +115,18 @@ function invoices_supports_customer_dni(PDO $pdo): bool
     }
 
     try {
-        $stmt = $pdo->prepare("SHOW COLUMNS FROM invoices LIKE :col");
+        // Nota: en MySQL, muchos comandos SHOW no funcionan bien con placeholders.
+        // Usamos INFORMATION_SCHEMA para detección confiable.
+        $stmt = $pdo->prepare(
+            "SELECT 1
+             FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = 'invoices'
+               AND COLUMN_NAME = :col
+             LIMIT 1"
+        );
         $stmt->execute(['col' => 'customer_dni']);
-        $cache = (bool)$stmt->fetch();
+        $cache = (bool)$stmt->fetchColumn();
         return $cache;
     } catch (Throwable $e) {
         // Si no se puede consultar metadata, asumimos que no existe.
