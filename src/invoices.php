@@ -20,7 +20,8 @@ function invoices_create(PDO $pdo, int $createdBy, string $customerName, string 
     }
 
     $dni = trim($customerDni);
-    if ($dni !== '' && mb_strlen($dni, 'UTF-8') > 32) {
+    $dniLen = function_exists('mb_strlen') ? (int)mb_strlen($dni, 'UTF-8') : strlen($dni);
+    if ($dni !== '' && $dniLen > 32) {
         throw new InvalidArgumentException('DNI demasiado largo.');
     }
 

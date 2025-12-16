@@ -67,9 +67,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $flash = 'Factura guardada (ID ' . $invoiceId . ').';
       }
     } catch (Throwable $e) {
-      $error = ($config['app']['env'] ?? 'production') === 'production'
-        ? 'No se pudo crear/enviar la factura.'
-        : ('Error: ' . $e->getMessage());
+      if ($e instanceof InvalidArgumentException) {
+        $error = $e->getMessage();
+      } else {
+        $errorId = bin2hex(random_bytes(4));
+        error_log('[invoice_error ' . $errorId . '] ' . get_class($e) . ': ' . $e->getMessage());
+        $error = ($config['app']['env'] ?? 'production') === 'production'
+          ? ('No se pudo crear/enviar la factura. (código ' . $errorId . ')')
+          : ('Error: ' . $e->getMessage());
+      }
     }
   }
 }
