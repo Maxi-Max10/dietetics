@@ -20,14 +20,26 @@ $limit = in_array($limitRaw, $allowedLimits, true) ? $limitRaw : 20;
 
 function products_build_url(array $params): string
 {
+  $period = (string)($params['period'] ?? '');
+  $limit = (string)($params['limit'] ?? '');
+
+  $path = '/products';
+  if ($period !== '') {
+    $path .= '/' . rawurlencode($period);
+    if ($limit !== '') {
+      $path .= '/' . rawurlencode($limit);
+    }
+  }
+
     $clean = [];
     foreach ($params as $k => $v) {
+    if (in_array($k, ['period', 'limit'], true)) continue;
         if ($v === null) continue;
         $v = (string)$v;
         if ($v === '') continue;
         $clean[$k] = $v;
     }
-    return '/products.php' . (count($clean) ? ('?' . http_build_query($clean)) : '');
+  return $path . (count($clean) ? ('?' . http_build_query($clean)) : '');
 }
 
 function btn_active(string $current, string $key): string
@@ -97,18 +109,18 @@ try {
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    :root { --accent:#0f766e; --ink:#0b1727; --muted:#6b7280; --card:rgba(255,255,255,.9); }
-    body { font-family:'Space Grotesk','Segoe UI',sans-serif; background: radial-gradient(circle at 10% 20%, rgba(15,118,110,.18), transparent 35%), radial-gradient(circle at 90% 10%, rgba(249,115,22,.18), transparent 35%), linear-gradient(120deg,#f7fafc,#eef2ff); color:var(--ink); min-height:100vh; }
+    :root { --accent:#059669; --accent-rgb:5,150,105; --accent-dark:#047857; --accent-2:#f59e0b; --accent-2-rgb:245,158,11; --ink:#0b1727; --muted:#6b7280; --card:rgba(255,255,255,.9); }
+    body { font-family:'Space Grotesk','Segoe UI',sans-serif; background: radial-gradient(circle at 10% 20%, rgba(var(--accent-rgb),.18), transparent 35%), radial-gradient(circle at 90% 10%, rgba(var(--accent-2-rgb),.18), transparent 35%), linear-gradient(120deg,#f7fafc,#eef2ff); color:var(--ink); min-height:100vh; }
     .navbar-glass { background:rgba(255,255,255,.9); backdrop-filter:blur(12px); border:1px solid rgba(15,23,42,.06); box-shadow:0 10px 40px rgba(15,23,42,.08); }
     .page-shell { padding:2.5rem 0; }
     .card-lift { background:var(--card); border:1px solid rgba(15,23,42,.06); box-shadow:0 18px 50px rgba(15,23,42,.07); border-radius:18px; }
     .card-header-clean { border-bottom:1px solid rgba(15,23,42,.06); }
-    .pill { display:inline-flex; align-items:center; gap:.4rem; padding:.35rem .75rem; border-radius:999px; background:rgba(15,118,110,.1); color:var(--accent); font-weight:600; font-size:.9rem; }
+    .pill { display:inline-flex; align-items:center; gap:.4rem; padding:.35rem .75rem; border-radius:999px; background:rgba(var(--accent-rgb),.1); color:var(--accent); font-weight:600; font-size:.9rem; }
     .action-btn { border-radius:12px; padding-inline:1.25rem; font-weight:600; }
-    .btn-primary, .btn-primary:hover, .btn-primary:focus { background:linear-gradient(135deg,var(--accent),#115e59); border:none; box-shadow:0 10px 30px rgba(15,118,110,.25); }
+    .btn-primary, .btn-primary:hover, .btn-primary:focus { background:linear-gradient(135deg,var(--accent),var(--accent-dark)); border:none; box-shadow:0 10px 30px rgba(var(--accent-rgb),.25); }
     .btn-outline-primary { border-color:var(--accent); color:var(--accent); }
-    .btn-outline-primary:hover, .btn-outline-primary:focus { background:rgba(15,118,110,.1); color:var(--accent); border-color:var(--accent); }
-    .table thead th { background:rgba(15,118,110,.08); border-bottom:none; font-weight:600; color:var(--ink); }
+    .btn-outline-primary:hover, .btn-outline-primary:focus { background:rgba(var(--accent-rgb),.1); color:var(--accent); border-color:var(--accent); }
+    .table thead th { background:rgba(var(--accent-rgb),.08); border-bottom:none; font-weight:600; color:var(--ink); }
     .table td, .table th { border-color:rgba(148,163,184,.35); }
     .muted-label { color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.04em; font-size:.8rem; }
     @media (max-width:768px){ .page-shell{padding:1.5rem 0} .card-lift{border-radius:14px} }
@@ -117,10 +129,10 @@ try {
 <body>
 <nav class="navbar navbar-expand-lg navbar-glass sticky-top">
   <div class="container py-2">
-    <a class="navbar-brand fw-bold text-dark mb-0 h4 text-decoration-none" href="/dashboard.php"><?= e($appName) ?></a>
+    <a class="navbar-brand fw-bold text-dark mb-0 h4 text-decoration-none" href="/dashboard"><?= e($appName) ?></a>
     <div class="d-flex align-items-center gap-2 ms-auto">
       <span class="pill">Admin</span>
-      <a class="btn btn-outline-primary btn-sm" href="/dashboard.php">Volver</a>
+      <a class="btn btn-outline-primary btn-sm" href="/dashboard">Volver</a>
       <form method="post" action="/logout.php" class="d-flex">
         <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
         <button type="submit" class="btn btn-outline-secondary btn-sm">Salir</button>

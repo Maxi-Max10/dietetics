@@ -12,6 +12,22 @@ if ($sessionName !== '') {
 
 $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
 
+// Endurecimiento básico de sesión/headers.
+if (PHP_SAPI !== 'cli') {
+    ini_set('session.use_strict_mode', '1');
+    ini_set('session.cookie_httponly', '1');
+    // cookie_secure se setea en session_set_cookie_params según $https.
+    if (!headers_sent()) {
+        header('X-Frame-Options: SAMEORIGIN');
+        header('X-Content-Type-Options: nosniff');
+        header('Referrer-Policy: strict-origin-when-cross-origin');
+        header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
+        if ($https) {
+            header('Strict-Transport-Security: max-age=31536000');
+        }
+    }
+}
+
 session_set_cookie_params([
     'lifetime' => 0,
     'path' => '/',

@@ -5,6 +5,26 @@
 RewriteEngine On
 RewriteRule ^(src|database|vendor)/ - [F,L]
 
+# URLs amigables (ocultar .php)
+# Nota: se mantiene compatibilidad con URLs antiguas, pero se redirige a la versión "limpia".
+RewriteCond %{THE_REQUEST} \s/+(dashboard|sales|customers|products)\.php[\?\s] [NC]
+RewriteRule ^ %1 [R=302,L]
+
+# Rutas sin extensión
+RewriteRule ^dashboard/?$ dashboard.php [L,QSA]
+
+RewriteRule ^sales/?$ sales.php [L,QSA]
+RewriteRule ^sales/(day|week|month|year)/?$ sales.php?period=$1 [L,QSA]
+RewriteRule ^sales/(day|week|month|year)/(20|50|100|120)/?$ sales.php?period=$1&limit=$2 [L,QSA]
+
+RewriteRule ^customers/?$ customers.php [L,QSA]
+RewriteRule ^customers/(day|week|month|year)/?$ customers.php?period=$1 [L,QSA]
+RewriteRule ^customers/(day|week|month|year)/(20|50|100|120)/?$ customers.php?period=$1&limit=$2 [L,QSA]
+
+RewriteRule ^products/?$ products.php [L,QSA]
+RewriteRule ^products/(day|week|month|year)/?$ products.php?period=$1 [L,QSA]
+RewriteRule ^products/(day|week|month|year)/(20|50|100|120)/?$ products.php?period=$1&limit=$2 [L,QSA]
+
 # Bloquear archivos de config y docs
 <FilesMatch "^(config\.local\.php|config\.local\.php\.example|README\.md|composer\.(json|lock))$">
   Require all denied

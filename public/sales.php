@@ -68,8 +68,22 @@ try {
 
 function sales_build_url(array $params): string
 {
+  $period = (string)($params['period'] ?? '');
+  $limit = (string)($params['limit'] ?? '');
+
+  $path = '/sales';
+  if ($period !== '') {
+    $path .= '/' . rawurlencode($period);
+    if ($limit !== '') {
+      $path .= '/' . rawurlencode($limit);
+    }
+  }
+
   $clean = [];
   foreach ($params as $k => $v) {
+    if (in_array($k, ['period', 'limit'], true)) {
+      continue;
+    }
     if ($v === null) {
       continue;
     }
@@ -79,7 +93,7 @@ function sales_build_url(array $params): string
     }
     $clean[$k] = $v;
   }
-  return '/sales.php' . (count($clean) ? ('?' . http_build_query($clean)) : '');
+  return $path . (count($clean) ? ('?' . http_build_query($clean)) : '');
 }
 
 function sales_active(string $current, string $key): string
@@ -100,8 +114,11 @@ function sales_active(string $current, string $key): string
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --accent: #0f766e;
-      --accent-2: #f97316;
+      --accent: #2563eb;
+      --accent-rgb: 37, 99, 235;
+      --accent-dark: #1d4ed8;
+      --accent-2: #06b6d4;
+      --accent-2-rgb: 6, 182, 212;
       --ink: #0b1727;
       --muted: #6b7280;
       --card: rgba(255, 255, 255, 0.9);
@@ -109,8 +126,8 @@ function sales_active(string $current, string $key): string
 
     body {
       font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
-      background: radial-gradient(circle at 10% 20%, rgba(15, 118, 110, 0.18), transparent 35%),
-        radial-gradient(circle at 90% 10%, rgba(249, 115, 22, 0.18), transparent 35%),
+      background: radial-gradient(circle at 10% 20%, rgba(var(--accent-rgb), 0.18), transparent 35%),
+        radial-gradient(circle at 90% 10%, rgba(var(--accent-2-rgb), 0.18), transparent 35%),
         linear-gradient(120deg, #f7fafc, #eef2ff);
       color: var(--ink);
       min-height: 100vh;
@@ -144,7 +161,7 @@ function sales_active(string $current, string $key): string
       gap: 0.4rem;
       padding: 0.35rem 0.75rem;
       border-radius: 999px;
-      background: rgba(15, 118, 110, 0.1);
+      background: rgba(var(--accent-rgb), 0.1);
       color: var(--accent);
       font-weight: 600;
       font-size: 0.9rem;
@@ -157,9 +174,9 @@ function sales_active(string $current, string $key): string
     }
 
     .btn-primary, .btn-primary:hover, .btn-primary:focus {
-      background: linear-gradient(135deg, var(--accent), #115e59);
+      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
       border: none;
-      box-shadow: 0 10px 30px rgba(15, 118, 110, 0.25);
+      box-shadow: 0 10px 30px rgba(var(--accent-rgb), 0.25);
     }
 
     .btn-outline-primary {
@@ -168,13 +185,13 @@ function sales_active(string $current, string $key): string
     }
 
     .btn-outline-primary:hover, .btn-outline-primary:focus {
-      background: rgba(15, 118, 110, 0.1);
+      background: rgba(var(--accent-rgb), 0.1);
       color: var(--accent);
       border-color: var(--accent);
     }
 
     .table thead th {
-      background: rgba(15, 118, 110, 0.08);
+      background: rgba(var(--accent-rgb), 0.08);
       border-bottom: none;
       font-weight: 600;
       color: var(--ink);
@@ -213,10 +230,10 @@ function sales_active(string $current, string $key): string
 <body>
 <nav class="navbar navbar-expand-lg navbar-glass sticky-top">
   <div class="container py-2">
-    <a class="navbar-brand fw-bold text-dark mb-0 h4 text-decoration-none" href="/dashboard.php"><?= e($appName) ?></a>
+    <a class="navbar-brand fw-bold text-dark mb-0 h4 text-decoration-none" href="/dashboard"><?= e($appName) ?></a>
     <div class="d-flex align-items-center gap-2 ms-auto">
       <span class="pill">Admin</span>
-      <a class="btn btn-outline-primary btn-sm" href="/dashboard.php">Volver</a>
+      <a class="btn btn-outline-primary btn-sm" href="/dashboard">Volver</a>
       <form method="post" action="/logout.php" class="d-flex">
         <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
         <button type="submit" class="btn btn-outline-secondary btn-sm">Salir</button>
@@ -284,8 +301,7 @@ function sales_active(string $current, string $key): string
           <h2 class="h5 mb-0">Ventas del período</h2>
         </div>
         <div class="card-body px-4 py-4">
-          <form method="get" action="/sales.php" class="d-flex flex-column flex-md-row gap-2 align-items-md-center justify-content-between mb-3">
-            <input type="hidden" name="period" value="<?= e($p['key']) ?>">
+          <form method="get" action="<?= e(sales_build_url(['period' => $p['key']])) ?>" class="d-flex flex-column flex-md-row gap-2 align-items-md-center justify-content-between mb-3">
             <div class="d-flex gap-2 flex-grow-1">
               <input class="form-control" name="q" value="<?= e($q) ?>" placeholder="Buscar por nombre, email o DNI" aria-label="Buscar">
               <select class="form-select" name="limit" style="max-width: 140px" aria-label="Cantidad">
