@@ -250,82 +250,57 @@ try {
 </main>
 <script>
 (() => {
-  const DEBOUNCE_MS = 250;
-
-  const buildUrlFromForm = (form) => {
-    const action = form.getAttribute('action') || window.location.pathname;
-    const url = new URL(action, window.location.origin);
-    const params = new URLSearchParams(new FormData(form));
-    url.search = params.toString();
-    return url;
+  const normalize = (value) => {
+    const s = (value || '').toString().trim().toLowerCase();
+    return s.normalize ? s.normalize('NFD').replace(/[\u0300-\u036f]/g, '') : s;
   };
 
-  const wireLiveSearch = () => {
+  const wireLiveFilter = () => {
     const form = document.getElementById('liveSearchForm');
     const main = document.getElementById('liveMain');
     if (!form || !main) return;
 
     const qInput = form.querySelector('input[name="q"]');
-    const limitSelect = form.querySelector('select[name="limit"]');
+    const table = main.querySelector('table');
+    const tbody = table && table.tBodies && table.tBodies[0];
+    if (!(qInput instanceof HTMLInputElement) || !tbody) return;
 
-    let timer = null;
-    let controller = null;
+    const allRows = Array.from(tbody.rows).filter((r) => !r.hasAttribute('data-live-empty') && !r.hasAttribute('data-live-no-results'));
+    const colCount = (table.tHead && table.tHead.rows[0]) ? table.tHead.rows[0].cells.length : (allRows[0] ? allRows[0].cells.length : 1);
 
-    const run = () => {
-      if (timer) window.clearTimeout(timer);
-      timer = window.setTimeout(async () => {
-        const url = buildUrlFromForm(form);
+    let noRow = tbody.querySelector('tr[data-live-no-results]');
+    if (!noRow) {
+      noRow = document.createElement('tr');
+      noRow.setAttribute('data-live-no-results', '1');
+      const td = document.createElement('td');
+      td.colSpan = colCount;
+      td.className = 'text-muted';
+      td.textContent = 'Sin resultados.';
+      noRow.appendChild(td);
+      noRow.style.display = 'none';
+      tbody.appendChild(noRow);
+    }
 
-        const focused = document.activeElement;
-        const shouldRestoreFocus = focused === qInput;
-        const selStart = qInput && typeof qInput.selectionStart === 'number' ? qInput.selectionStart : null;
-        const selEnd = qInput && typeof qInput.selectionEnd === 'number' ? qInput.selectionEnd : null;
-
-        if (controller) controller.abort();
-        controller = new AbortController();
-
-        try {
-          const resp = await fetch(url.toString(), {
-            signal: controller.signal,
-            headers: { 'X-Requested-With': 'fetch' },
-          });
-          const html = await resp.text();
-          const doc = new DOMParser().parseFromString(html, 'text/html');
-          const newMain = doc.getElementById('liveMain');
-          if (!newMain) return;
-
-          main.replaceWith(newMain);
-          history.replaceState(null, '', url.pathname + (url.search || ''));
-
-          if (shouldRestoreFocus) {
-            const newQ = document.querySelector('#liveSearchForm input[name="q"]');
-            if (newQ instanceof HTMLInputElement) {
-              newQ.focus();
-              if (typeof selStart === 'number' && typeof selEnd === 'number') {
-                try { newQ.setSelectionRange(selStart, selEnd); } catch (e) {}
-              }
-            }
-          }
-
-          wireLiveSearch();
-        } catch (e) {
-          if (e && e.name === 'AbortError') return;
-        }
-      }, DEBOUNCE_MS);
+    const apply = () => {
+      const q = normalize(qInput.value);
+      let shown = 0;
+      for (const row of allRows) {
+        const haystack = normalize(row.textContent);
+        const match = q === '' || haystack.includes(q);
+        row.style.display = match ? '' : 'none';
+        if (match) shown++;
+      }
+      noRow.style.display = (shown === 0 && q !== '') ? '' : 'none';
     };
 
-    form.addEventListener('submit', (ev) => {
-      ev.preventDefault();
-      run();
-    });
-    if (qInput) qInput.addEventListener('input', run);
-    if (limitSelect) limitSelect.addEventListener('change', run);
+    qInput.addEventListener('input', apply);
+    apply();
   };
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', wireLiveSearch);
+    document.addEventListener('DOMContentLoaded', wireLiveFilter);
   } else {
-    wireLiveSearch();
+    wireLiveFilter();
   }
 })();
 </script>
