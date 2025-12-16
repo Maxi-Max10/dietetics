@@ -91,17 +91,18 @@ function sales_summary_filtered(PDO $pdo, int $userId, DateTimeImmutable $start,
 /**
  * @return array<int, array{id:int,customer_name:string,customer_email:string,customer_dni:string,total_cents:int,currency:string,created_at:string}>
  */
-function sales_list(PDO $pdo, int $userId, DateTimeImmutable $start, DateTimeImmutable $end): array
+function sales_list(PDO $pdo, int $userId, DateTimeImmutable $start, DateTimeImmutable $end, int $limit = 20): array
 {
-    return sales_list_filtered($pdo, $userId, $start, $end, '', invoices_supports_customer_dni($pdo));
+    return sales_list_filtered($pdo, $userId, $start, $end, '', invoices_supports_customer_dni($pdo), $limit);
 }
 
 /**
  * @return array<int, array{id:int,customer_name:string,customer_email:string,customer_dni:string,total_cents:int,currency:string,created_at:string}>
  */
-function sales_list_filtered(PDO $pdo, int $userId, DateTimeImmutable $start, DateTimeImmutable $end, string $search, bool $hasDni): array
+function sales_list_filtered(PDO $pdo, int $userId, DateTimeImmutable $start, DateTimeImmutable $end, string $search, bool $hasDni, int $limit = 20): array
 {
     $search = trim($search);
+    $limit = max(1, (int)$limit);
 
     $select = 'id, customer_name, customer_email, total_cents, currency, created_at';
     if ($hasDni) {
@@ -120,11 +121,13 @@ function sales_list_filtered(PDO $pdo, int $userId, DateTimeImmutable $start, Da
         $params['q'] = '%' . $search . '%';
     }
 
+    // LIMIT con entero validado: evitamos placeholders por compatibilidad MySQL/PDO.
     $stmt = $pdo->prepare(
         'SELECT ' . $select . '
          FROM invoices
          WHERE ' . $where . '
-         ORDER BY created_at DESC, id DESC'
+         ORDER BY created_at DESC, id DESC
+         LIMIT ' . $limit
     );
 
     $stmt->execute($params);

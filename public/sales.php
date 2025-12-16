@@ -14,6 +14,9 @@ $csrf = csrf_token();
 $period = (string)($_GET['period'] ?? 'day');
 $q = trim((string)($_GET['q'] ?? ''));
 $format = strtolower(trim((string)($_GET['format'] ?? '')));
+$allowedLimits = [20, 50, 100, 120];
+$limitRaw = (int)($_GET['limit'] ?? 20);
+$limit = in_array($limitRaw, $allowedLimits, true) ? $limitRaw : 20;
 
 try {
     $pdo = db($config);
@@ -21,7 +24,7 @@ try {
 
   $hasDni = invoices_supports_customer_dni($pdo);
   $summary = sales_summary_filtered($pdo, $userId, $p['start'], $p['end'], $q, $hasDni);
-  $rows = sales_list_filtered($pdo, $userId, $p['start'], $p['end'], $q, $hasDni);
+  $rows = sales_list_filtered($pdo, $userId, $p['start'], $p['end'], $q, $hasDni, $limit);
 
   if (in_array($format, ['csv', 'xml', 'xlsx'], true)) {
     try {
@@ -37,6 +40,7 @@ try {
           'start' => $p['start']->format('Y-m-d H:i:s'),
           'end' => $p['end']->format('Y-m-d H:i:s'),
           'q' => $q,
+          'limit' => (string)$limit,
         ], $base . '.xml');
         exit;
       }
@@ -244,10 +248,10 @@ function sales_active(string $current, string $key): string
             <h2 class="h5 mb-0">Seleccionar período</h2>
           </div>
           <div class="d-flex flex-wrap gap-2">
-            <a class="btn btn-sm action-btn <?= e(sales_active($p['key'], 'day')) ?>" href="<?= e(sales_build_url(['period' => 'day', 'q' => $q])) ?>">Día</a>
-            <a class="btn btn-sm action-btn <?= e(sales_active($p['key'], 'week')) ?>" href="<?= e(sales_build_url(['period' => 'week', 'q' => $q])) ?>">Semana</a>
-            <a class="btn btn-sm action-btn <?= e(sales_active($p['key'], 'month')) ?>" href="<?= e(sales_build_url(['period' => 'month', 'q' => $q])) ?>">Mes</a>
-            <a class="btn btn-sm action-btn <?= e(sales_active($p['key'], 'year')) ?>" href="<?= e(sales_build_url(['period' => 'year', 'q' => $q])) ?>">Año</a>
+            <a class="btn btn-sm action-btn <?= e(sales_active($p['key'], 'day')) ?>" href="<?= e(sales_build_url(['period' => 'day', 'q' => $q, 'limit' => (string)$limit])) ?>">Día</a>
+            <a class="btn btn-sm action-btn <?= e(sales_active($p['key'], 'week')) ?>" href="<?= e(sales_build_url(['period' => 'week', 'q' => $q, 'limit' => (string)$limit])) ?>">Semana</a>
+            <a class="btn btn-sm action-btn <?= e(sales_active($p['key'], 'month')) ?>" href="<?= e(sales_build_url(['period' => 'month', 'q' => $q, 'limit' => (string)$limit])) ?>">Mes</a>
+            <a class="btn btn-sm action-btn <?= e(sales_active($p['key'], 'year')) ?>" href="<?= e(sales_build_url(['period' => 'year', 'q' => $q, 'limit' => (string)$limit])) ?>">Año</a>
           </div>
         </div>
         <div class="card-body px-4 py-4">
@@ -284,12 +288,17 @@ function sales_active(string $current, string $key): string
             <input type="hidden" name="period" value="<?= e($p['key']) ?>">
             <div class="d-flex gap-2 flex-grow-1">
               <input class="form-control" name="q" value="<?= e($q) ?>" placeholder="Buscar por nombre, email o DNI" aria-label="Buscar">
+              <select class="form-select" name="limit" style="max-width: 140px" aria-label="Cantidad">
+                <?php foreach ($allowedLimits as $opt): ?>
+                  <option value="<?= e((string)$opt) ?>" <?= $opt === $limit ? 'selected' : '' ?>><?= e((string)$opt) ?></option>
+                <?php endforeach; ?>
+              </select>
               <button class="btn btn-outline-primary action-btn" type="submit">Buscar</button>
             </div>
             <div class="d-flex flex-wrap gap-2">
-              <a class="btn btn-outline-secondary btn-sm" href="<?= e(sales_build_url(['period' => $p['key'], 'q' => $q, 'format' => 'csv'])) ?>">CSV</a>
-              <a class="btn btn-outline-secondary btn-sm" href="<?= e(sales_build_url(['period' => $p['key'], 'q' => $q, 'format' => 'xml'])) ?>">XML</a>
-              <a class="btn btn-outline-secondary btn-sm" href="<?= e(sales_build_url(['period' => $p['key'], 'q' => $q, 'format' => 'xlsx'])) ?>">XLSX</a>
+              <a class="btn btn-outline-secondary btn-sm" href="<?= e(sales_build_url(['period' => $p['key'], 'q' => $q, 'limit' => (string)$limit, 'format' => 'csv'])) ?>">CSV</a>
+              <a class="btn btn-outline-secondary btn-sm" href="<?= e(sales_build_url(['period' => $p['key'], 'q' => $q, 'limit' => (string)$limit, 'format' => 'xml'])) ?>">XML</a>
+              <a class="btn btn-outline-secondary btn-sm" href="<?= e(sales_build_url(['period' => $p['key'], 'q' => $q, 'limit' => (string)$limit, 'format' => 'xlsx'])) ?>">XLSX</a>
             </div>
           </form>
 

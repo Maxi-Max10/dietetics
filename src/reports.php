@@ -13,10 +13,11 @@ function reports_supports_customer_dni(PDO $pdo): bool
 /**
  * @return array<int, array{customer_name:string,customer_email:string,customer_dni:string,invoices_count:int,total_cents:int,currency:string,last_purchase:string}>
  */
-function reports_customers_list(PDO $pdo, int $userId, DateTimeImmutable $start, DateTimeImmutable $end, string $search = ''): array
+function reports_customers_list(PDO $pdo, int $userId, DateTimeImmutable $start, DateTimeImmutable $end, string $search = '', int $limit = 20): array
 {
     $hasDni = reports_supports_customer_dni($pdo);
     $search = trim($search);
+    $limit = max(1, (int)$limit);
 
     $where = 'created_by = :user_id AND created_at >= :start AND created_at < :end';
     $params = [
@@ -32,13 +33,15 @@ function reports_customers_list(PDO $pdo, int $userId, DateTimeImmutable $start,
 
     $selectDni = $hasDni ? 'customer_dni' : "''";
 
-    $stmt = $pdo->prepare(
+        // LIMIT con entero validado: evitamos placeholders por compatibilidad MySQL/PDO.
+        $stmt = $pdo->prepare(
         'SELECT customer_name, customer_email, ' . $selectDni . ' AS customer_dni, currency,
                 COUNT(*) AS invoices_count, COALESCE(SUM(total_cents), 0) AS total_cents, MAX(created_at) AS last_purchase
          FROM invoices
          WHERE ' . $where . '
          GROUP BY customer_name, customer_email, customer_dni, currency
-         ORDER BY total_cents DESC, invoices_count DESC'
+            ORDER BY total_cents DESC, invoices_count DESC
+            LIMIT ' . $limit
     );
 
     $stmt->execute($params);
@@ -63,9 +66,10 @@ function reports_customers_list(PDO $pdo, int $userId, DateTimeImmutable $start,
 /**
  * @return array<int, array{description:string,quantity_sum:float,invoices_count:int,total_cents:int,currency:string}>
  */
-function reports_products_list(PDO $pdo, int $userId, DateTimeImmutable $start, DateTimeImmutable $end, string $search = ''): array
+function reports_products_list(PDO $pdo, int $userId, DateTimeImmutable $start, DateTimeImmutable $end, string $search = '', int $limit = 20): array
 {
     $search = trim($search);
+    $limit = max(1, (int)$limit);
 
     $where = 'inv.created_by = :user_id AND inv.created_at >= :start AND inv.created_at < :end';
     $params = [
@@ -79,7 +83,8 @@ function reports_products_list(PDO $pdo, int $userId, DateTimeImmutable $start, 
         $params['q'] = '%' . $search . '%';
     }
 
-    $stmt = $pdo->prepare(
+        // LIMIT con entero validado: evitamos placeholders por compatibilidad MySQL/PDO.
+        $stmt = $pdo->prepare(
         'SELECT ii.description, inv.currency,
                 COALESCE(SUM(ii.quantity), 0) AS quantity_sum,
                 COUNT(DISTINCT inv.id) AS invoices_count,
@@ -88,7 +93,8 @@ function reports_products_list(PDO $pdo, int $userId, DateTimeImmutable $start, 
          INNER JOIN invoices inv ON inv.id = ii.invoice_id
          WHERE ' . $where . '
          GROUP BY ii.description, inv.currency
-         ORDER BY total_cents DESC, quantity_sum DESC'
+            ORDER BY total_cents DESC, quantity_sum DESC
+            LIMIT ' . $limit
     );
 
     $stmt->execute($params);
