@@ -160,12 +160,14 @@ function invoice_build_pdf_from_template(array $data): array
     $pdf->SetFont('Helvetica', 'B', 10);
     $pdf->SetFillColor(245, 247, 250);
 
-    // Anchos relativos a la página (A4 portrait ~210mm)
-    $usableW = (float)$size['width'] - ($marginX * 2);
-    $colDesc = (int)round($usableW * 0.52);
-    $colQty  = (int)round($usableW * 0.12);
-    $colUnit = (int)round($usableW * 0.18);
-    $colSub  = (int)max(0, round($usableW - $colDesc - $colQty - $colUnit));
+    // Anchos de columnas
+    // Nota: calculamos todo en enteros (mm) y asignamos el remanente a la última columna
+    // para evitar desfasajes visuales por redondeo.
+    $usableW = (int)round((float)$size['width'] - ($marginX * 2));
+    $colDesc = (int)floor($usableW * 0.60);
+    $colQty  = (int)floor($usableW * 0.12);
+    $colUnit = (int)floor($usableW * 0.14);
+    $colSub  = max(0, $usableW - $colDesc - $colQty - $colUnit);
 
     $drawTableHeader = static function (setasign\Fpdi\Fpdi $pdf, int $colDesc, int $colQty, int $colUnit, int $colSub, callable $toPdfText): void {
         $pdf->SetFont('Helvetica', 'B', 10);
@@ -205,7 +207,7 @@ function invoice_build_pdf_from_template(array $data): array
                 }
                 $pdf->SetTextColor(20, 20, 20);
             }
-            $pdf->SetXY($xLeft, 30);
+            $pdf->SetXY($xLeft, $yTable);
             $drawTableHeader($pdf, $colDesc, $colQty, $colUnit, $colSub, $toPdfText);
         }
 
