@@ -84,6 +84,28 @@ $csrf = csrf_token();
       background: rgba(255, 255, 255, .18);
       transform: rotate(-6deg);
     }
+
+    .auth-float {
+      position: absolute;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .16);
+      filter: blur(.2px);
+      animation: auth-float 14s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    .auth-float.f1 { width: 140px; height: 140px; top: 12%; left: -40px; opacity: .55; animation-duration: 16s; }
+    .auth-float.f2 { width: 90px; height: 90px; bottom: 18%; right: -22px; opacity: .45; animation-duration: 18s; animation-delay: -4s; }
+    .auth-float.f3 { width: 56px; height: 56px; top: 22%; right: 18%; opacity: .35; animation-duration: 13s; animation-delay: -2s; }
+
+    @keyframes auth-float {
+      0%, 100% { transform: translate3d(0, 0, 0); }
+      50% { transform: translate3d(0, -14px, 0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .auth-float { animation: none; }
+    }
     @media (min-width: 992px) {
       .auth-left { min-height: 520px; }
       .auth-blob { height: 360px; }
@@ -99,6 +121,9 @@ $csrf = csrf_token();
             <div class="col-lg-5">
               <div class="auth-left bg-success bg-gradient text-white position-relative d-flex align-items-center justify-content-center p-4">
                 <div class="position-absolute auth-blob"></div>
+                <div class="auth-float f1"></div>
+                <div class="auth-float f2"></div>
+                <div class="auth-float f3"></div>
                 <div class="position-relative text-center">
                   <img src="/logo.png" alt="Logo" class="auth-logo mb-3">
                   <h2 class="h3 fw-semibold mb-2">Hola, Bienvenida!</h2>
@@ -136,14 +161,6 @@ $csrf = csrf_token();
                   </div>
 
                   <button type="submit" class="btn btn-success w-100 py-2">Login</button>
-
-                  <div class="text-center text-muted small mt-3">or login with social platforms</div>
-                  <div class="d-flex justify-content-center gap-2 mt-2">
-                    <button type="button" class="btn btn-outline-secondary btn-sm" title="Google" disabled><i class="bi bi-google"></i></button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" title="Facebook" disabled><i class="bi bi-facebook"></i></button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" title="GitHub" disabled><i class="bi bi-github"></i></button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" title="LinkedIn" disabled><i class="bi bi-linkedin"></i></button>
-                  </div>
 
                   <p class="text-muted small mt-4 mb-0 text-center"><?= e($appName) ?></p>
                 </form>
