@@ -21,6 +21,9 @@ function invoice_build_download(array $data): array
     // (en hosting suele faltar vendor/ y se cae silenciosamente a Dompdf/HTML).
     $templatePath = __DIR__ . DIRECTORY_SEPARATOR . 'pdf' . DIRECTORY_SEPARATOR . 'boceto.pdf';
     $hasTemplateFile = is_file($templatePath);
+    $autoloadPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR . 'autoload.php';
+    $hasAutoload = is_file($autoloadPath);
+    $hasFpdiClass = class_exists('setasign\\Fpdi\\Fpdi');
 
     // PDF usando plantilla (FPDI) si está disponible.
     if (function_exists('invoice_build_pdf_from_template')) {
@@ -36,8 +39,16 @@ function invoice_build_download(array $data): array
             // Si la plantilla existe, no sigas con otros métodos: devolvé un error claro.
             if ($hasTemplateFile) {
                 $msg = "No se pudo generar el PDF con la plantilla.\n\n" .
-                    "Causa probable: falta instalar/subir Composer vendor/ (FPDI) en el hosting.\n" .
-                    "Solución: ejecutar 'composer install --no-dev' y subir la carpeta vendor/, o instalar dependencias en el servidor.\n";
+                    "Causas probables:\n" .
+                    "- Falta instalar/subir dependencias de Composer (FPDI).\n" .
+                    "- El hosting tiene una carpeta vendor/ pero NO incluye setasign/fpdi (vendor\\setasign\\...).\n\n" .
+                    "Checklist rápido:\n" .
+                    "- Plantilla existe: " . ($hasTemplateFile ? 'SI' : 'NO') . " (" . $templatePath . ")\n" .
+                    "- Autoload existe: " . ($hasAutoload ? 'SI' : 'NO') . " (" . $autoloadPath . ")\n" .
+                    "- Clase FPDI cargada (setasign\\Fpdi\\Fpdi): " . ($hasFpdiClass ? 'SI' : 'NO') . "\n\n" .
+                    "Solución:\n" .
+                    "1) Ejecutar 'composer install --no-dev --optimize-autoloader' en el proyecto\n" .
+                    "2) Subir la carpeta vendor/ generada (completa) al mismo nivel que src/\n";
                 return [
                     'bytes' => "<h1>Error de PDF (plantilla)</h1><pre>" . htmlspecialchars($msg, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . "</pre>",
                     'filename' => 'factura-' . $invoiceId . '-' . $ts . '-ERROR.html',
