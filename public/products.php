@@ -160,7 +160,7 @@ try {
   </div>
 </nav>
 
-<main class="container page-shell">
+<main class="container page-shell" id="liveMain">
   <div class="row justify-content-center">
     <div class="col-12 col-lg-10 col-xl-9">
       <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4 gap-3">
@@ -190,7 +190,7 @@ try {
           </div>
         </div>
         <div class="card-body px-4 py-4">
-          <form method="get" action="/products.php" class="d-flex flex-column flex-md-row gap-2 align-items-md-center justify-content-between">
+          <form id="liveSearchForm" method="get" action="/products" class="d-flex flex-column flex-md-row gap-2 align-items-md-center justify-content-between">
             <input type="hidden" name="period" value="<?= e($p['key']) ?>">
             <div class="d-flex gap-2 flex-grow-1">
               <input class="form-control" name="q" value="<?= e($q) ?>" placeholder="Buscar por producto" aria-label="Buscar">
@@ -248,5 +248,86 @@ try {
     </div>
   </div>
 </main>
+<script>
+(() => {
+  const DEBOUNCE_MS = 250;
+
+  const buildUrlFromForm = (form) => {
+    const action = form.getAttribute('action') || window.location.pathname;
+    const url = new URL(action, window.location.origin);
+    const params = new URLSearchParams(new FormData(form));
+    url.search = params.toString();
+    return url;
+  };
+
+  const wireLiveSearch = () => {
+    const form = document.getElementById('liveSearchForm');
+    const main = document.getElementById('liveMain');
+    if (!form || !main) return;
+
+    const qInput = form.querySelector('input[name="q"]');
+    const limitSelect = form.querySelector('select[name="limit"]');
+
+    let timer = null;
+    let controller = null;
+
+    const run = () => {
+      if (timer) window.clearTimeout(timer);
+      timer = window.setTimeout(async () => {
+        const url = buildUrlFromForm(form);
+
+        const focused = document.activeElement;
+        const shouldRestoreFocus = focused === qInput;
+        const selStart = qInput && typeof qInput.selectionStart === 'number' ? qInput.selectionStart : null;
+        const selEnd = qInput && typeof qInput.selectionEnd === 'number' ? qInput.selectionEnd : null;
+
+        if (controller) controller.abort();
+        controller = new AbortController();
+
+        try {
+          const resp = await fetch(url.toString(), {
+            signal: controller.signal,
+            headers: { 'X-Requested-With': 'fetch' },
+          });
+          const html = await resp.text();
+          const doc = new DOMParser().parseFromString(html, 'text/html');
+          const newMain = doc.getElementById('liveMain');
+          if (!newMain) return;
+
+          main.replaceWith(newMain);
+          history.replaceState(null, '', url.pathname + (url.search || ''));
+
+          if (shouldRestoreFocus) {
+            const newQ = document.querySelector('#liveSearchForm input[name="q"]');
+            if (newQ instanceof HTMLInputElement) {
+              newQ.focus();
+              if (typeof selStart === 'number' && typeof selEnd === 'number') {
+                try { newQ.setSelectionRange(selStart, selEnd); } catch (e) {}
+              }
+            }
+          }
+
+          wireLiveSearch();
+        } catch (e) {
+          if (e && e.name === 'AbortError') return;
+        }
+      }, DEBOUNCE_MS);
+    };
+
+    form.addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      run();
+    });
+    if (qInput) qInput.addEventListener('input', run);
+    if (limitSelect) limitSelect.addEventListener('change', run);
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', wireLiveSearch);
+  } else {
+    wireLiveSearch();
+  }
+})();
+</script>
 </body>
 </html>
