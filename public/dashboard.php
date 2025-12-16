@@ -43,38 +43,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       }
     }
 
+    $invoiceId = 0;
     try {
       $pdo = db($config);
       $invoiceId = invoices_create($pdo, $userId, $customerName, $customerEmail, $detail, $items, 'ARS', $customerDni);
-      $data = invoices_get($pdo, $invoiceId, $userId);
-      $download = invoice_build_download($data);
-
-      if ($action === 'download') {
-          // Defensa extra contra caché (algunos hosts/proxies)
-          header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-          header('Pragma: no-cache');
-          header('Expires: 0');
-        invoice_send_download($download);
-        exit;
-      }
-
-      if ($action === 'email') {
-        $subject = 'Factura #' . $invoiceId . ' - ' . $appName;
-        $body = '<p>Hola ' . e($customerName) . ',</p><p>Adjuntamos tu factura.</p><p>Gracias.</p>';
-        mail_send_with_attachment($config, $customerEmail, $customerName, $subject, $body, $download['bytes'], $download['filename'], $download['mime']);
-        $flash = 'Factura enviada por email y guardada (ID ' . $invoiceId . ').';
-      } else {
-        $flash = 'Factura guardada (ID ' . $invoiceId . ').';
-      }
     } catch (Throwable $e) {
       if ($e instanceof InvalidArgumentException) {
         $error = $e->getMessage();
       } else {
         $errorId = bin2hex(random_bytes(4));
-        error_log('[invoice_error ' . $errorId . '] ' . get_class($e) . ': ' . $e->getMessage());
+        error_log('[invoice_create_error ' . $errorId . '] ' . get_class($e) . ': ' . $e->getMessage());
         $error = ($config['app']['env'] ?? 'production') === 'production'
-          ? ('No se pudo crear/enviar la factura. (código ' . $errorId . ')')
+          ? ('No se pudo guardar la factura. (código ' . $errorId . ')')
           : ('Error: ' . $e->getMessage());
+      }
+    }
+
+    if ($error === '' && $invoiceId > 0) {
+      $download = null;
+      try {
+        $data = invoices_get($pdo, $invoiceId, $userId);
+        $download = invoice_build_download($data);
+      } catch (Throwable $e) {
+        $errorId = bin2hex(random_bytes(4));
+        error_log('[invoice_pdf_error ' . $errorId . '] ' . get_class($e) . ': ' . $e->getMessage());
+        $error = ($config['app']['env'] ?? 'production') === 'production'
+          ? ('La factura se guardó (ID ' . $invoiceId . ') pero no se pudo generar el PDF. (código ' . $errorId . ')')
+          : ('Error: ' . $e->getMessage());
+      }
+
+      if ($error === '' && $download !== null) {
+        if ($action === 'download') {
+          header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+          header('Pragma: no-cache');
+          header('Expires: 0');
+          invoice_send_download($download);
+          exit;
+        }
+
+        if ($action === 'email') {
+          try {
+            $subject = 'Factura #' . $invoiceId . ' - ' . $appName;
+            $body = '<p>Hola ' . e($customerName) . ',</p><p>Adjuntamos tu factura.</p><p>Gracias.</p>';
+            mail_send_with_attachment($config, $customerEmail, $customerName, $subject, $body, $download['bytes'], $download['filename'], $download['mime']);
+            $flash = 'Factura enviada por email y guardada (ID ' . $invoiceId . ').';
+          } catch (Throwable $e) {
+            $errorId = bin2hex(random_bytes(4));
+            error_log('[invoice_mail_error ' . $errorId . '] ' . get_class($e) . ': ' . $e->getMessage());
+            $error = ($config['app']['env'] ?? 'production') === 'production'
+              ? ('La factura se guardó (ID ' . $invoiceId . ') pero no se pudo enviar el email. (código ' . $errorId . ')')
+              : ('Error: ' . $e->getMessage());
+          }
+        } else {
+          $flash = 'Factura guardada (ID ' . $invoiceId . ').';
+        }
       }
     }
   }

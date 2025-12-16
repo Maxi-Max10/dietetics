@@ -30,5 +30,3 @@ return [
         'session_name' => getenv('SESSION_NAME') ?: (defined('SESSION_NAME') ? SESSION_NAME : 'dietetic_session'),
     ],
 ];
-
-echo password_hash('1234567890', PASSWORD_DEFAULT);
