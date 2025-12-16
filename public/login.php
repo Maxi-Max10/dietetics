@@ -76,6 +76,7 @@ $csrf = csrf_token();
     .auth-shell { min-height: 100vh; }
     .auth-card { border-radius: 1.25rem; overflow: hidden; }
     .auth-left { min-height: 220px; }
+    .auth-logo { height: 64px; width: auto; display: inline-block; }
     .auth-blob {
       width: min(360px, 80%);
       height: 240px;
@@ -96,9 +97,10 @@ $csrf = csrf_token();
         <div class="card shadow auth-card">
           <div class="row g-0">
             <div class="col-lg-5">
-              <div class="auth-left bg-primary bg-gradient text-white position-relative d-flex align-items-center justify-content-center p-4">
+              <div class="auth-left bg-success bg-gradient text-white position-relative d-flex align-items-center justify-content-center p-4">
                 <div class="position-absolute auth-blob"></div>
                 <div class="position-relative text-center">
+                  <img src="/logo.png" alt="Logo" class="auth-logo mb-3">
                   <h2 class="h3 fw-semibold mb-2">Hola, Bienvenida!</h2>
                 </div>
               </div>
@@ -130,10 +132,10 @@ $csrf = csrf_token();
                   </div>
 
                   <div class="d-flex justify-content-end mb-3">
-                    <a class="small text-decoration-none" href="#" onclick="return false;">Forgot password?</a>
+                    <a class="small text-decoration-none link-success" href="#" onclick="return false;">Forgot password?</a>
                   </div>
 
-                  <button type="submit" class="btn btn-primary w-100 py-2">Login</button>
+                  <button type="submit" class="btn btn-success w-100 py-2">Login</button>
 
                   <div class="text-center text-muted small mt-3">or login with social platforms</div>
                   <div class="d-flex justify-content-center gap-2 mt-2">
