@@ -115,8 +115,9 @@ function invoice_build_pdf_from_template(array $data): array
 
     $tableHeaderH = 8;
     $tableRowH = 8;
-    $tableDrawBorders = false;
+    $tableDrawBorders = true;
     $tableBorder = $tableDrawBorders ? 1 : 0;
+    $tableHeaderFill = true;
 
     $xMeta = max($xLeft, $xRight - 65);
     $yMeta = 34;
@@ -168,6 +169,11 @@ function invoice_build_pdf_from_template(array $data): array
     // Tabla de items
     $y = $yTable;
     $pdf->SetXY($xTableLeft, $y);
+    // Importante: cuando Cell(..., ln=1) salta de línea, FPDF vuelve a X = margen izquierdo.
+    // Ajustamos el margen izquierdo al inicio de la tabla para que header y filas queden alineados.
+    $pdf->SetLeftMargin($xTableLeft);
+    $pdf->SetRightMargin($tableMarginX);
+    $pdf->SetX($xTableLeft);
     $pdf->SetFont('Helvetica', 'B', 10);
 
     // Anchos de columnas dentro del área útil de la tabla.
@@ -182,6 +188,7 @@ function invoice_build_pdf_from_template(array $data): array
         setasign\Fpdi\Fpdi $pdf,
         int $border,
         int $h,
+        bool $fill,
         int $colDesc,
         int $colQty,
         int $colUnit,
@@ -189,14 +196,17 @@ function invoice_build_pdf_from_template(array $data): array
         callable $toPdfText
     ): void {
         $pdf->SetFont('Helvetica', 'B', 10);
-        $pdf->Cell($colDesc, $h, $toPdfText('Producto'), $border, 0, 'L', false);
-        $pdf->Cell($colQty, $h, $toPdfText('Cant.'), $border, 0, 'R', false);
-        $pdf->Cell($colUnit, $h, $toPdfText('Precio'), $border, 0, 'R', false);
-        $pdf->Cell($colSub, $h, $toPdfText('Subtotal'), $border, 1, 'R', false);
+        if ($fill) {
+            $pdf->SetFillColor(245, 247, 250);
+        }
+        $pdf->Cell($colDesc, $h, $toPdfText('Producto'), $border, 0, 'L', $fill);
+        $pdf->Cell($colQty, $h, $toPdfText('Cant.'), $border, 0, 'R', $fill);
+        $pdf->Cell($colUnit, $h, $toPdfText('Precio'), $border, 0, 'R', $fill);
+        $pdf->Cell($colSub, $h, $toPdfText('Subtotal'), $border, 1, 'R', $fill);
         $pdf->SetFont('Helvetica', '', 10);
     };
 
-    $drawTableHeader($pdf, $tableBorder, $tableHeaderH, $colDesc, $colQty, $colUnit, $colSub, $toPdfText);
+    $drawTableHeader($pdf, $tableBorder, $tableHeaderH, $tableHeaderFill, $colDesc, $colQty, $colUnit, $colSub, $toPdfText);
     foreach ($items as $item) {
         $desc = (string)($item['description'] ?? '');
         $qty = (string)($item['quantity'] ?? '1.00');
@@ -225,9 +235,13 @@ function invoice_build_pdf_from_template(array $data): array
                 $pdf->SetTextColor(20, 20, 20);
             }
             $pdf->SetXY($xTableLeft, $yTable);
-            $drawTableHeader($pdf, $tableBorder, $tableHeaderH, $colDesc, $colQty, $colUnit, $colSub, $toPdfText);
+            $pdf->SetLeftMargin($xTableLeft);
+            $pdf->SetRightMargin($tableMarginX);
+            $pdf->SetX($xTableLeft);
+            $drawTableHeader($pdf, $tableBorder, $tableHeaderH, $tableHeaderFill, $colDesc, $colQty, $colUnit, $colSub, $toPdfText);
         }
 
+        $pdf->SetX($xTableLeft);
         $pdf->Cell($colDesc, $tableRowH, $toPdfText($trimDesc($desc, 60)), $tableBorder, 0, 'L');
         $pdf->Cell($colQty, $tableRowH, $toPdfText($qty), $tableBorder, 0, 'R');
         $pdf->Cell($colUnit, $tableRowH, $toPdfText($unit), $tableBorder, 0, 'R');
