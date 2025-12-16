@@ -31,6 +31,14 @@ ALTER TABLE invoices
 	ADD KEY idx_invoices_customer_dni (customer_dni);
 ```
 
+### Performance (recomendado)
+Los reportes filtran por `created_by` y por rango de `created_at`. En hosting, si tenés muchas facturas, conviene agregar este índice compuesto:
+
+```sql
+ALTER TABLE invoices
+  ADD KEY idx_invoices_created_by_created_at (created_by, created_at);
+```
+
 ## Dependencias (PDF + Email)
 Para **descargar en PDF** y **enviar por email con adjunto** se usan librerías via Composer:
 

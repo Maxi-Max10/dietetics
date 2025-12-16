@@ -199,7 +199,6 @@ try {
                   <option value="<?= e((string)$opt) ?>" <?= $opt === $limit ? 'selected' : '' ?>><?= e((string)$opt) ?></option>
                 <?php endforeach; ?>
               </select>
-              <button class="btn btn-outline-primary action-btn" type="submit">Buscar</button>
             </div>
             <div class="d-flex flex-wrap gap-2">
               <a class="btn btn-outline-secondary btn-sm" href="<?= e(products_build_url(['period' => $p['key'], 'q' => $q, 'limit' => (string)$limit, 'format' => 'csv'])) ?>">CSV</a>

@@ -32,16 +32,17 @@ function reports_customers_list(PDO $pdo, int $userId, DateTimeImmutable $start,
     }
 
     $selectDni = $hasDni ? 'customer_dni' : "''";
+    $groupBy = 'customer_name, customer_email, currency' . ($hasDni ? ', customer_dni' : '');
 
-        // LIMIT con entero validado: evitamos placeholders por compatibilidad MySQL/PDO.
-        $stmt = $pdo->prepare(
+    // LIMIT con entero validado: evitamos placeholders por compatibilidad MySQL/PDO.
+    $stmt = $pdo->prepare(
         'SELECT customer_name, customer_email, ' . $selectDni . ' AS customer_dni, currency,
                 COUNT(*) AS invoices_count, COALESCE(SUM(total_cents), 0) AS total_cents, MAX(created_at) AS last_purchase
          FROM invoices
          WHERE ' . $where . '
-         GROUP BY customer_name, customer_email, customer_dni, currency
-            ORDER BY total_cents DESC, invoices_count DESC
-            LIMIT ' . $limit
+         GROUP BY ' . $groupBy . '
+         ORDER BY total_cents DESC, invoices_count DESC
+         LIMIT ' . $limit
     );
 
     $stmt->execute($params);

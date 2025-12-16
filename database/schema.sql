@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS invoices (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_invoices_created_by (created_by),
+  KEY idx_invoices_created_by_created_at (created_by, created_at),
   KEY idx_invoices_customer_dni (customer_dni),
   CONSTRAINT fk_invoices_users
     FOREIGN KEY (created_by) REFERENCES users(id)
