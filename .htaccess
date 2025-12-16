@@ -3,6 +3,7 @@
 
 # Bloquear acceso directo a carpetas internas
 RewriteEngine On
+RewriteRule ^logo\.png$ public/logo.php [L]
 RewriteRule ^(src|database|vendor)/ - [F,L]
 
 # URLs amigables (ocultar .php)

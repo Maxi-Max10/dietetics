@@ -124,12 +124,17 @@ try {
     .table td, .table th { border-color:rgba(148,163,184,.35); }
     .muted-label { color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.04em; font-size:.8rem; }
     @media (max-width:768px){ .page-shell{padding:1.5rem 0} .card-lift{border-radius:14px} }
+
+    .navbar-logo { height:34px; width:auto; display:inline-block; }
   </style>
 </head>
 <body>
 <nav class="navbar navbar-expand-lg navbar-glass sticky-top">
   <div class="container py-2">
-    <a class="navbar-brand fw-bold text-dark mb-0 h4 text-decoration-none" href="/dashboard"><?= e($appName) ?></a>
+    <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-dark mb-0 h4 text-decoration-none" href="/dashboard">
+      <img src="/logo.png" alt="Logo" class="navbar-logo">
+      <span><?= e($appName) ?></span>
+    </a>
     <div class="d-flex align-items-center gap-2 ms-auto">
       <span class="pill">Admin</span>
       <a class="btn btn-outline-primary btn-sm" href="/dashboard">Volver</a>

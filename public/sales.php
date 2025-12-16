@@ -225,12 +225,21 @@ function sales_active(string $current, string $key): string
         border-radius: 14px;
       }
     }
+
+    .navbar-logo {
+      height: 34px;
+      width: auto;
+      display: inline-block;
+    }
   </style>
 </head>
 <body>
 <nav class="navbar navbar-expand-lg navbar-glass sticky-top">
   <div class="container py-2">
-    <a class="navbar-brand fw-bold text-dark mb-0 h4 text-decoration-none" href="/dashboard"><?= e($appName) ?></a>
+    <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-dark mb-0 h4 text-decoration-none" href="/dashboard">
+      <img src="/logo.png" alt="Logo" class="navbar-logo">
+      <span><?= e($appName) ?></span>
+    </a>
     <div class="d-flex align-items-center gap-2 ms-auto">
       <span class="pill">Admin</span>
       <a class="btn btn-outline-primary btn-sm" href="/dashboard">Volver</a>
