@@ -107,6 +107,17 @@ function invoice_build_pdf_from_template(array $data): array
     $yCustomer = 52;
     $yTable = 92;
 
+    // La tabla suele venir ya dibujada en el boceto. Usamos un margen propio para
+    // calzar dentro del recuadro y evitamos dibujar bordes/rellenos (no duplicar líneas).
+    $tableMarginX = 22;
+    $xTableLeft = $tableMarginX;
+    $tableUsableW = (int)round((float)$size['width'] - ($tableMarginX * 2));
+
+    $tableHeaderH = 8;
+    $tableRowH = 8;
+    $tableDrawBorders = false;
+    $tableBorder = $tableDrawBorders ? 1 : 0;
+
     $xMeta = max($xLeft, $xRight - 65);
     $yMeta = 34;
 
@@ -156,30 +167,36 @@ function invoice_build_pdf_from_template(array $data): array
 
     // Tabla de items
     $y = $yTable;
-    $pdf->SetXY($xLeft, $y);
+    $pdf->SetXY($xTableLeft, $y);
     $pdf->SetFont('Helvetica', 'B', 10);
-    $pdf->SetFillColor(245, 247, 250);
 
-    // Anchos de columnas
+    // Anchos de columnas dentro del área útil de la tabla.
     // Nota: calculamos todo en enteros (mm) y asignamos el remanente a la última columna
     // para evitar desfasajes visuales por redondeo.
-    $usableW = (int)round((float)$size['width'] - ($marginX * 2));
-    $colDesc = (int)floor($usableW * 0.60);
-    $colQty  = (int)floor($usableW * 0.12);
-    $colUnit = (int)floor($usableW * 0.14);
-    $colSub  = max(0, $usableW - $colDesc - $colQty - $colUnit);
+    $colDesc = (int)floor($tableUsableW * 0.60);
+    $colQty  = (int)floor($tableUsableW * 0.12);
+    $colUnit = (int)floor($tableUsableW * 0.14);
+    $colSub  = max(0, $tableUsableW - $colDesc - $colQty - $colUnit);
 
-    $drawTableHeader = static function (setasign\Fpdi\Fpdi $pdf, int $colDesc, int $colQty, int $colUnit, int $colSub, callable $toPdfText): void {
+    $drawTableHeader = static function (
+        setasign\Fpdi\Fpdi $pdf,
+        int $border,
+        int $h,
+        int $colDesc,
+        int $colQty,
+        int $colUnit,
+        int $colSub,
+        callable $toPdfText
+    ): void {
         $pdf->SetFont('Helvetica', 'B', 10);
-        $pdf->SetFillColor(245, 247, 250);
-        $pdf->Cell($colDesc, 8, $toPdfText('Producto'), 1, 0, 'L', true);
-        $pdf->Cell($colQty, 8, $toPdfText('Cant.'), 1, 0, 'R', true);
-        $pdf->Cell($colUnit, 8, $toPdfText('Precio'), 1, 0, 'R', true);
-        $pdf->Cell($colSub, 8, $toPdfText('Subtotal'), 1, 1, 'R', true);
+        $pdf->Cell($colDesc, $h, $toPdfText('Producto'), $border, 0, 'L', false);
+        $pdf->Cell($colQty, $h, $toPdfText('Cant.'), $border, 0, 'R', false);
+        $pdf->Cell($colUnit, $h, $toPdfText('Precio'), $border, 0, 'R', false);
+        $pdf->Cell($colSub, $h, $toPdfText('Subtotal'), $border, 1, 'R', false);
         $pdf->SetFont('Helvetica', '', 10);
     };
 
-    $drawTableHeader($pdf, $colDesc, $colQty, $colUnit, $colSub, $toPdfText);
+    $drawTableHeader($pdf, $tableBorder, $tableHeaderH, $colDesc, $colQty, $colUnit, $colSub, $toPdfText);
     foreach ($items as $item) {
         $desc = (string)($item['description'] ?? '');
         $qty = (string)($item['quantity'] ?? '1.00');
@@ -207,14 +224,14 @@ function invoice_build_pdf_from_template(array $data): array
                 }
                 $pdf->SetTextColor(20, 20, 20);
             }
-            $pdf->SetXY($xLeft, $yTable);
-            $drawTableHeader($pdf, $colDesc, $colQty, $colUnit, $colSub, $toPdfText);
+            $pdf->SetXY($xTableLeft, $yTable);
+            $drawTableHeader($pdf, $tableBorder, $tableHeaderH, $colDesc, $colQty, $colUnit, $colSub, $toPdfText);
         }
 
-        $pdf->Cell($colDesc, 7, $toPdfText($trimDesc($desc, 60)), 1, 0, 'L');
-        $pdf->Cell($colQty, 7, $toPdfText($qty), 1, 0, 'R');
-        $pdf->Cell($colUnit, 7, $toPdfText($unit), 1, 0, 'R');
-        $pdf->Cell($colSub, 7, $toPdfText($sub), 1, 1, 'R');
+        $pdf->Cell($colDesc, $tableRowH, $toPdfText($trimDesc($desc, 60)), $tableBorder, 0, 'L');
+        $pdf->Cell($colQty, $tableRowH, $toPdfText($qty), $tableBorder, 0, 'R');
+        $pdf->Cell($colUnit, $tableRowH, $toPdfText($unit), $tableBorder, 0, 'R');
+        $pdf->Cell($colSub, $tableRowH, $toPdfText($sub), $tableBorder, 1, 'R');
     }
 
     // Total
