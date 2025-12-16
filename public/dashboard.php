@@ -64,6 +64,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       try {
         $data = invoices_get($pdo, $invoiceId, $userId);
         $download = invoice_build_download($data);
+
+        if (!is_array($download) || (string)($download['mime'] ?? '') !== 'application/pdf') {
+          $errorId = bin2hex(random_bytes(4));
+          error_log('[invoice_pdf_error ' . $errorId . '] Download mime inesperado: ' . (string)($download['mime'] ?? '')); 
+          $error = 'La factura se guardó (ID ' . $invoiceId . ') pero no se pudo generar el PDF. (código ' . $errorId . ')';
+          $download = null;
+        }
       } catch (Throwable $e) {
         $errorId = bin2hex(random_bytes(4));
         error_log('[invoice_pdf_error ' . $errorId . '] ' . get_class($e) . ': ' . $e->getMessage());

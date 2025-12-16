@@ -13,9 +13,13 @@ declare(strict_types=1);
 function invoice_build_download(array $data): array
 {
     $invoiceId = (int)($data['invoice']['id'] ?? 0);
-    $html = invoice_render_html($data);
-
     $ts = date('Ymd-His');
+
+    try {
+        $html = invoice_render_html($data);
+    } catch (Throwable $e) {
+        $html = '<h1>Error</h1><pre>' . htmlspecialchars($e->getMessage(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</pre>';
+    }
 
     // Si existe la plantilla, preferimos exigir ese camino para evitar confusiones
     // (en hosting suele faltar vendor/ y se cae silenciosamente a Dompdf/HTML).
@@ -63,27 +67,32 @@ function invoice_build_download(array $data): array
 
     // PDF si existe Dompdf
     if (class_exists('Dompdf\\Dompdf')) {
-        // Render especial para PDF: usar rutas locales para assets (logo).
-        $html = invoice_render_html($data, ['asset_mode' => 'file']);
+        try {
+            // Render especial para PDF: usar rutas locales para assets (logo).
+            $htmlPdf = invoice_render_html($data, ['asset_mode' => 'file']);
 
-        $options = new Dompdf\Options();
-        $options->set('isRemoteEnabled', true);
-        $options->set('isHtml5ParserEnabled', true);
-        // Permite leer archivos locales dentro del proyecto.
-        $options->setChroot(dirname(__DIR__));
+            $options = new Dompdf\Options();
+            $options->set('isRemoteEnabled', true);
+            $options->set('isHtml5ParserEnabled', true);
+            // Permite leer archivos locales dentro del proyecto.
+            $options->setChroot(dirname(__DIR__));
 
-        $dompdf = new Dompdf\Dompdf($options);
-        $dompdf->loadHtml($html, 'UTF-8');
-        $dompdf->setPaper('A4', 'portrait');
-        $dompdf->render();
-        $output = $dompdf->output();
+            $dompdf = new Dompdf\Dompdf($options);
+            $dompdf->loadHtml($htmlPdf, 'UTF-8');
+            $dompdf->setPaper('A4', 'portrait');
+            $dompdf->render();
+            $output = $dompdf->output();
 
-        return [
-            'bytes' => $output,
-            'filename' => 'factura-' . $invoiceId . '-' . $ts . '.pdf',
-            'mime' => 'application/pdf',
-            'generator' => 'dompdf',
-        ];
+            return [
+                'bytes' => $output,
+                'filename' => 'factura-' . $invoiceId . '-' . $ts . '.pdf',
+                'mime' => 'application/pdf',
+                'generator' => 'dompdf',
+            ];
+        } catch (Throwable $e) {
+            error_log('Invoice dompdf error: ' . $e->getMessage());
+            // Fall back a HTML
+        }
     }
 
     // Fallback: HTML descargable

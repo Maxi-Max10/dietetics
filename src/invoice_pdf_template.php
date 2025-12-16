@@ -8,8 +8,22 @@ declare(strict_types=1);
  */
 function invoice_build_pdf_from_template(array $data): array
 {
+    // FPDI se apoya en FPDF (clase global FPDF). En algunos hostings, FPDI puede estar instalado
+    // pero faltar setasign/fpdf, lo que causa un fatal error al cargar FPDI.
+    if (!class_exists('FPDF', false)) {
+        $fpdfPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR . 'setasign' . DIRECTORY_SEPARATOR . 'fpdf' . DIRECTORY_SEPARATOR . 'fpdf.php';
+        if (is_file($fpdfPath)) {
+            /** @noinspection PhpIncludeInspection */
+            require_once $fpdfPath;
+        }
+    }
+
+    if (!class_exists('FPDF', false)) {
+        throw new RuntimeException('Falta FPDF (setasign/fpdf). Instalá dependencias con Composer y asegurá vendor/setasign/fpdf/fpdf.php.');
+    }
+
     if (!class_exists('setasign\\Fpdi\\Fpdi')) {
-        throw new RuntimeException('FPDI no está instalado.');
+        throw new RuntimeException('FPDI no está instalado (setasign/fpdi).');
     }
 
     $invoice = $data['invoice'];
