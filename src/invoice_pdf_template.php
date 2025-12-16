@@ -66,20 +66,26 @@ function invoice_build_pdf_from_template(array $data): array
 
     $toPdfText = static function (string $text): string {
         // FPDF no soporta UTF-8 nativo; convertimos a ISO-8859-1.
+        // Evitar caracteres típicamente conflictivos.
+        $text = str_replace(['…', '€'], ['...', 'EUR'], $text);
+
         if (function_exists('iconv')) {
             $out = @iconv('UTF-8', 'ISO-8859-1//TRANSLIT//IGNORE', $text);
             if (is_string($out) && $out !== '') {
                 return $out;
             }
         }
-        return $text;
+
+        // Fallback: dejar solo ASCII imprimible.
+        $clean = @preg_replace('/[^\x0A\x0D\x20-\x7E]/', '?', $text);
+        return is_string($clean) ? $clean : $text;
     };
 
     $trimDesc = static function (string $text, int $maxChars = 60): string {
         // Evita depender de mbstring en hosting.
         if (function_exists('mb_strlen') && function_exists('mb_substr')) {
             if (mb_strlen($text, 'UTF-8') > $maxChars) {
-                return mb_substr($text, 0, $maxChars - 1, 'UTF-8') . '…';
+                return mb_substr($text, 0, $maxChars - 3, 'UTF-8') . '...';
             }
             return $text;
         }

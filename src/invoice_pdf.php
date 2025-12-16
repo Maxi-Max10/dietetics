@@ -38,7 +38,7 @@ function invoice_build_download(array $data): array
             $download['generator'] = $download['generator'] ?? 'template-fpdi';
             return $download;
         } catch (Throwable $e) {
-            error_log('Invoice template PDF error: ' . $e->getMessage());
+            error_log('Invoice template PDF error: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
 
             // Si la plantilla existe, no sigas con otros métodos: devolvé un error claro.
             if ($hasTemplateFile) {
@@ -90,7 +90,7 @@ function invoice_build_download(array $data): array
                 'generator' => 'dompdf',
             ];
         } catch (Throwable $e) {
-            error_log('Invoice dompdf error: ' . $e->getMessage());
+            error_log('Invoice dompdf error: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
             // Fall back a HTML
         }
     }
