@@ -18,10 +18,21 @@ function invoice_build_pdf_from_template(array $data): array
     $invoiceId = (int)($invoice['id'] ?? 0);
     $customerName = (string)($invoice['customer_name'] ?? '');
     $customerEmail = (string)($invoice['customer_email'] ?? '');
+    $customerDni = (string)($invoice['customer_dni'] ?? '');
     $detail = (string)($invoice['detail'] ?? '');
     $currency = (string)($invoice['currency'] ?? 'ARS');
     $totalCents = (int)($invoice['total_cents'] ?? 0);
     $createdAt = (string)($invoice['created_at'] ?? '');
+
+    $createdAtLabel = $createdAt;
+    try {
+        if ($createdAt !== '') {
+            $dt = new DateTimeImmutable($createdAt);
+            $createdAtLabel = $dt->format('d/m/Y');
+        }
+    } catch (Throwable $e) {
+        // Si falla el parseo, mantenemos el string original.
+    }
 
     $templatePath = __DIR__ . DIRECTORY_SEPARATOR . 'pdf' . DIRECTORY_SEPARATOR . 'boceto.pdf';
     if (!is_file($templatePath)) {
@@ -105,7 +116,7 @@ function invoice_build_pdf_from_template(array $data): array
 
     $pdf->SetFont('Helvetica', '', 10);
     $pdf->SetXY($xMeta, $yMeta + 7);
-    $pdf->Cell(65, 6, $toPdfText('Fecha: ' . $createdAt), 0, 1, 'R');
+    $pdf->Cell(65, 6, $toPdfText('Fecha: ' . $createdAtLabel), 0, 1, 'R');
 
     // Cliente (izquierda)
     $pdf->SetFont('Helvetica', 'B', 10);
@@ -117,6 +128,11 @@ function invoice_build_pdf_from_template(array $data): array
     $pdf->Cell(0, 6, $toPdfText($customerName), 0, 1);
     $pdf->SetXY($xLeft, $yCustomer + 12);
     $pdf->Cell(0, 6, $toPdfText($customerEmail), 0, 1);
+
+    if (trim($customerDni) !== '') {
+        $pdf->SetXY($xLeft, $yCustomer + 18);
+        $pdf->Cell(0, 6, $toPdfText('DNI: ' . $customerDni), 0, 1);
+    }
 
     // Tabla de items
     $y = $yTable;
