@@ -196,6 +196,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="d-flex align-items-center gap-2 ms-auto">
       <span class="pill">Admin</span>
       <a class="btn btn-outline-primary btn-sm" href="/sales.php">Ventas</a>
+      <a class="btn btn-outline-primary btn-sm" href="/customers.php">Clientes</a>
+      <a class="btn btn-outline-primary btn-sm" href="/products.php">Productos</a>
       <form method="post" action="/logout.php" class="d-flex">
         <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
         <button type="submit" class="btn btn-outline-secondary btn-sm">Salir</button>

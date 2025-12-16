@@ -95,6 +95,9 @@ VALUES ('admin@tu-dominio.com', 'PEGAR_HASH_AQUI');
 ## URLs
 - Login: `/login.php`
 - Dashboard: `/dashboard.php`
+- Ventas: `/sales.php`
+- Clientes (reporte): `/customers.php`
+- Productos vendidos (reporte): `/products.php`
 - Logout: botón "Salir" en el dashboard
 
 ## Logo en factura
