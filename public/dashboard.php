@@ -239,12 +239,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </a>
     <div class="d-flex align-items-center gap-2 ms-auto">
       <span class="pill">Admin</span>
-      <a class="btn btn-outline-primary btn-sm" href="/sales">Ventas</a>
-      <a class="btn btn-outline-primary btn-sm" href="/customers">Clientes</a>
-      <a class="btn btn-outline-primary btn-sm" href="/products">Productos</a>
+      <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center" href="/sales">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="me-1" aria-hidden="true">
+          <rect x="2" y="9" width="2" height="5" rx="0.5" />
+          <rect x="7" y="6" width="2" height="8" rx="0.5" />
+          <rect x="12" y="3" width="2" height="11" rx="0.5" />
+        </svg>
+        Ventas
+      </a>
+      <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center" href="/customers">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="me-1" aria-hidden="true">
+          <circle cx="6" cy="5" r="2" />
+          <circle cx="11" cy="6" r="1.6" />
+          <path d="M2.5 14c0-2.3 1.9-4 4-4s4 1.7 4 4" />
+          <path d="M9.2 14c.2-1.7 1.6-3 3.3-3 1.8 0 3 1.2 3 3" />
+        </svg>
+        Clientes
+      </a>
+      <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center" href="/products">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="me-1" aria-hidden="true">
+          <rect x="2.5" y="4.5" width="11" height="9" rx="1" />
+          <path d="M2.5 7.5h11" />
+          <path d="M6 4.5v3" />
+        </svg>
+        Productos
+      </a>
       <form method="post" action="/logout.php" class="d-flex">
         <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
-        <button type="submit" class="btn btn-outline-secondary btn-sm">Salir</button>
+        <button type="submit" class="btn btn-outline-danger btn-sm d-inline-flex align-items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="me-1" aria-hidden="true">
+            <path d="M6 2.5H3.8c-.7 0-1.3.6-1.3 1.3v8.4c0 .7.6 1.3 1.3 1.3H6" />
+            <path d="M10 11.5 13.5 8 10 4.5" />
+            <path d="M13.5 8H6.2" />
+          </svg>
+          Salir
+        </button>
       </form>
     </div>
   </div>

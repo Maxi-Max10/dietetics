@@ -242,10 +242,23 @@ function sales_active(string $current, string $key): string
     </a>
     <div class="d-flex align-items-center gap-2 ms-auto">
       <span class="pill">Admin</span>
-      <a class="btn btn-outline-primary btn-sm" href="/dashboard">Volver</a>
+      <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center" href="/dashboard">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="me-1" aria-hidden="true">
+          <path d="M6.5 3.5 2.5 8l4 4.5" />
+          <path d="M3 8h10.5" />
+        </svg>
+        Volver
+      </a>
       <form method="post" action="/logout.php" class="d-flex">
         <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
-        <button type="submit" class="btn btn-outline-secondary btn-sm">Salir</button>
+        <button type="submit" class="btn btn-outline-danger btn-sm d-inline-flex align-items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="me-1" aria-hidden="true">
+            <path d="M6 2.5H3.8c-.7 0-1.3.6-1.3 1.3v8.4c0 .7.6 1.3 1.3 1.3H6" />
+            <path d="M10 11.5 13.5 8 10 4.5" />
+            <path d="M13.5 8H6.2" />
+          </svg>
+          Salir
+        </button>
       </form>
     </div>
   </div>
