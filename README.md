@@ -1,5 +1,8 @@
 # Dietetic (Login + Dashboard)
 
+## Documentación funcional
+Ver [docs/FUNCIONALIDAD_APP.md](docs/FUNCIONALIDAD_APP.md).
+
 ## Estructura (opciones)
 
 ### Opción A (recomendada)
