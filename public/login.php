@@ -97,17 +97,17 @@ $csrf = csrf_token();
       border-radius: 999px;
       background: rgba(255, 255, 255, .16);
       filter: blur(.2px);
-      animation: auth-float 14s ease-in-out infinite;
+      animation: auth-float 22s cubic-bezier(.45, 0, .55, 1) infinite;
       pointer-events: none;
     }
 
-    .auth-float.f1 { width: 140px; height: 140px; top: 12%; left: -40px; opacity: .55; animation-duration: 16s; }
-    .auth-float.f2 { width: 90px; height: 90px; bottom: 18%; right: -22px; opacity: .45; animation-duration: 18s; animation-delay: -4s; }
-    .auth-float.f3 { width: 56px; height: 56px; top: 22%; right: 18%; opacity: .35; animation-duration: 13s; animation-delay: -2s; }
+    .auth-float.f1 { width: 140px; height: 140px; top: 12%; left: -40px; opacity: .55; animation-duration: 26s; }
+    .auth-float.f2 { width: 90px; height: 90px; bottom: 18%; right: -22px; opacity: .45; animation-duration: 30s; animation-delay: -6s; }
+    .auth-float.f3 { width: 56px; height: 56px; top: 22%; right: 18%; opacity: .35; animation-duration: 24s; animation-delay: -3s; }
 
     @keyframes auth-float {
       0%, 100% { transform: translate3d(0, 0, 0); }
-      50% { transform: translate3d(0, -14px, 0); }
+      50% { transform: translate3d(10px, -26px, 0); }
     }
 
     @media (prefers-reduced-motion: reduce) {
