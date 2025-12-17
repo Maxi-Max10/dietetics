@@ -253,10 +253,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     .preload-overlay img {
       height: 96px;
       width: auto;
+      transform-origin: 50% 50%;
+      will-change: transform;
+      animation: preload-spin 7s cubic-bezier(.45, 0, .55, 1) infinite;
+    }
+
+    @keyframes preload-spin {
+      0% { transform: rotate(0deg); }
+      40% { transform: rotate(360deg); }
+      60% { transform: rotate(360deg); }
+      100% { transform: rotate(720deg); }
     }
 
     @media (prefers-reduced-motion: reduce) {
       .preload-overlay { transition: none; }
+      .preload-overlay img { animation: none; }
     }
   </style>
 </head>
