@@ -224,7 +224,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     @media (max-width: 768px) {
       .page-shell {
-        padding: 1.5rem 0;
+        padding: 1.5rem .75rem;
+        padding-left: calc(.75rem + env(safe-area-inset-left));
+        padding-right: calc(.75rem + env(safe-area-inset-right));
       }
 
       .card-lift {

@@ -130,7 +130,7 @@ try {
     .table thead th { background:rgba(var(--accent-rgb),.08); border-bottom:none; font-weight:600; color:var(--ink); }
     .table td, .table th { border-color:rgba(148,163,184,.35); }
     .muted-label { color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.04em; font-size:.8rem; }
-    @media (max-width:768px){ .page-shell{padding:1.5rem 0} .card-lift{border-radius:14px} }
+    @media (max-width:768px){ .page-shell{padding:1.5rem .75rem; padding-left:calc(.75rem + env(safe-area-inset-left)); padding-right:calc(.75rem + env(safe-area-inset-right));} .card-lift{border-radius:14px} }
 
     .navbar-logo { height:34px; width:auto; display:inline-block; }
   </style>
