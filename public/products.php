@@ -113,6 +113,11 @@ try {
     :root { --accent:#059669; --accent-rgb:5,150,105; --accent-dark:#047857; --accent-2:#f59e0b; --accent-2-rgb:245,158,11; --ink:#0b1727; --muted:#6b7280; --card:rgba(255,255,255,.9); }
     body { font-family:'Space Grotesk','Segoe UI',sans-serif; background: radial-gradient(circle at 10% 20%, rgba(var(--accent-rgb),.18), transparent 35%), radial-gradient(circle at 90% 10%, rgba(var(--accent-2-rgb),.18), transparent 35%), linear-gradient(120deg,#f7fafc,#eef2ff); color:var(--ink); min-height:100vh; }
     .navbar-glass { background:rgba(255,255,255,.9); backdrop-filter:blur(12px); border:1px solid rgba(15,23,42,.06); box-shadow:0 10px 40px rgba(15,23,42,.08); }
+
+    .navbar-glass .container {
+      padding-left: calc(.75rem + env(safe-area-inset-left));
+      padding-right: calc(.75rem + env(safe-area-inset-right));
+    }
     .page-shell { padding:2.5rem 0; }
     .card-lift { background:var(--card); border:1px solid rgba(15,23,42,.06); box-shadow:0 18px 50px rgba(15,23,42,.07); border-radius:18px; }
     .card-header-clean { border-bottom:1px solid rgba(15,23,42,.06); }
@@ -136,7 +141,7 @@ try {
       <img src="/logo.png" alt="Logo" class="navbar-logo">
       <span><?= e($appName) ?></span>
     </a>
-    <div class="d-flex align-items-center gap-2 ms-auto">
+    <div class="d-flex flex-wrap align-items-center gap-2 ms-auto justify-content-end">
       <span class="pill">Admin</span>
       <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center" href="/dashboard">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="me-1" aria-hidden="true">

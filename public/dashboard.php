@@ -148,6 +148,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       box-shadow: 0 10px 40px rgba(15, 23, 42, 0.08);
     }
 
+    .navbar-glass .container {
+      padding-left: calc(.75rem + env(safe-area-inset-left));
+      padding-right: calc(.75rem + env(safe-area-inset-right));
+    }
+
     .page-shell {
       padding: 2.5rem 0;
     }
@@ -283,7 +288,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <img src="/logo.png" alt="Logo" class="navbar-logo">
       <span><?= e($appName) ?></span>
     </a>
-    <div class="d-flex align-items-center gap-2 ms-auto">
+    <div class="d-flex flex-wrap align-items-center gap-2 ms-auto justify-content-end">
       <span class="pill">Admin</span>
       <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center" href="/sales">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="me-1" aria-hidden="true">
