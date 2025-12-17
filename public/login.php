@@ -168,9 +168,7 @@ $csrf = csrf_token();
                     </div>
                   </div>
 
-                  <div class="d-flex justify-content-end mb-3">
-                    <a class="small text-decoration-none link-success" href="#" onclick="return false;">Forgot password?</a>
-                  </div>
+                  <div class="mb-3"></div>
 
                   <button type="submit" class="btn btn-success w-100 py-2">Login</button>
 
