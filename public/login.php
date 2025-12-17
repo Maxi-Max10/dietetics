@@ -27,6 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo = db($config);
             $ok = auth_login($pdo, $email, $password);
             if ($ok) {
+              $_SESSION['preload_dashboard'] = 1;
                 header('Location: /dashboard.php');
                 exit;
             }

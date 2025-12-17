@@ -6,6 +6,9 @@ require_once __DIR__ . '/../src/bootstrap.php';
 
 auth_require_login();
 
+$showPreload = !empty($_SESSION['preload_dashboard']);
+unset($_SESSION['preload_dashboard']);
+
 $config = app_config();
 $appName = (string)($config['app']['name'] ?? 'Dietetics');
 $userId = (int)auth_user_id();
@@ -229,9 +232,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       width: auto;
       display: inline-block;
     }
+
+    .preload-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      background: rgba(255, 255, 255, .92);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 1;
+      transition: opacity .35s ease;
+    }
+
+    .preload-overlay.is-hide {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .preload-overlay img {
+      height: 96px;
+      width: auto;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .preload-overlay { transition: none; }
+    }
   </style>
 </head>
 <body>
+<?php if ($showPreload): ?>
+  <div class="preload-overlay" id="preloadOverlay" aria-hidden="true">
+    <img src="/logo.png" alt="Logo">
+  </div>
+<?php endif; ?>
 <nav class="navbar navbar-expand-lg navbar-glass sticky-top">
   <div class="container py-2">
     <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-dark mb-0 h4 text-decoration-none" href="/dashboard">
@@ -396,6 +430,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       if (tbody.querySelectorAll('tr').length <= 1) return;
       row.remove();
     });
+  })();
+</script>
+<script>
+  (function () {
+    var el = document.getElementById('preloadOverlay');
+    if (!el) return;
+
+    function hide() {
+      el.classList.add('is-hide');
+      window.setTimeout(function () {
+        if (el && el.parentNode) el.parentNode.removeChild(el);
+      }, 450);
+    }
+
+    if (document.readyState === 'complete') {
+      window.setTimeout(hide, 120);
+    } else {
+      window.addEventListener('load', function () {
+        window.setTimeout(hide, 120);
+      }, { once: true });
+    }
   })();
 </script>
 </body>
