@@ -445,10 +445,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (document.readyState === 'complete') {
-      window.setTimeout(hide, 120);
+      window.setTimeout(hide, 7000);
     } else {
       window.addEventListener('load', function () {
-        window.setTimeout(hide, 120);
+        window.setTimeout(hide, 7000);
       }, { once: true });
     }
   })();
