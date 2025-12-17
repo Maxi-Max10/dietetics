@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 $config = require __DIR__ . DIRECTORY_SEPARATOR . 'config.php';
 
+// Zona horaria: en hosting suele estar en UTC. Forzamos Argentina para que "Hoy" y rangos sean correctos.
+$appTz = getenv('APP_TIMEZONE') ?: (defined('APP_TIMEZONE') ? APP_TIMEZONE : 'America/Argentina/Buenos_Aires');
+if (is_string($appTz) && $appTz !== '') {
+    @date_default_timezone_set($appTz);
+}
+
 // Sesión segura (ajustable según hosting).
 $sessionName = (string)($config['security']['session_name'] ?? 'dietetic_session');
 if ($sessionName !== '') {

@@ -29,5 +29,14 @@ function db(array $config): PDO
     ];
 
     $pdo = new PDO($dsn, $user, $pass, $options);
+
+    // Alinea la zona horaria de la sesión MySQL con Argentina (UTC-3).
+    // Esto evita que "Hoy" se corte por UTC y queden datos afuera a la noche.
+    try {
+        $pdo->exec("SET time_zone = '-03:00'");
+    } catch (Throwable $e) {
+        // Si el hosting no lo permite, no bloqueamos la app.
+    }
+
     return $pdo;
 }
