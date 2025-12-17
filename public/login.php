@@ -74,7 +74,7 @@ $csrf = csrf_token();
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <style>
-    .auth-shell { min-height: 100vh; }
+    .auth-shell { min-height: 100vh; overflow-x: hidden; }
     .auth-card { border-radius: 1.25rem; overflow: hidden; }
     .auth-left { min-height: 220px; }
     .auth-right { min-height: 220px; }
@@ -124,7 +124,7 @@ $csrf = csrf_token();
 </head>
 <body class="bg-body-tertiary">
   <div class="container auth-shell d-flex align-items-center py-4">
-    <div class="row justify-content-center w-100">
+    <div class="row justify-content-center">
       <div class="col-12 col-lg-9 col-xl-8">
         <div class="card shadow auth-card">
           <div class="row g-0">
