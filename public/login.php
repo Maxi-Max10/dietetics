@@ -215,13 +215,6 @@ $csrf = csrf_token();
     var quoteEl = document.getElementById('quoteText');
     if (!quoteEl) return;
 
-    var prefersReduced = false;
-    try {
-      prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    } catch (e) {
-      prefersReduced = false;
-    }
-
     var quotes = [
       '“Hecho es mejor que perfecto.”',
       '“Lo que no se mide, no se mejora.”',
@@ -231,18 +224,36 @@ $csrf = csrf_token();
       '“La disciplina construye lo que la motivación empieza.”'
     ];
 
-    var i = 0;
-    quoteEl.textContent = quotes[i];
-    if (prefersReduced) return;
+    function getArgentinaDateKey() {
+      try {
+        return new Intl.DateTimeFormat('en-CA', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          timeZone: 'America/Argentina/Buenos_Aires'
+        }).format(new Date());
+      } catch (e) {
+        var d = new Date();
+        var y = String(d.getFullYear());
+        var m = String(d.getMonth() + 1).padStart(2, '0');
+        var day = String(d.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + day;
+      }
+    }
 
-    setInterval(function () {
-      i = (i + 1) % quotes.length;
-      quoteEl.classList.add('auth-quote', 'is-fading');
-      setTimeout(function () {
-        quoteEl.textContent = quotes[i];
-        quoteEl.classList.remove('is-fading');
-      }, 250);
-    }, 3800);
+    function simpleHash(s) {
+      var h = 0;
+      for (var j = 0; j < s.length; j++) {
+        h = ((h << 5) - h) + s.charCodeAt(j);
+        h |= 0;
+      }
+      return Math.abs(h);
+    }
+
+    var key = getArgentinaDateKey();
+    var idx = quotes.length ? (simpleHash(key) % quotes.length) : 0;
+    quoteEl.classList.add('auth-quote');
+    quoteEl.textContent = quotes[idx] || '';
   })();
 </script>
 </body>
