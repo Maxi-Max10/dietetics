@@ -76,6 +76,11 @@ $csrf = csrf_token();
   <style>
     html, body { overflow-x: hidden; width: 100%; }
     .auth-shell { min-height: 100vh; overflow-x: hidden; }
+    .auth-container {
+      width: 100%;
+      padding-left: calc(.75rem + env(safe-area-inset-left));
+      padding-right: calc(.75rem + env(safe-area-inset-right));
+    }
     .auth-card { border-radius: 1.25rem; overflow: hidden; width: 100%; }
     .auth-left { min-height: 220px; }
     .auth-right { min-height: 220px; }
@@ -124,10 +129,10 @@ $csrf = csrf_token();
   </style>
 </head>
 <body class="bg-body-tertiary">
-  <div class="container-fluid auth-shell d-flex align-items-center py-4 px-3">
+  <div class="auth-container auth-shell d-flex align-items-center justify-content-center py-4">
     <div class="row justify-content-center w-100">
       <div class="col-12 col-lg-10 col-xl-9 col-xxl-8">
-        <div class="card shadow auth-card">
+        <div class="card shadow auth-card mx-auto">
           <div class="row g-0">
             <div class="col-lg-5">
               <div class="auth-left bg-success bg-gradient text-white position-relative d-flex align-items-center justify-content-center p-4">
