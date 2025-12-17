@@ -76,7 +76,14 @@ $csrf = csrf_token();
     .auth-shell { min-height: 100vh; }
     .auth-card { border-radius: 1.25rem; overflow: hidden; }
     .auth-left { min-height: 220px; }
+    .auth-right { min-height: 220px; }
     .auth-logo { height: 64px; width: auto; display: inline-block; }
+    .auth-quotes { max-width: 22rem; }
+    .auth-quote {
+      opacity: .92;
+      transition: opacity .35s ease;
+    }
+    .auth-quote.is-fading { opacity: .15; }
     .auth-blob {
       width: min(360px, 80%);
       height: 240px;
@@ -105,9 +112,11 @@ $csrf = csrf_token();
 
     @media (prefers-reduced-motion: reduce) {
       .auth-float { animation: none; }
+      .auth-quote { transition: none; }
     }
     @media (min-width: 992px) {
       .auth-left { min-height: 520px; }
+      .auth-right { min-height: 520px; }
       .auth-blob { height: 360px; }
     }
   </style>
@@ -126,13 +135,16 @@ $csrf = csrf_token();
                 <div class="auth-float f3"></div>
                 <div class="position-relative text-center">
                   <img src="/logo.png" alt="Logo" class="auth-logo mb-3">
-                  <h2 class="h3 fw-semibold mb-2">Hola, Bienvenida!</h2>
+                  <h2 class="h3 fw-semibold mb-2" id="greetingText">Hola, Bienvenida!</h2>
+                  <div class="auth-quotes mx-auto mt-3">
+                    <div class="small" style="opacity:.9" id="quoteText">“La constancia le gana al talento cuando el talento no es constante.”</div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div class="col-lg-7">
-              <div class="card-body p-4 p-lg-5">
+            <div class="col-lg-7 auth-right d-flex align-items-center">
+              <div class="card-body p-4 p-lg-5 w-100 d-flex flex-column justify-content-center">
                 <h1 class="h3 fw-semibold mb-4 text-center">Login</h1>
 
                 <?php if ($error !== ''): ?>
@@ -171,5 +183,67 @@ $csrf = csrf_token();
       </div>
     </div>
   </div>
+<script>
+  (function () {
+    function getArgentinaHour() {
+      try {
+        var hourStr = new Intl.DateTimeFormat('es-AR', {
+          hour: '2-digit',
+          hour12: false,
+          timeZone: 'America/Argentina/Buenos_Aires'
+        }).format(new Date());
+
+        var hour = Number(hourStr);
+        return Number.isFinite(hour) ? hour : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function greetingForHour(hour) {
+      if (hour === null) return 'Hola, Bienvenida!';
+      if (hour >= 5 && hour < 12) return 'Buenos días, Bienvenida!';
+      if (hour >= 12 && hour < 20) return 'Buenas tardes, Bienvenida!';
+      return 'Buenas noches, Bienvenida!';
+    }
+
+    var greetingEl = document.getElementById('greetingText');
+    if (greetingEl) {
+      greetingEl.textContent = greetingForHour(getArgentinaHour());
+    }
+
+    var quoteEl = document.getElementById('quoteText');
+    if (!quoteEl) return;
+
+    var prefersReduced = false;
+    try {
+      prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    } catch (e) {
+      prefersReduced = false;
+    }
+
+    var quotes = [
+      '“Hecho es mejor que perfecto.”',
+      '“Lo que no se mide, no se mejora.”',
+      '“Enfocate en el proceso: los resultados llegan.”',
+      '“Vendé valor, no tiempo.”',
+      '“Pequeños avances diarios crean grandes cambios.”',
+      '“La disciplina construye lo que la motivación empieza.”'
+    ];
+
+    var i = 0;
+    quoteEl.textContent = quotes[i];
+    if (prefersReduced) return;
+
+    setInterval(function () {
+      i = (i + 1) % quotes.length;
+      quoteEl.classList.add('auth-quote', 'is-fading');
+      setTimeout(function () {
+        quoteEl.textContent = quotes[i];
+        quoteEl.classList.remove('is-fading');
+      }, 250);
+    }, 3800);
+  })();
+</script>
 </body>
 </html>
