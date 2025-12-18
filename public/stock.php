@@ -11,7 +11,8 @@ $appName = (string)($config['app']['name'] ?? 'Dietetics');
 $userId = (int)auth_user_id();
 $csrf = csrf_token();
 
-$flash = '';
+$flash = (string)($_SESSION['flash'] ?? '');
+unset($_SESSION['flash']);
 $error = '';
 
 $q = trim((string)($_GET['q'] ?? ''));
@@ -22,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Sesión inválida. Recargá e intentá de nuevo.';
     } else {
         $action = (string)($_POST['action'] ?? '');
+    $returnQ = trim((string)($_POST['q'] ?? $q));
 
         try {
             $pdo = db($config);
@@ -33,13 +35,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $qty = (string)($_POST['quantity'] ?? '0');
 
                 stock_create_item($pdo, $userId, $name, $sku, $unit, $qty);
-                $flash = 'Producto agregado al stock.';
+                $_SESSION['flash'] = 'Producto agregado al stock.';
+                header('Location: /stock' . ($returnQ !== '' ? ('?q=' . rawurlencode($returnQ)) : ''));
+                exit;
             } elseif ($action === 'adjust') {
                 $itemId = (int)($_POST['item_id'] ?? 0);
                 $delta = (string)($_POST['delta'] ?? '0');
 
                 stock_adjust($pdo, $userId, $itemId, $delta);
-                $flash = 'Stock actualizado.';
+                $_SESSION['flash'] = 'Stock actualizado.';
+                header('Location: /stock' . ($returnQ !== '' ? ('?q=' . rawurlencode($returnQ)) : ''));
+                exit;
             } else {
                 throw new InvalidArgumentException('Acción inválida.');
             }
@@ -142,6 +148,7 @@ try {
           <form method="post" action="/stock" class="row g-3">
             <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
             <input type="hidden" name="action" value="create">
+            <input type="hidden" name="q" value="<?= e($q) ?>">
 
             <div class="col-12 col-md-5">
               <label class="form-label" for="name">Nombre</label>
@@ -204,6 +211,7 @@ try {
                         <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
                         <input type="hidden" name="action" value="adjust">
                         <input type="hidden" name="item_id" value="<?= e((string)$r['id']) ?>">
+                        <input type="hidden" name="q" value="<?= e($q) ?>">
                         <input class="form-control form-control-sm" name="delta" inputmode="decimal" placeholder="Ej: 2 o -1" required>
                         <button class="btn btn-outline-primary btn-sm" type="submit">Aplicar</button>
                       </form>

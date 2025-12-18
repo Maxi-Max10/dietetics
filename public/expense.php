@@ -11,7 +11,8 @@ $appName = (string)($config['app']['name'] ?? 'Dietetics');
 $userId = (int)auth_user_id();
 $csrf = csrf_token();
 
-$flash = '';
+$flash = (string)($_SESSION['flash'] ?? '');
+unset($_SESSION['flash']);
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -27,7 +28,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $pdo = db($config);
             finance_create($pdo, $userId, 'expense', $description, $amount, $currency, $date);
-            $flash = 'Egreso guardado.';
+          $_SESSION['flash'] = 'Egreso guardado.';
+          header('Location: /expense');
+          exit;
         } catch (Throwable $e) {
             error_log('expense.php error: ' . $e->getMessage());
             $error = ($config['app']['env'] ?? 'production') === 'production'
