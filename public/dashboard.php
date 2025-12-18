@@ -317,6 +317,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </svg>
         Productos
       </a>
+
+      <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center" href="/income">
+        Ingresos
+      </a>
+      <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center" href="/expense">
+        Egresos
+      </a>
+      <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center" href="/stock">
+        Stock
+      </a>
       <form method="post" action="/logout.php" class="d-flex">
         <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
         <button type="submit" class="btn btn-outline-danger btn-sm d-inline-flex align-items-center">
