@@ -15,26 +15,20 @@ $error = '';
 
 $period = (string)($_GET['period'] ?? 'day');
 $q = trim((string)($_GET['q'] ?? ''));
-$allowedLimits = [20, 50, 100, 120];
-$limitRaw = (int)($_GET['limit'] ?? 50);
-$limit = in_array($limitRaw, $allowedLimits, true) ? $limitRaw : 50;
+$limit = 50;
 
 function income_build_url(array $params): string
 {
   $period = (string)($params['period'] ?? '');
-  $limit = (string)($params['limit'] ?? '');
 
   $path = '/income';
   if ($period !== '') {
     $path .= '/' . rawurlencode($period);
-    if ($limit !== '') {
-      $path .= '/' . rawurlencode($limit);
-    }
   }
 
   $clean = [];
   foreach ($params as $k => $v) {
-    if (in_array($k, ['period', 'limit'], true)) {
+    if ($k === 'period' || $k === 'limit') {
       continue;
     }
     if ($v === null) {
@@ -181,10 +175,10 @@ try {
             <h2 class="h5 mb-0">Ingresos por ventas</h2>
           </div>
           <div class="d-flex flex-wrap gap-2">
-            <a class="btn btn-sm action-btn <?= e(income_active($p['key'], 'day')) ?>" href="<?= e(income_build_url(['period' => 'day', 'q' => $q, 'limit' => (string)$limit])) ?>">Día</a>
-            <a class="btn btn-sm action-btn <?= e(income_active($p['key'], 'week')) ?>" href="<?= e(income_build_url(['period' => 'week', 'q' => $q, 'limit' => (string)$limit])) ?>">Semana</a>
-            <a class="btn btn-sm action-btn <?= e(income_active($p['key'], 'month')) ?>" href="<?= e(income_build_url(['period' => 'month', 'q' => $q, 'limit' => (string)$limit])) ?>">Mes</a>
-            <a class="btn btn-sm action-btn <?= e(income_active($p['key'], 'year')) ?>" href="<?= e(income_build_url(['period' => 'year', 'q' => $q, 'limit' => (string)$limit])) ?>">Año</a>
+            <a class="btn btn-sm action-btn <?= e(income_active($p['key'], 'day')) ?>" href="<?= e(income_build_url(['period' => 'day', 'q' => $q])) ?>">Día</a>
+            <a class="btn btn-sm action-btn <?= e(income_active($p['key'], 'week')) ?>" href="<?= e(income_build_url(['period' => 'week', 'q' => $q])) ?>">Semana</a>
+            <a class="btn btn-sm action-btn <?= e(income_active($p['key'], 'month')) ?>" href="<?= e(income_build_url(['period' => 'month', 'q' => $q])) ?>">Mes</a>
+            <a class="btn btn-sm action-btn <?= e(income_active($p['key'], 'year')) ?>" href="<?= e(income_build_url(['period' => 'year', 'q' => $q])) ?>">Año</a>
           </div>
         </div>
         <div class="card-body px-4 py-4">
@@ -192,11 +186,6 @@ try {
             <input type="hidden" name="period" value="<?= e($p['key']) ?>">
             <div class="d-flex gap-2 flex-grow-1">
               <input class="form-control" name="q" value="<?= e($q) ?>" placeholder="Buscar por producto o cliente" aria-label="Buscar">
-              <select class="form-select" name="limit" style="max-width: 140px" aria-label="Cantidad">
-                <?php foreach ($allowedLimits as $opt): ?>
-                  <option value="<?= e((string)$opt) ?>" <?= $opt === $limit ? 'selected' : '' ?>><?= e((string)$opt) ?></option>
-                <?php endforeach; ?>
-              </select>
             </div>
             <div class="text-muted">Ingresos = suma de subtotales de items vendidos</div>
           </form>

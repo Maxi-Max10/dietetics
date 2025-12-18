@@ -143,7 +143,7 @@ En POST, protegido por CSRF:
 
 ---
 
-### 2.4) Ventas (`/sales`, `/sales/{period}`, `/sales/{period}/{limit}`)
+### 2.4) Ventas (`/sales`, `/sales/{period}`)
 
 **Archivo**: `public/sales.php`
 
@@ -163,7 +163,7 @@ En POST, protegido por CSRF:
   - Cliente
   - Total
   - Fecha
-- Buscador `q` (en servidor) y limitador `limit`.
+- Buscador `q` (en servidor).
 - Botones de exportación:
   - CSV
   - XML
@@ -185,7 +185,7 @@ En POST, protegido por CSRF:
 
 ---
 
-### 2.5) Clientes (reporte) (`/customers`, `/customers/{period}`, `/customers/{period}/{limit}`)
+### 2.5) Clientes (reporte) (`/customers`, `/customers/{period}`)
 
 **Archivo**: `public/customers.php`
 
@@ -197,7 +197,7 @@ En POST, protegido por CSRF:
 
 - Selector de período (día/semana/mes/año).
 - Buscador por nombre/email/DNI.
-- Selector de cantidad (20/50/100/120).
+- (Sin selector de cantidad.)
 - Exportación CSV/XML/XLSX.
 - Tabla agregada por cliente mostrando:
   - Nombre, Email, DNI
@@ -213,7 +213,7 @@ En POST, protegido por CSRF:
 
 ---
 
-### 2.6) Productos vendidos (reporte) (`/products`, `/products/{period}`, `/products/{period}/{limit}`)
+### 2.6) Productos vendidos (reporte) (`/products`, `/products/{period}`)
 
 **Archivo**: `public/products.php`
 
@@ -225,7 +225,7 @@ En POST, protegido por CSRF:
 
 - Selector de período.
 - Buscador por descripción de producto.
-- Selector de cantidad.
+- (Sin selector de cantidad.)
 - Exportación CSV/XML/XLSX.
 - Tabla agregada mostrando:
   - Producto (+ moneda)
@@ -269,7 +269,7 @@ En POST, protegido por CSRF:
 
 ---
 
-### 2.9) Ingresos (`/income`, `/income/{period}`, `/income/{period}/{limit}`)
+### 2.9) Ingresos (`/income`, `/income/{period}`)
 
 **Archivo**: `public/income.php`
 
@@ -285,7 +285,7 @@ En POST, protegido por CSRF:
 **Qué ve el usuario**
 
 - Selector de período: Día / Semana / Mes / Año.
-- Buscador `q` (producto o cliente) y selector `limit`.
+- Buscador `q` (producto o cliente).
 - Totales por moneda.
 - Tabla con los últimos productos vendidos (items) con su subtotal.
 
@@ -463,10 +463,10 @@ En POST, protegido por CSRF:
   - `vendor/`
 - Define rutas sin extensión:
   - `/dashboard`
-  - `/sales`, `/sales/{period}`, `/sales/{period}/{limit}`
-  - `/customers`, `/customers/{period}`, `/customers/{period}/{limit}`
-  - `/products`, `/products/{period}`, `/products/{period}/{limit}`
-  - `/income`, `/income/{period}`, `/income/{period}/{limit}`
+  - `/sales`, `/sales/{period}`
+  - `/customers`, `/customers/{period}`
+  - `/products`, `/products/{period}`
+  - `/income`, `/income/{period}`
   - `/expense`
   - `/stock`
 - Bloquea archivos sensibles: `config.local.php`, ejemplos de config, README, composer.
