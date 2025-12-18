@@ -11,45 +11,101 @@ $appName = (string)($config['app']['name'] ?? 'Dietetics');
 $userId = (int)auth_user_id();
 $csrf = csrf_token();
 
-$flash = '';
 $error = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $token = (string)($_POST['csrf_token'] ?? '');
-    if (!csrf_verify($token)) {
-        $error = 'Sesión inválida. Recargá e intentá de nuevo.';
-    } else {
-        $description = trim((string)($_POST['description'] ?? ''));
-        $amount = (string)($_POST['amount'] ?? '');
-        $currency = trim((string)($_POST['currency'] ?? 'ARS'));
-        $date = trim((string)($_POST['entry_date'] ?? ''));
+$period = (string)($_GET['period'] ?? 'day');
+$q = trim((string)($_GET['q'] ?? ''));
+$allowedLimits = [20, 50, 100, 120];
+$limitRaw = (int)($_GET['limit'] ?? 50);
+$limit = in_array($limitRaw, $allowedLimits, true) ? $limitRaw : 50;
 
-        try {
-            $pdo = db($config);
-            finance_create($pdo, $userId, 'income', $description, $amount, $currency, $date);
-            $flash = 'Ingreso guardado.';
-        } catch (Throwable $e) {
-            error_log('income.php error: ' . $e->getMessage());
-            $error = ($config['app']['env'] ?? 'production') === 'production'
-                ? 'No se pudo guardar el ingreso.'
-                : ('Error: ' . $e->getMessage());
-        }
+function income_build_url(array $params): string
+{
+  $period = (string)($params['period'] ?? '');
+  $limit = (string)($params['limit'] ?? '');
+
+  $path = '/income';
+  if ($period !== '') {
+    $path .= '/' . rawurlencode($period);
+    if ($limit !== '') {
+      $path .= '/' . rawurlencode($limit);
     }
+  }
+
+  $clean = [];
+  foreach ($params as $k => $v) {
+    if (in_array($k, ['period', 'limit'], true)) {
+      continue;
+    }
+    if ($v === null) {
+      continue;
+    }
+    $v = (string)$v;
+    if ($v === '') {
+      continue;
+    }
+    $clean[$k] = $v;
+  }
+  return $path . (count($clean) ? ('?' . http_build_query($clean)) : '');
+}
+
+function income_active(string $current, string $key): string
+{
+  return $current === $key ? 'btn-primary' : 'btn-outline-primary';
 }
 
 $totals = [];
 $rows = [];
+$p = sales_period($period);
+
 try {
-    $pdo = db($config);
-    $totals = finance_total($pdo, $userId, 'income');
-    $rows = finance_list($pdo, $userId, 'income', 50);
+  $pdo = db($config);
+
+  $where = 'inv.created_by = :user_id AND inv.created_at >= :start AND inv.created_at < :end';
+  $params = [
+    'user_id' => $userId,
+    'start' => $p['start']->format('Y-m-d H:i:s'),
+    'end' => $p['end']->format('Y-m-d H:i:s'),
+  ];
+
+  if ($q !== '') {
+    $where .= ' AND (ii.description LIKE :q OR inv.customer_name LIKE :q OR inv.customer_email LIKE :q)';
+    $params['q'] = '%' . $q . '%';
+  }
+
+  $stmtTotals = $pdo->prepare(
+    'SELECT inv.currency, COALESCE(SUM(ii.line_total_cents), 0) AS total_cents
+     FROM invoice_items ii
+     INNER JOIN invoices inv ON inv.id = ii.invoice_id
+     WHERE ' . $where . '
+     GROUP BY inv.currency
+     ORDER BY inv.currency ASC'
+  );
+  $stmtTotals->execute($params);
+  $totalsRows = $stmtTotals->fetchAll();
+  foreach ($totalsRows as $tr) {
+    $totals[(string)($tr['currency'] ?? 'ARS')] = (int)($tr['total_cents'] ?? 0);
+  }
+
+  // LIMIT con entero validado: evitamos placeholders por compatibilidad MySQL/PDO.
+  $stmt = $pdo->prepare(
+    'SELECT inv.id AS invoice_id, inv.customer_name, inv.customer_email, inv.currency, inv.created_at,
+        ii.description, ii.quantity, ii.line_total_cents
+     FROM invoice_items ii
+     INNER JOIN invoices inv ON inv.id = ii.invoice_id
+     WHERE ' . $where . '
+     ORDER BY inv.created_at DESC, inv.id DESC, ii.id DESC
+     LIMIT ' . $limit
+  );
+  $stmt->execute($params);
+  $rows = $stmt->fetchAll();
 } catch (Throwable $e) {
-    error_log('income.php load error: ' . $e->getMessage());
-    $error = $error !== '' ? $error : (
-        ($config['app']['env'] ?? 'production') === 'production'
-            ? 'No se pudieron cargar los ingresos. ¿Ejecutaste el schema.sql?' 
-            : ('Error: ' . $e->getMessage())
-    );
+  error_log('income.php load error: ' . $e->getMessage());
+  $rows = [];
+  $totals = [];
+  $error = ($config['app']['env'] ?? 'production') === 'production'
+    ? 'No se pudieron cargar los ingresos. ¿Ejecutaste el schema.sql?'
+    : ('Error: ' . $e->getMessage());
 }
 
 ?>
@@ -109,46 +165,40 @@ try {
         <div>
           <p class="muted-label mb-1">Finanzas</p>
           <h1 class="h3 mb-0">Ingresos</h1>
+          <div class="text-muted mt-1"><?= e($p['label']) ?></div>
         </div>
         <span class="text-muted">Usuario #<?= e((string)$userId) ?></span>
       </div>
 
-      <?php if ($flash !== ''): ?>
-        <div class="alert alert-success" role="alert"><?= e($flash) ?></div>
-      <?php endif; ?>
       <?php if ($error !== ''): ?>
         <div class="alert alert-danger" role="alert"><?= e($error) ?></div>
       <?php endif; ?>
 
       <div class="card card-lift mb-4">
-        <div class="card-header card-header-clean bg-white px-4 py-3">
-          <p class="muted-label mb-1">Alta</p>
-          <h2 class="h5 mb-0">Registrar ingreso</h2>
+        <div class="card-header card-header-clean bg-white px-4 py-3 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
+          <div>
+            <p class="muted-label mb-1">Rango</p>
+            <h2 class="h5 mb-0">Ingresos por ventas</h2>
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-sm action-btn <?= e(income_active($p['key'], 'day')) ?>" href="<?= e(income_build_url(['period' => 'day', 'q' => $q, 'limit' => (string)$limit])) ?>">Día</a>
+            <a class="btn btn-sm action-btn <?= e(income_active($p['key'], 'week')) ?>" href="<?= e(income_build_url(['period' => 'week', 'q' => $q, 'limit' => (string)$limit])) ?>">Semana</a>
+            <a class="btn btn-sm action-btn <?= e(income_active($p['key'], 'month')) ?>" href="<?= e(income_build_url(['period' => 'month', 'q' => $q, 'limit' => (string)$limit])) ?>">Mes</a>
+            <a class="btn btn-sm action-btn <?= e(income_active($p['key'], 'year')) ?>" href="<?= e(income_build_url(['period' => 'year', 'q' => $q, 'limit' => (string)$limit])) ?>">Año</a>
+          </div>
         </div>
         <div class="card-body px-4 py-4">
-          <form method="post" action="/income">
-            <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
-            <div class="row g-3">
-              <div class="col-12">
-                <label class="form-label" for="description">Descripción</label>
-                <input class="form-control" id="description" name="description" required>
-              </div>
-              <div class="col-12 col-md-4">
-                <label class="form-label" for="amount">Monto</label>
-                <input class="form-control" id="amount" name="amount" inputmode="decimal" placeholder="0,00" required>
-              </div>
-              <div class="col-12 col-md-4">
-                <label class="form-label" for="currency">Moneda</label>
-                <input class="form-control" id="currency" name="currency" value="ARS" maxlength="3">
-              </div>
-              <div class="col-12 col-md-4">
-                <label class="form-label" for="entry_date">Fecha</label>
-                <input class="form-control" id="entry_date" name="entry_date" type="date" value="<?= e((new DateTimeImmutable('now'))->format('Y-m-d')) ?>">
-              </div>
+          <form method="get" action="/income" class="d-flex flex-column flex-md-row gap-2 align-items-md-center justify-content-between">
+            <input type="hidden" name="period" value="<?= e($p['key']) ?>">
+            <div class="d-flex gap-2 flex-grow-1">
+              <input class="form-control" name="q" value="<?= e($q) ?>" placeholder="Buscar por producto o cliente" aria-label="Buscar">
+              <select class="form-select" name="limit" style="max-width: 140px" aria-label="Cantidad">
+                <?php foreach ($allowedLimits as $opt): ?>
+                  <option value="<?= e((string)$opt) ?>" <?= $opt === $limit ? 'selected' : '' ?>><?= e((string)$opt) ?></option>
+                <?php endforeach; ?>
+              </select>
             </div>
-            <div class="d-flex justify-content-end mt-3">
-              <button class="btn btn-primary action-btn" type="submit">Guardar</button>
-            </div>
+            <div class="text-muted">Ingresos = suma de subtotales de items vendidos</div>
           </form>
         </div>
       </div>
@@ -179,27 +229,31 @@ try {
       <div class="card card-lift">
         <div class="card-header card-header-clean bg-white px-4 py-3">
           <p class="muted-label mb-1">Historial</p>
-          <h2 class="h5 mb-0">Últimos ingresos</h2>
+          <h2 class="h5 mb-0">Últimos productos vendidos</h2>
         </div>
         <div class="card-body px-4 py-4">
           <div class="table-responsive">
             <table class="table align-middle">
               <thead>
                 <tr>
-                  <th style="width:120px">Fecha</th>
-                  <th>Descripción</th>
-                  <th style="width:180px" class="text-end">Monto</th>
+                  <th style="width:200px">Fecha</th>
+                  <th style="width:90px">#</th>
+                  <th>Producto</th>
+                  <th style="width:110px" class="text-end">Cant.</th>
+                  <th style="width:180px" class="text-end">Subtotal</th>
                 </tr>
               </thead>
               <tbody>
               <?php if (count($rows) === 0): ?>
-                <tr><td colspan="3" class="text-muted">Sin resultados.</td></tr>
+                <tr><td colspan="5" class="text-muted">Sin resultados.</td></tr>
               <?php else: ?>
                 <?php foreach ($rows as $r): ?>
                   <tr>
-                    <td><?= e((string)$r['entry_date']) ?></td>
-                    <td><?= e((string)$r['description']) ?></td>
-                    <td class="text-end"><?= e(money_format_cents((int)$r['amount_cents'], (string)$r['currency'])) ?></td>
+                    <td><?= e((string)($r['created_at'] ?? '')) ?></td>
+                    <td><?= e((string)($r['invoice_id'] ?? '')) ?></td>
+                    <td><?= e((string)($r['description'] ?? '')) ?> <span class="text-muted">(<?= e((string)($r['currency'] ?? 'ARS')) ?>)</span></td>
+                    <td class="text-end"><?= e((string)($r['quantity'] ?? '')) ?></td>
+                    <td class="text-end"><?= e(money_format_cents((int)($r['line_total_cents'] ?? 0), (string)($r['currency'] ?? 'ARS'))) ?></td>
                   </tr>
                 <?php endforeach; ?>
               <?php endif; ?>

@@ -89,6 +89,9 @@ La app corre típicamente en hosting (ej. Hostinger) y usa `.htaccess` para:
   - Ventas
   - Clientes
   - Productos
+  - Ingresos
+  - Egresos
+  - Stock
   - Salir
 - Formulario “Administración de facturas” → “Nueva factura” con:
   - Nombre del cliente (requerido)
@@ -264,6 +267,51 @@ En POST, protegido por CSRF:
 - Esto evita exponer `src/` en el hosting (porque `src/` está bloqueado).
 - Agrega cache HTTP (ETag / Last-Modified) para performance.
 
+---
+
+### 2.9) Ingresos (`/income`, `/income/{period}`, `/income/{period}/{limit}`)
+
+**Archivo**: `public/income.php`
+
+**Qué es**
+
+- Un **reporte** de ingresos calculado automáticamente desde las ventas.
+
+**Cómo se calcula**
+
+- Suma de `invoice_items.line_total_cents` dentro del período seleccionado.
+- Agrupado por `invoices.currency`.
+
+**Qué ve el usuario**
+
+- Selector de período: Día / Semana / Mes / Año.
+- Buscador `q` (producto o cliente) y selector `limit`.
+- Totales por moneda.
+- Tabla con los últimos productos vendidos (items) con su subtotal.
+
+**Importante**
+
+- No hay carga manual de ingresos: los ingresos “salen” de las facturas.
+
+---
+
+### 2.10) Egresos (`/expense`)
+
+**Archivo**: `public/expense.php`
+
+- Registro manual de gastos.
+- Permite cargar descripción, monto, moneda y fecha.
+- Muestra totales por moneda e historial.
+
+---
+
+### 2.11) Stock (`/stock`)
+
+**Archivo**: `public/stock.php`
+
+- Alta de ítems de stock (nombre, SKU opcional, unidad y cantidad).
+- Ajustes por delta (+/-) con validación para evitar stock negativo.
+
 ## 3) Funcionalidad interna (módulos)
 
 ### 3.1) Bootstrap y carga global
@@ -279,6 +327,7 @@ En POST, protegido por CSRF:
 - Aplica headers de seguridad básicos (X-Frame-Options, nosniff, etc.).
 - Si existe `vendor/autoload.php`, lo carga (Composer).
 - Incluye los módulos (db, auth, csrf, invoices, pdf, mail, sales, reports).
+- Incluye los módulos (db, auth, csrf, invoices, pdf, mail, sales, reports, finance, stock).
 - Define helper `e()` para escapar HTML.
 
 ### 3.2) Configuración
@@ -416,6 +465,9 @@ En POST, protegido por CSRF:
   - `/sales`, `/sales/{period}`, `/sales/{period}/{limit}`
   - `/customers`, `/customers/{period}`, `/customers/{period}/{limit}`
   - `/products`, `/products/{period}`, `/products/{period}/{limit}`
+  - `/income`, `/income/{period}`, `/income/{period}/{limit}`
+  - `/expense`
+  - `/stock`
 - Bloquea archivos sensibles: `config.local.php`, ejemplos de config, README, composer.
 
 ## 5) Base de datos (modelo)
@@ -439,6 +491,14 @@ Tablas:
   - `description`
   - `quantity`
   - `unit_price_cents`, `line_total_cents`
+
+- `finance_entries`:
+  - Asientos manuales para finanzas (en el uso actual, principalmente **egresos**).
+  - `entry_type` (income/expense), `amount_cents`, `currency`, `entry_date`, `created_by`.
+
+- `stock_items`:
+  - Ítems de stock por usuario.
+  - `name`, `sku` (opcional), `unit`, `quantity`, `created_by`.
 
 Índices relevantes para performance:
 
