@@ -42,3 +42,39 @@ CREATE TABLE IF NOT EXISTS invoice_items (
     FOREIGN KEY (invoice_id) REFERENCES invoices(id)
     ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Finanzas: ingresos/egresos manuales (no reemplaza ventas por facturas; es complementario)
+CREATE TABLE IF NOT EXISTS finance_entries (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  created_by INT UNSIGNED NOT NULL,
+  entry_type ENUM('income','expense') NOT NULL,
+  description VARCHAR(255) NOT NULL,
+  amount_cents INT UNSIGNED NOT NULL DEFAULT 0,
+  currency CHAR(3) NOT NULL DEFAULT 'ARS',
+  entry_date DATE NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_finance_entries_created_by_date (created_by, entry_date),
+  KEY idx_finance_entries_type (entry_type),
+  CONSTRAINT fk_finance_entries_users
+    FOREIGN KEY (created_by) REFERENCES users(id)
+    ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Stock: items con cantidad actual (ajustes manuales)
+CREATE TABLE IF NOT EXISTS stock_items (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  created_by INT UNSIGNED NOT NULL,
+  name VARCHAR(190) NOT NULL,
+  sku VARCHAR(64) NULL,
+  unit VARCHAR(24) NULL,
+  quantity DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_stock_items_user_sku (created_by, sku),
+  KEY idx_stock_items_created_by (created_by),
+  CONSTRAINT fk_stock_items_users
+    FOREIGN KEY (created_by) REFERENCES users(id)
+    ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
