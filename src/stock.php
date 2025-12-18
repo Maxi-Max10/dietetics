@@ -87,9 +87,13 @@ function stock_adjust(PDO $pdo, int $createdBy, int $itemId, string|int|float $d
         throw new InvalidArgumentException('Ajuste inválido.');
     }
 
-    $pdo->beginTransaction();
+    $inTx = $pdo->inTransaction();
+    if (!$inTx) {
+        $pdo->beginTransaction();
+    }
+
     try {
-        $stmt = $pdo->prepare('SELECT quantity FROM stock_items WHERE id = :id AND created_by = :created_by LIMIT 1');
+        $stmt = $pdo->prepare('SELECT quantity FROM stock_items WHERE id = :id AND created_by = :created_by LIMIT 1 FOR UPDATE');
         $stmt->execute(['id' => $itemId, 'created_by' => $createdBy]);
         $row = $stmt->fetch();
         if (!$row) {
@@ -109,9 +113,13 @@ function stock_adjust(PDO $pdo, int $createdBy, int $itemId, string|int|float $d
             'created_by' => $createdBy,
         ]);
 
-        $pdo->commit();
+        if (!$inTx) {
+            $pdo->commit();
+        }
     } catch (Throwable $e) {
-        $pdo->rollBack();
+        if (!$inTx) {
+            $pdo->rollBack();
+        }
         throw $e;
     }
 }

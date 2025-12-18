@@ -100,6 +100,46 @@ function invoices_create(PDO $pdo, int $createdBy, string $customerName, string 
             ]);
         }
 
+        // Stock (opcional): si existe un ítem con mismo nombre o SKU que la descripción,
+        // descuenta automáticamente la cantidad vendida.
+        // Nota: si no hay match, no hace nada. Si hay match pero no alcanza, lanza error y se revierte toda la factura.
+        try {
+            $hasStock = (bool)$pdo->query("SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock_items' LIMIT 1")->fetchColumn();
+        } catch (Throwable $e) {
+            $hasStock = false;
+        }
+
+        if ($hasStock && function_exists('stock_adjust')) {
+            $findStock = $pdo->prepare(
+                'SELECT id
+                 FROM stock_items
+                 WHERE created_by = :created_by
+                   AND (LOWER(name) = LOWER(:q) OR sku = :q)
+                 ORDER BY id ASC
+                 LIMIT 1'
+            );
+
+            foreach ($normalized as $line) {
+                $q = trim((string)$line['description']);
+                if ($q === '') {
+                    continue;
+                }
+
+                $findStock->execute(['created_by' => $createdBy, 'q' => $q]);
+                $row = $findStock->fetch();
+                if (!$row) {
+                    continue;
+                }
+
+                $itemId = (int)($row['id'] ?? 0);
+                if ($itemId <= 0) {
+                    continue;
+                }
+
+                stock_adjust($pdo, $createdBy, $itemId, -1 * (float)$line['quantity']);
+            }
+        }
+
         $pdo->commit();
         return $invoiceId;
     } catch (Throwable $e) {

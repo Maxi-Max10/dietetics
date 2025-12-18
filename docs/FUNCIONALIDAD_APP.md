@@ -311,6 +311,7 @@ En POST, protegido por CSRF:
 
 - Alta de ítems de stock (nombre, SKU opcional, unidad y cantidad).
 - Ajustes por delta (+/-) con validación para evitar stock negativo.
+- Integración con facturas: al guardar una venta, si la **descripción del ítem** coincide con el **nombre** (o SKU) de un ítem de stock, se descuenta automáticamente la cantidad vendida.
 
 ## 3) Funcionalidad interna (módulos)
 
