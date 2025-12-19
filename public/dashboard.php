@@ -370,7 +370,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
         <div class="card-body px-4 py-4">
 
-          <form method="post" action="/dashboard" id="invoiceForm">
+          <form method="post" action="/dashboard.php" id="invoiceForm">
             <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
 
             <div class="row g-3">
