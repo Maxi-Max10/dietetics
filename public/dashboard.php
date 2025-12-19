@@ -593,7 +593,7 @@ if ($error !== '') {
                   <tr>
                     <th>Producto</th>
                     <th style="width:220px">Cantidad</th>
-                    <th style="width:160px">Precio total</th>
+                    <th style="width:160px">Precio unitario</th>
                     <th style="width:60px"></th>
                   </tr>
                 </thead>
@@ -612,7 +612,7 @@ if ($error !== '') {
                         </select>
                       </div>
                     </td>
-                    <td><input class="form-control" name="item_unit_price[]" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="0.00" required></td>
+                    <td><input class="form-control" name="item_unit_price[]" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="Precio base (u/kg/l)" required></td>
                     <td><button type="button" class="btn btn-outline-danger btn-sm" data-remove>×</button></td>
                   </tr>
                 </tbody>
@@ -666,7 +666,7 @@ if ($error !== '') {
             </select>
           </div>
         </td>
-        <td><input class="form-control" name="item_unit_price[]" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="0.00" required></td>
+        <td><input class="form-control" name="item_unit_price[]" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="Precio base (u/kg/l)" required></td>
         <td><button type="button" class="btn btn-outline-danger btn-sm" data-remove>×</button></td>
       `;
       tbody.appendChild(tr);

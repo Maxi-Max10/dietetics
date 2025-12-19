@@ -3,6 +3,66 @@
 declare(strict_types=1);
 
 /**
+ * Normaliza la unidad ingresada a una clave estándar.
+ * u | g | kg | ml | l
+ */
+function invoice_normalize_unit(string $unit): string
+{
+    $u = strtolower(trim($unit));
+    return match ($u) {
+        '', 'cant', 'cantidad', 'unid', 'unidad', 'u', 'und' => 'u',
+        'g', 'gr', 'gramo', 'gramos' => 'g',
+        'kg', 'kilo', 'kilos' => 'kg',
+        'ml', 'mililitro', 'mililitros' => 'ml',
+        'l', 'lt', 'litro', 'litros' => 'l',
+        default => 'u',
+    };
+}
+
+/**
+ * Calcula precio unitario mostrado (por la unidad elegida) y subtotal en centavos
+ * a partir de un precio base por unidad/kg/l.
+ *
+ * Reglas:
+ * - u, kg, l => subtotal = price_base * quantity
+ * - g, ml    => subtotal = price_base * (quantity / 1000)
+ *
+ * @return array{unit_price_cents:int, line_total_cents:int}
+ */
+function invoice_compute_line_from_base_price(string $unit, float $quantity, float $priceBase): array
+{
+    $unitKey = invoice_normalize_unit($unit);
+
+    if (!is_finite($quantity) || $quantity <= 0) {
+        throw new InvalidArgumentException('Cantidad inválida.');
+    }
+
+    if (!is_finite($priceBase) || $priceBase <= 0) {
+        throw new InvalidArgumentException('Precio inválido.');
+    }
+
+    // Pasamos precio base a centavos primero para mantener precisión
+    $baseCents = (int)round($priceBase * 100);
+
+    // Precio unitario mostrado según la unidad ingresada
+    $unitPriceCents = match ($unitKey) {
+        'g', 'ml' => (int)round($baseCents / 1000), // precio por gr/ml
+        default => $baseCents, // u, kg, l
+    };
+
+    // Subtotal según reglas de conversión
+    $lineTotalCents = match ($unitKey) {
+        'g', 'ml' => (int)round(($baseCents * $quantity) / 1000),
+        default => (int)round($baseCents * $quantity),
+    };
+
+    return [
+        'unit_price_cents' => $unitPriceCents,
+        'line_total_cents' => $lineTotalCents,
+    ];
+}
+
+/**
  * @param array<int, array{description:string, quantity:string|float|int, unit?:string, unit_price:string|float|int}> $items
  */
 function invoices_create(PDO $pdo, int $createdBy, string $customerName, string $customerEmail, string $detail, array $items, string $currency = 'ARS', string $customerDni = ''): int
@@ -32,7 +92,7 @@ function invoices_create(PDO $pdo, int $createdBy, string $customerName, string 
         $description = trim((string)($item['description'] ?? ''));
         $qtyRaw = $item['quantity'] ?? 1;
         $unitSelectionRaw = (string)($item['unit'] ?? 'u');
-        $unitPriceRaw = $item['unit_price'] ?? 0;
+        $priceBaseRaw = $item['unit_price'] ?? 0;
 
         if ($description === '') {
             throw new InvalidArgumentException('Cada item debe tener descripción.');
@@ -43,33 +103,23 @@ function invoices_create(PDO $pdo, int $createdBy, string $customerName, string 
             throw new InvalidArgumentException('Cantidad inválida.');
         }
 
-        $unitKey = strtolower(trim((string)$unitSelectionRaw));
-        $unitKey = match ($unitKey) {
-            '', 'cant', 'cantidad', 'unid', 'unidad', 'u', 'und' => 'u',
-            'g', 'gr', 'gramo', 'gramos' => 'g',
-            'kg', 'kilo', 'kilos' => 'kg',
-            'ml', 'mililitro', 'mililitros' => 'ml',
-            'l', 'lt', 'litro', 'litros' => 'l',
-            default => 'u',
-        };
+        $unitKey = invoice_normalize_unit((string)$unitSelectionRaw);
 
-        // Interpretamos el campo "Precio" como PRECIO TOTAL del ítem (no unitario).
-        // Derivamos el precio unitario para almacenar y mostrar correctamente.
-        $totalPrice = (float)str_replace(',', '.', (string)$unitPriceRaw);
-        if ($totalPrice <= 0) {
+        // Interpretamos el campo "Precio" como PRECIO BASE (por unidad/kg/l)
+        $priceBase = (float)str_replace(',', '.', (string)$priceBaseRaw);
+        if ($priceBase <= 0) {
             throw new InvalidArgumentException('Precio inválido.');
         }
 
-        $lineCents = (int)round($totalPrice * 100);
-        $unitCents = (int)round($lineCents / $quantity);
-        $totalCents += $lineCents;
+        $calc = invoice_compute_line_from_base_price($unitKey, $quantity, $priceBase);
+        $totalCents += $calc['line_total_cents'];
 
         $normalized[] = [
             'description' => $description,
             'quantity' => $quantity,
             'unit' => $unitKey,
-            'unit_price_cents' => $unitCents,
-            'line_total_cents' => $lineCents,
+            'unit_price_cents' => $calc['unit_price_cents'],
+            'line_total_cents' => $calc['line_total_cents'],
         ];
     }
 
