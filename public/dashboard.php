@@ -252,6 +252,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       border-bottom: 1px solid rgba(15, 23, 42, 0.06);
     }
 
+    .kpi-card {
+      --kpi: var(--accent);
+      --kpi-rgb: var(--accent-rgb);
+      border-top: 4px solid var(--kpi);
+      background: linear-gradient(180deg, rgba(var(--kpi-rgb), 0.10), var(--card));
+    }
+
+    .kpi-card--income { --kpi: var(--view-income); --kpi-rgb: var(--view-income-rgb); }
+    .kpi-card--top { --kpi: var(--view-products); --kpi-rgb: var(--view-products-rgb); }
+    .kpi-card--count { --kpi: var(--view-sales); --kpi-rgb: var(--view-sales-rgb); }
+
     .pill {
       display: inline-flex;
       align-items: center;
@@ -469,7 +480,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
       <div class="row g-3 mb-4">
         <div class="col-12 col-md-4">
-          <div class="card card-lift h-100">
+          <div class="card card-lift h-100 kpi-card kpi-card--income">
             <div class="card-body px-4 py-3">
               <p class="muted-label mb-1">Ingresos del día</p>
               <div class="d-flex align-items-baseline justify-content-between gap-3">
@@ -482,7 +493,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
 
         <div class="col-12 col-md-4">
-          <div class="card card-lift h-100">
+          <div class="card card-lift h-100 kpi-card kpi-card--top">
             <div class="card-body px-4 py-3">
               <p class="muted-label mb-1">Más vendidos del día</p>
               <?php if (count($kpiTopProducts) === 0): ?>
@@ -506,7 +517,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
 
         <div class="col-12 col-md-4">
-          <div class="card card-lift h-100">
+          <div class="card card-lift h-100 kpi-card kpi-card--count">
             <div class="card-body px-4 py-3">
               <p class="muted-label mb-1">Ventas realizadas</p>
               <div class="h2 mb-0"><?= e((string)$kpiSalesCount) ?></div>
