@@ -10,3 +10,14 @@ define('DB_HOST', 'localhost');
 define('DB_NAME', 'TU_DB_NAME');
 define('DB_USER', 'TU_DB_USER');
 define('DB_PASS', 'TU_DB_PASS');
+
+// Email (recomendado en hosting: SMTP)
+// Tip Hostinger: crear una casilla en tu dominio y usar esos datos.
+// define('MAIL_FROM', 'no-reply@tu-dominio.com');
+// define('MAIL_FROM_NAME', 'Dietetic');
+//
+// define('SMTP_HOST', 'smtp.hostinger.com');
+// define('SMTP_USER', 'no-reply@tu-dominio.com');
+// define('SMTP_PASS', 'TU_PASSWORD_EMAIL');
+// define('SMTP_PORT', 587);
+// define('SMTP_SECURE', 'tls');
