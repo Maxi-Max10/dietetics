@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * @param array<int, array{description:string, quantity:string|float|int, unit_price:string|float|int}> $items
+ * @param array<int, array{description:string, quantity:string|float|int, unit?:string, unit_price:string|float|int}> $items
  */
 function invoices_create(PDO $pdo, int $createdBy, string $customerName, string $customerEmail, string $detail, array $items, string $currency = 'ARS', string $customerDni = ''): int
 {
@@ -31,7 +31,8 @@ function invoices_create(PDO $pdo, int $createdBy, string $customerName, string 
     foreach ($items as $item) {
         $description = trim((string)($item['description'] ?? ''));
         $qtyRaw = $item['quantity'] ?? 1;
-        $unitRaw = $item['unit_price'] ?? 0;
+        $unitSelectionRaw = (string)($item['unit'] ?? 'u');
+        $unitPriceRaw = $item['unit_price'] ?? 0;
 
         if ($description === '') {
             throw new InvalidArgumentException('Cada item debe tener descripción.');
@@ -42,9 +43,19 @@ function invoices_create(PDO $pdo, int $createdBy, string $customerName, string 
             throw new InvalidArgumentException('Cantidad inválida.');
         }
 
+        $unitKey = strtolower(trim((string)$unitSelectionRaw));
+        $unitKey = match ($unitKey) {
+            '', 'cant', 'cantidad', 'unid', 'unidad', 'u', 'und' => 'u',
+            'g', 'gr', 'gramo', 'gramos' => 'g',
+            'kg', 'kilo', 'kilos' => 'kg',
+            'ml', 'mililitro', 'mililitros' => 'ml',
+            'l', 'lt', 'litro', 'litros' => 'l',
+            default => 'u',
+        };
+
         // Permite ingresar precio con decimales.
-        $unitPrice = (float)str_replace(',', '.', (string)$unitRaw);
-        if ($unitPrice < 0) {
+        $unitPrice = (float)str_replace(',', '.', (string)$unitPriceRaw);
+        if ($unitPrice <= 0) {
             throw new InvalidArgumentException('Precio unitario inválido.');
         }
 
@@ -55,6 +66,7 @@ function invoices_create(PDO $pdo, int $createdBy, string $customerName, string 
         $normalized[] = [
             'description' => $description,
             'quantity' => $quantity,
+            'unit' => $unitKey,
             'unit_price_cents' => $unitCents,
             'line_total_cents' => $lineCents,
         ];
@@ -89,15 +101,33 @@ function invoices_create(PDO $pdo, int $createdBy, string $customerName, string 
 
         $invoiceId = (int)$pdo->lastInsertId();
 
-        $itemStmt = $pdo->prepare('INSERT INTO invoice_items (invoice_id, description, quantity, unit_price_cents, line_total_cents) VALUES (:invoice_id, :description, :quantity, :unit_price_cents, :line_total_cents)');
+        $supportsItemUnit = invoices_items_supports_unit($pdo);
+        if ($supportsItemUnit) {
+            $itemStmt = $pdo->prepare('INSERT INTO invoice_items (invoice_id, description, quantity, unit, unit_price_cents, line_total_cents) VALUES (:invoice_id, :description, :quantity, :unit, :unit_price_cents, :line_total_cents)');
+        } else {
+            $itemStmt = $pdo->prepare('INSERT INTO invoice_items (invoice_id, description, quantity, unit_price_cents, line_total_cents) VALUES (:invoice_id, :description, :quantity, :unit_price_cents, :line_total_cents)');
+        }
+
         foreach ($normalized as $line) {
-            $itemStmt->execute([
+            $desc = (string)$line['description'];
+            $unitKey = (string)$line['unit'];
+            if (!$supportsItemUnit && $unitKey !== 'u') {
+                $desc .= ' (' . $unitKey . ')';
+            }
+
+            $params = [
                 'invoice_id' => $invoiceId,
-                'description' => $line['description'],
+                'description' => $desc,
                 'quantity' => number_format((float)$line['quantity'], 2, '.', ''),
                 'unit_price_cents' => $line['unit_price_cents'],
                 'line_total_cents' => $line['line_total_cents'],
-            ]);
+            ];
+
+            if ($supportsItemUnit) {
+                $params['unit'] = $unitKey;
+            }
+
+            $itemStmt->execute($params);
         }
 
         // Stock (opcional): si existe un ítem con mismo nombre o SKU que la descripción,
@@ -176,6 +206,31 @@ function invoices_supports_customer_dni(PDO $pdo): bool
     }
 }
 
+function invoices_items_supports_unit(PDO $pdo): bool
+{
+    static $cache = null;
+    if (is_bool($cache)) {
+        return $cache;
+    }
+
+    try {
+        $stmt = $pdo->prepare(
+            "SELECT 1
+             FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = 'invoice_items'
+               AND COLUMN_NAME = :col
+             LIMIT 1"
+        );
+        $stmt->execute(['col' => 'unit']);
+        $cache = (bool)$stmt->fetchColumn();
+        return $cache;
+    } catch (Throwable $e) {
+        $cache = false;
+        return false;
+    }
+}
+
 function invoices_get(PDO $pdo, int $invoiceId, int $createdBy): array
 {
     $stmt = $pdo->prepare('SELECT * FROM invoices WHERE id = :id AND created_by = :created_by LIMIT 1');
@@ -186,7 +241,11 @@ function invoices_get(PDO $pdo, int $invoiceId, int $createdBy): array
         throw new RuntimeException('Factura no encontrada.');
     }
 
-    $itemStmt = $pdo->prepare('SELECT description, quantity, unit_price_cents, line_total_cents FROM invoice_items WHERE invoice_id = :invoice_id ORDER BY id ASC');
+    if (invoices_items_supports_unit($pdo)) {
+        $itemStmt = $pdo->prepare("SELECT description, quantity, COALESCE(unit, '') AS unit, unit_price_cents, line_total_cents FROM invoice_items WHERE invoice_id = :invoice_id ORDER BY id ASC");
+    } else {
+        $itemStmt = $pdo->prepare('SELECT description, quantity, unit_price_cents, line_total_cents FROM invoice_items WHERE invoice_id = :invoice_id ORDER BY id ASC');
+    }
     $itemStmt->execute(['invoice_id' => $invoiceId]);
     $items = $itemStmt->fetchAll();
 

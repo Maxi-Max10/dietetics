@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS invoice_items (
   invoice_id INT UNSIGNED NOT NULL,
   description VARCHAR(255) NOT NULL,
   quantity DECIMAL(10,2) NOT NULL DEFAULT 1.00,
+  unit VARCHAR(8) NULL,
   unit_price_cents INT UNSIGNED NOT NULL DEFAULT 0,
   line_total_cents INT UNSIGNED NOT NULL DEFAULT 0,
   PRIMARY KEY (id),

@@ -207,9 +207,37 @@ function invoice_build_pdf_from_template(array $data): array
     };
 
     $drawTableHeader($pdf, $tableBorder, $tableHeaderH, $tableHeaderFill, $colDesc, $colQty, $colUnit, $colSub, $toPdfText);
+
+    $formatQty = static function (string $qty): string {
+        $qty = trim($qty);
+        if ($qty === '') {
+            return '0';
+        }
+        if (str_contains($qty, '.')) {
+            $qty = rtrim(rtrim($qty, '0'), '.');
+        }
+        return $qty;
+    };
+
+    $unitLabel = static function (string $unit): string {
+        $u = strtolower(trim($unit));
+        return match ($u) {
+            'g' => 'g',
+            'kg' => 'kg',
+            'ml' => 'ml',
+            'l' => 'l',
+            default => 'cant.',
+        };
+    };
+
     foreach ($items as $item) {
         $desc = (string)($item['description'] ?? '');
-        $qty = (string)($item['quantity'] ?? '1.00');
+        $qtyRaw = (string)($item['quantity'] ?? '1.00');
+        $unitRaw = (string)($item['unit'] ?? '');
+        $qty = $formatQty($qtyRaw);
+        if ($unitRaw !== '') {
+            $qty .= ' ' . $unitLabel($unitRaw);
+        }
         $unit = money_format_cents((int)($item['unit_price_cents'] ?? 0), $currency);
         $sub = money_format_cents((int)($item['line_total_cents'] ?? 0), $currency);
 

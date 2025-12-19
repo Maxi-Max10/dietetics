@@ -113,9 +113,37 @@ function invoice_render_html(array $data, array $options = []): string
     }
 
     $rowsHtml = '';
+    $formatQty = static function (string $qty): string {
+      $qty = trim($qty);
+      if ($qty === '') {
+        return '0';
+      }
+      // Compactar decimales tipo 1.00 -> 1
+      if (str_contains($qty, '.')) {
+        $qty = rtrim(rtrim($qty, '0'), '.');
+      }
+      return $qty;
+    };
+
+    $unitLabel = static function (string $unit): string {
+      $u = strtolower(trim($unit));
+      return match ($u) {
+        'g' => 'g',
+        'kg' => 'kg',
+        'ml' => 'ml',
+        'l' => 'l',
+        default => 'cant.',
+      };
+    };
+
     foreach ($items as $item) {
         $desc = htmlspecialchars((string)($item['description'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-        $qty = (string)($item['quantity'] ?? '1.00');
+      $qtyRaw = (string)($item['quantity'] ?? '1.00');
+      $unitRaw = (string)($item['unit'] ?? '');
+      $qty = $formatQty($qtyRaw);
+      if ($unitRaw !== '') {
+        $qty .= ' ' . $unitLabel($unitRaw);
+      }
         $unit = money_format_cents((int)($item['unit_price_cents'] ?? 0), $currency);
         $line = money_format_cents((int)($item['line_total_cents'] ?? 0), $currency);
 

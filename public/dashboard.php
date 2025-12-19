@@ -96,19 +96,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $descs = $_POST['item_description'] ?? [];
     $qtys = $_POST['item_quantity'] ?? [];
+    $units = $_POST['item_unit'] ?? [];
     $prices = $_POST['item_unit_price'] ?? [];
 
     $items = [];
-    if (is_array($descs) && is_array($qtys) && is_array($prices)) {
-      $count = min(count($descs), count($qtys), count($prices));
+    if (is_array($descs) && is_array($qtys) && is_array($prices) && is_array($units)) {
+      $count = min(count($descs), count($qtys), count($prices), count($units));
       for ($i = 0; $i < $count; $i++) {
         $desc = trim((string)$descs[$i]);
         $qty = (string)$qtys[$i];
+        $unit = (string)$units[$i];
         $price = (string)$prices[$i];
         if ($desc === '' && trim($qty) === '' && trim($price) === '') {
           continue;
         }
-        $items[] = ['description' => $desc, 'quantity' => $qty, 'unit_price' => $price];
+        $items[] = ['description' => $desc, 'quantity' => $qty, 'unit' => $unit, 'unit_price' => $price];
       }
     }
 
@@ -591,7 +593,7 @@ if ($error !== '') {
                 <thead>
                   <tr>
                     <th>Producto</th>
-                    <th style="width:140px">Cantidad</th>
+                    <th style="width:220px">Cantidad</th>
                     <th style="width:160px">Precio</th>
                     <th style="width:60px"></th>
                   </tr>
@@ -599,8 +601,19 @@ if ($error !== '') {
                 <tbody>
                   <tr>
                     <td><input class="form-control" name="item_description[]" required></td>
-                    <td><input class="form-control" name="item_quantity[]" value="1" inputmode="decimal" required></td>
-                    <td><input class="form-control" name="item_unit_price[]" value="0" inputmode="decimal" required></td>
+                    <td>
+                      <div class="d-flex gap-2">
+                        <input class="form-control" name="item_quantity[]" value="1" inputmode="decimal" required style="max-width: 110px">
+                        <select class="form-select" name="item_unit[]" required style="max-width: 110px">
+                          <option value="u" selected>Cant.</option>
+                          <option value="g">g</option>
+                          <option value="kg">kg</option>
+                          <option value="ml">ml</option>
+                          <option value="l">l</option>
+                        </select>
+                      </div>
+                    </td>
+                    <td><input class="form-control" name="item_unit_price[]" type="number" min="0.01" step="0.01" inputmode="decimal" required></td>
                     <td><button type="button" class="btn btn-outline-danger btn-sm" data-remove>×</button></td>
                   </tr>
                 </tbody>
@@ -642,8 +655,19 @@ if ($error !== '') {
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td><input class="form-control" name="item_description[]" required></td>
-        <td><input class="form-control" name="item_quantity[]" value="1" inputmode="decimal" required></td>
-        <td><input class="form-control" name="item_unit_price[]" value="0" inputmode="decimal" required></td>
+        <td>
+          <div class="d-flex gap-2">
+            <input class="form-control" name="item_quantity[]" value="1" inputmode="decimal" required style="max-width: 110px">
+            <select class="form-select" name="item_unit[]" required style="max-width: 110px">
+              <option value="u" selected>Cant.</option>
+              <option value="g">g</option>
+              <option value="kg">kg</option>
+              <option value="ml">ml</option>
+              <option value="l">l</option>
+            </select>
+          </div>
+        </td>
+        <td><input class="form-control" name="item_unit_price[]" type="number" min="0.01" step="0.01" inputmode="decimal" required></td>
         <td><button type="button" class="btn btn-outline-danger btn-sm" data-remove>×</button></td>
       `;
       tbody.appendChild(tr);
