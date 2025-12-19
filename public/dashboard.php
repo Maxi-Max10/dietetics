@@ -555,7 +555,6 @@ if ($error !== '') {
             <p class="muted-label mb-1">Nueva factura</p>
             <h2 class="h5 mb-0">Crear y enviar</h2>
           </div>
-          <span class="badge text-bg-light border">Protegido con CSRF</span>
         </div>
         <div class="card-body px-4 py-4">
 
