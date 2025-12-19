@@ -613,7 +613,7 @@ if ($error !== '') {
                         </select>
                       </div>
                     </td>
-                    <td><input class="form-control" name="item_unit_price[]" type="number" min="0.01" step="0.01" inputmode="decimal" required></td>
+                    <td><input class="form-control" name="item_unit_price[]" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="0.00" required></td>
                     <td><button type="button" class="btn btn-outline-danger btn-sm" data-remove>×</button></td>
                   </tr>
                 </tbody>
@@ -667,7 +667,7 @@ if ($error !== '') {
             </select>
           </div>
         </td>
-        <td><input class="form-control" name="item_unit_price[]" type="number" min="0.01" step="0.01" inputmode="decimal" required></td>
+        <td><input class="form-control" name="item_unit_price[]" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="0.00" required></td>
         <td><button type="button" class="btn btn-outline-danger btn-sm" data-remove>×</button></td>
       `;
       tbody.appendChild(tr);
