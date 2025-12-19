@@ -180,6 +180,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
   }
 }
+
+$modal = null;
+if ($error !== '') {
+  $modal = ['type' => 'danger', 'title' => 'Error', 'message' => $error];
+} elseif ($flash !== '') {
+  $modal = ['type' => 'success', 'title' => 'Listo', 'message' => $flash];
+}
 ?>
 <!doctype html>
 <html lang="es">
@@ -402,6 +409,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <img src="/logo.png" alt="Logo">
   </div>
 <?php endif; ?>
+
+<?php if (is_array($modal)): ?>
+  <div class="modal fade" id="statusModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content card-lift" style="border-radius: 18px;">
+        <div class="modal-header text-bg-<?= e((string)$modal['type']) ?>" style="border-top-left-radius: 18px; border-top-right-radius: 18px;">
+          <h5 class="modal-title mb-0"><?= e((string)$modal['title']) ?></h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div><?= e((string)$modal['message']) ?></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-primary action-btn" data-bs-dismiss="modal">Aceptar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+<?php endif; ?>
+
 <nav class="navbar navbar-expand-lg navbar-glass sticky-top">
   <div class="container py-2">
     <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-dark mb-0 h4 text-decoration-none" href="/dashboard">
@@ -470,13 +497,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
         <span class="text-muted">Usuario #<?= e((string)$userId) ?></span>
       </div>
-
-      <?php if ($flash !== ''): ?>
-        <div class="alert alert-success" role="alert"><?= e($flash) ?></div>
-      <?php endif; ?>
-      <?php if ($error !== ''): ?>
-        <div class="alert alert-danger" role="alert"><?= e($error) ?></div>
-      <?php endif; ?>
 
       <div class="row g-3 mb-4">
         <div class="col-12 col-md-4">
@@ -597,6 +617,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
   </div>
 </main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+<?php if (is_array($modal)): ?>
+<script>
+  (function () {
+    if (!window.bootstrap) return;
+    var el = document.getElementById('statusModal');
+    if (!el) return;
+    var modal = new bootstrap.Modal(el);
+    modal.show();
+  })();
+</script>
+<?php endif; ?>
 
 <script>
   (function () {
