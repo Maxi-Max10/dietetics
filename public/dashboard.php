@@ -17,6 +17,72 @@ $csrf = csrf_token();
 $flash = '';
 $error = '';
 
+$tzAr = new DateTimeZone('America/Argentina/Buenos_Aires');
+$todayPeriod = sales_period('day', $tzAr);
+
+$kpiIncomeText = '—';
+$kpiSalesCount = 0;
+$kpiTopProducts = [];
+
+try {
+  $pdoKpi = db($config);
+
+  $summary = sales_summary($pdoKpi, $userId, $todayPeriod['start'], $todayPeriod['end']);
+  $kpiSalesCount = array_sum(array_map(static fn(array $r): int => (int)($r['count'] ?? 0), $summary));
+
+  $incomeCents = 0;
+  $incomeCurrency = 'ARS';
+  if (count($summary) > 0) {
+    // Si hay múltiples monedas, mostramos ARS si existe; si no, la primera.
+    foreach ($summary as $row) {
+      $cur = strtoupper((string)($row['currency'] ?? 'ARS'));
+      if ($cur === 'ARS') {
+        $incomeCents = (int)($row['total_cents'] ?? 0);
+        $incomeCurrency = 'ARS';
+        break;
+      }
+    }
+
+    if ($incomeCents === 0) {
+      $first = $summary[0];
+      $incomeCents = (int)($first['total_cents'] ?? 0);
+      $incomeCurrency = strtoupper((string)($first['currency'] ?? 'ARS'));
+    }
+  }
+
+  if ($kpiSalesCount > 0 || $incomeCents > 0) {
+    $kpiIncomeText = money_format_cents($incomeCents, $incomeCurrency);
+  }
+
+  $stmtTop = $pdoKpi->prepare(
+    'SELECT ii.description AS description,
+            COALESCE(SUM(ii.quantity), 0) AS qty
+     FROM invoice_items ii
+     INNER JOIN invoices i ON i.id = ii.invoice_id
+     WHERE i.created_by = :user_id
+       AND i.created_at >= :start
+       AND i.created_at < :end
+     GROUP BY ii.description
+     ORDER BY qty DESC
+     LIMIT 3'
+  );
+
+  $stmtTop->execute([
+    'user_id' => $userId,
+    'start' => $todayPeriod['start']->format('Y-m-d H:i:s'),
+    'end' => $todayPeriod['end']->format('Y-m-d H:i:s'),
+  ]);
+
+  foreach ($stmtTop->fetchAll() as $r) {
+    $kpiTopProducts[] = [
+      'description' => (string)($r['description'] ?? ''),
+      'qty' => (float)($r['qty'] ?? 0),
+    ];
+  }
+} catch (Throwable $e) {
+  error_log('[dashboard_kpi_error] ' . get_class($e) . ': ' . $e->getMessage());
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $token = (string)($_POST['csrf_token'] ?? '');
   if (!csrf_verify($token)) {
@@ -400,6 +466,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <?php if ($error !== ''): ?>
         <div class="alert alert-danger" role="alert"><?= e($error) ?></div>
       <?php endif; ?>
+
+      <div class="row g-3 mb-4">
+        <div class="col-12 col-md-4">
+          <div class="card card-lift h-100">
+            <div class="card-body px-4 py-3">
+              <p class="muted-label mb-1">Ingresos del día</p>
+              <div class="d-flex align-items-baseline justify-content-between gap-3">
+                <div class="h4 mb-0"><?= e($kpiIncomeText) ?></div>
+                <span class="text-muted small"><?= e($todayPeriod['start']->format('d/m/Y')) ?></span>
+              </div>
+              <div class="text-muted small mt-1"><?= e((string)$kpiSalesCount) ?> ventas</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-md-4">
+          <div class="card card-lift h-100">
+            <div class="card-body px-4 py-3">
+              <p class="muted-label mb-1">Más vendidos del día</p>
+              <?php if (count($kpiTopProducts) === 0): ?>
+                <div class="text-muted">—</div>
+              <?php else: ?>
+                <div class="vstack gap-1">
+                  <?php foreach ($kpiTopProducts as $p): ?>
+                    <div class="d-flex justify-content-between gap-3">
+                      <div class="text-truncate" style="max-width: 70%">
+                        <?= e((string)($p['description'] ?? '')) ?>
+                      </div>
+                      <div class="text-muted">
+                        <?= e(rtrim(rtrim(number_format((float)($p['qty'] ?? 0), 2, '.', ''), '0'), '.')) ?>
+                      </div>
+                    </div>
+                  <?php endforeach; ?>
+                </div>
+              <?php endif; ?>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-md-4">
+          <div class="card card-lift h-100">
+            <div class="card-body px-4 py-3">
+              <p class="muted-label mb-1">Ventas realizadas</p>
+              <div class="h2 mb-0"><?= e((string)$kpiSalesCount) ?></div>
+              <div class="text-muted small mt-1">Hoy</div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div class="card card-lift">
         <div class="card-header card-header-clean bg-white px-4 py-3 d-flex align-items-center justify-content-between">
