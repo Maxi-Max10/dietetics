@@ -129,10 +129,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <style>
     :root {
       --accent: #0f766e;
+      --accent-rgb: 15, 118, 110;
       --accent-2: #f97316;
       --ink: #0b1727;
       --muted: #6b7280;
       --card: rgba(255, 255, 255, 0.9);
+
+      /* Colores por vista (para que cada botón del navbar represente su sección) */
+      --view-sales: #2563eb;
+      --view-sales-rgb: 37, 99, 235;
+      --view-customers: #7c3aed;
+      --view-customers-rgb: 124, 58, 237;
+      --view-products: #059669;
+      --view-products-rgb: 5, 150, 105;
+      --view-income: #16a34a;
+      --view-income-rgb: 22, 163, 74;
+      --view-expense: #dc2626;
+      --view-expense-rgb: 220, 38, 38;
+      --view-stock: #7c3aed;
+      --view-stock-rgb: 124, 58, 237;
     }
 
     body {
@@ -205,6 +220,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       color: var(--accent);
       border-color: var(--accent);
     }
+
+    /* Navbar: cada botón con el color de su vista */
+    .nav-view-btn.btn-outline-primary {
+      --nav-accent: var(--accent);
+      --nav-accent-rgb: var(--accent-rgb);
+      border-color: var(--nav-accent);
+      color: var(--nav-accent);
+      background: rgba(var(--nav-accent-rgb), 0.10);
+    }
+
+    .nav-view-btn.btn-outline-primary:hover,
+    .nav-view-btn.btn-outline-primary:focus {
+      background: rgba(var(--nav-accent-rgb), 0.16);
+      color: var(--nav-accent);
+      border-color: var(--nav-accent);
+    }
+
+    .nav-view-btn--sales { --nav-accent: var(--view-sales); --nav-accent-rgb: var(--view-sales-rgb); }
+    .nav-view-btn--customers { --nav-accent: var(--view-customers); --nav-accent-rgb: var(--view-customers-rgb); }
+    .nav-view-btn--products { --nav-accent: var(--view-products); --nav-accent-rgb: var(--view-products-rgb); }
+    .nav-view-btn--income { --nav-accent: var(--view-income); --nav-accent-rgb: var(--view-income-rgb); }
+    .nav-view-btn--expense { --nav-accent: var(--view-expense); --nav-accent-rgb: var(--view-expense-rgb); }
+    .nav-view-btn--stock { --nav-accent: var(--view-stock); --nav-accent-rgb: var(--view-stock-rgb); }
 
     .table thead th {
       background: rgba(15, 118, 110, 0.08);
@@ -295,7 +333,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </a>
     <div class="d-flex flex-wrap align-items-center gap-2 ms-auto justify-content-end">
       <span class="pill">Admin</span>
-      <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center" href="/sales">
+      <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center nav-view-btn nav-view-btn--sales" href="/sales">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="me-1" aria-hidden="true">
           <rect x="2" y="9" width="2" height="5" rx="0.5" />
           <rect x="7" y="6" width="2" height="8" rx="0.5" />
@@ -303,7 +341,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </svg>
         Ventas
       </a>
-      <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center" href="/customers">
+      <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center nav-view-btn nav-view-btn--customers" href="/customers">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="me-1" aria-hidden="true">
           <circle cx="6" cy="5" r="2" />
           <circle cx="11" cy="6" r="1.6" />
@@ -312,7 +350,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </svg>
         Clientes
       </a>
-      <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center" href="/products">
+      <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center nav-view-btn nav-view-btn--products" href="/products">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="me-1" aria-hidden="true">
           <rect x="2.5" y="4.5" width="11" height="9" rx="1" />
           <path d="M2.5 7.5h11" />
@@ -321,13 +359,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         Productos
       </a>
 
-      <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center" href="/income">
+      <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center nav-view-btn nav-view-btn--income" href="/income">
         Ingresos
       </a>
-      <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center" href="/expense">
+      <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center nav-view-btn nav-view-btn--expense" href="/expense">
         Egresos
       </a>
-      <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center" href="/stock">
+      <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center nav-view-btn nav-view-btn--stock" href="/stock">
         Stock
       </a>
       <form method="post" action="/logout.php" class="d-flex">
