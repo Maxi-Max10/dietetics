@@ -114,7 +114,7 @@ function invoices_create(PDO $pdo, int $createdBy, string $customerName, string 
                 'SELECT id
                  FROM stock_items
                  WHERE created_by = :created_by
-                   AND (LOWER(name) = LOWER(:q) OR sku = :q)
+                                     AND (LOWER(name) = LOWER(:q_name) OR sku = :q_sku)
                  ORDER BY id ASC
                  LIMIT 1'
             );
@@ -125,7 +125,7 @@ function invoices_create(PDO $pdo, int $createdBy, string $customerName, string 
                     continue;
                 }
 
-                $findStock->execute(['created_by' => $createdBy, 'q' => $q]);
+                $findStock->execute(['created_by' => $createdBy, 'q_name' => $q, 'q_sku' => $q]);
                 $row = $findStock->fetch();
                 if (!$row) {
                     continue;

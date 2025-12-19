@@ -45,8 +45,10 @@ function stock_list_items(PDO $pdo, int $createdBy, string $q = '', int $limit =
     $params = ['created_by' => $createdBy];
 
     if ($q !== '') {
-        $where .= ' AND (name LIKE :q OR sku LIKE :q)';
-        $params['q'] = '%' . $q . '%';
+        $where .= ' AND (name LIKE :q_name OR sku LIKE :q_sku)';
+        $like = '%' . $q . '%';
+        $params['q_name'] = $like;
+        $params['q_sku'] = $like;
     }
 
     $stmt = $pdo->prepare(

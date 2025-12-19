@@ -61,8 +61,13 @@ function sales_summary_filtered(PDO $pdo, int $userId, DateTimeImmutable $start,
     ];
 
     if ($search !== '') {
-        $where .= ' AND (customer_name LIKE :q OR customer_email LIKE :q' . ($hasDni ? ' OR customer_dni LIKE :q' : '') . ')';
-        $params['q'] = '%' . $search . '%';
+        $where .= ' AND (customer_name LIKE :q_name OR customer_email LIKE :q_email' . ($hasDni ? ' OR customer_dni LIKE :q_dni' : '') . ')';
+        $like = '%' . $search . '%';
+        $params['q_name'] = $like;
+        $params['q_email'] = $like;
+        if ($hasDni) {
+            $params['q_dni'] = $like;
+        }
     }
 
     $stmt = $pdo->prepare(
@@ -117,8 +122,13 @@ function sales_list_filtered(PDO $pdo, int $userId, DateTimeImmutable $start, Da
     ];
 
     if ($search !== '') {
-        $where .= ' AND (customer_name LIKE :q OR customer_email LIKE :q' . ($hasDni ? ' OR customer_dni LIKE :q' : '') . ')';
-        $params['q'] = '%' . $search . '%';
+        $where .= ' AND (customer_name LIKE :q_name OR customer_email LIKE :q_email' . ($hasDni ? ' OR customer_dni LIKE :q_dni' : '') . ')';
+        $like = '%' . $search . '%';
+        $params['q_name'] = $like;
+        $params['q_email'] = $like;
+        if ($hasDni) {
+            $params['q_dni'] = $like;
+        }
     }
 
     // LIMIT con entero validado: evitamos placeholders por compatibilidad MySQL/PDO.
