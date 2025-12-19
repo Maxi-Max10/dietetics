@@ -93,8 +93,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($action === 'email') {
           try {
+            $tzAr = new DateTimeZone('America/Argentina/Buenos_Aires');
+            $hourAr = (int)(new DateTimeImmutable('now', $tzAr))->format('H');
+            $greeting = ($hourAr < 12) ? 'Buenos días' : (($hourAr < 20) ? 'Buenas tardes' : 'Buenas noches');
             $subject = 'Factura #' . $invoiceId . ' - ' . $appName;
-            $body = '<p>Hola ' . e($customerName) . ',</p><p>Adjuntamos tu factura.</p><p>Gracias.</p>';
+            $body = '<p>' . $greeting . ' ' . e($customerName) . ',</p><p>Adjuntamos tu factura.</p><p>Gracias por tu compra.</p>';
             mail_send_with_attachment($config, $customerEmail, $customerName, $subject, $body, $download['bytes'], $download['filename'], $download['mime']);
             $flash = 'Factura enviada por email y guardada (ID ' . $invoiceId . ').';
           } catch (Throwable $e) {
