@@ -594,7 +594,7 @@ if ($error !== '') {
                   <tr>
                     <th>Producto</th>
                     <th style="width:220px">Cantidad</th>
-                    <th style="width:160px">Precio</th>
+                    <th style="width:160px">Precio total</th>
                     <th style="width:60px"></th>
                   </tr>
                 </thead>

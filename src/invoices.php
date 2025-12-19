@@ -53,14 +53,15 @@ function invoices_create(PDO $pdo, int $createdBy, string $customerName, string 
             default => 'u',
         };
 
-        // Permite ingresar precio con decimales.
-        $unitPrice = (float)str_replace(',', '.', (string)$unitPriceRaw);
-        if ($unitPrice <= 0) {
-            throw new InvalidArgumentException('Precio unitario inválido.');
+        // Interpretamos el campo "Precio" como PRECIO TOTAL del ítem (no unitario).
+        // Derivamos el precio unitario para almacenar y mostrar correctamente.
+        $totalPrice = (float)str_replace(',', '.', (string)$unitPriceRaw);
+        if ($totalPrice <= 0) {
+            throw new InvalidArgumentException('Precio inválido.');
         }
 
-        $unitCents = (int)round($unitPrice * 100);
-        $lineCents = (int)round($quantity * $unitCents);
+        $lineCents = (int)round($totalPrice * 100);
+        $unitCents = (int)round($lineCents / $quantity);
         $totalCents += $lineCents;
 
         $normalized[] = [
