@@ -14,7 +14,8 @@ $csrf = csrf_token();
 $period = (string)($_GET['period'] ?? 'day');
 $q = trim((string)($_GET['q'] ?? ''));
 $format = strtolower(trim((string)($_GET['format'] ?? '')));
-$limit = 50;
+$limit = 20;
+$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 
 function products_build_url(array $params): string
 {
@@ -44,7 +45,26 @@ function btn_active(string $current, string $key): string
 try {
     $pdo = db($config);
     $p = sales_period($period);
-  $rows = reports_products_list($pdo, $userId, $p['start'], $p['end'], $q, $limit);
+  $rows = reports_products_list($pdo, $userId, $p['start'], $p['end'], $q, $limit, $page);
+
+  // Para paginación: obtener el total de productos (sin LIMIT)
+  $totalRowsStmt = $pdo->prepare(
+    'SELECT COUNT(DISTINCT CONCAT(ii.description, ":", COALESCE(ii.unit, ""), ":", inv.currency)) as total
+     FROM invoice_items ii
+     INNER JOIN invoices inv ON inv.id = ii.invoice_id
+     WHERE inv.created_by = :user_id AND inv.created_at >= :start AND inv.created_at < :end' . ($q !== '' ? ' AND (ii.description LIKE :q)' : '')
+  );
+  $params = [
+    'user_id' => $userId,
+    'start' => $p['start']->format('Y-m-d H:i:s'),
+    'end' => $p['end']->format('Y-m-d H:i:s'),
+  ];
+  if ($q !== '') {
+    $params['q'] = '%' . $q . '%';
+  }
+  $totalRowsStmt->execute($params);
+  $totalRows = (int)($totalRowsStmt->fetchColumn() ?: 0);
+  $totalPages = max(1, (int)ceil($totalRows / $limit));
 
     if (in_array($format, ['csv', 'xml', 'xlsx'], true)) {
         try {
@@ -235,8 +255,25 @@ try {
             </table>
           </div>
         </div>
+        <!-- Paginación -->
+        <?php if ($totalPages > 1): ?>
+        <nav aria-label="Paginación de productos">
+          <ul class="pagination justify-content-center mt-4">
+            <li class="page-item<?= $page <= 1 ? ' disabled' : '' ?>">
+              <a class="page-link" href="<?= e(products_build_url(['period' => $p['key'], 'q' => $q, 'page' => $page - 1])) ?>">Anterior</a>
+            </li>
+            <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+              <li class="page-item<?= $i === $page ? ' active' : '' ?>">
+                <a class="page-link" href="<?= e(products_build_url(['period' => $p['key'], 'q' => $q, 'page' => $i])) ?>"><?= $i ?></a>
+              </li>
+            <?php endfor; ?>
+            <li class="page-item<?= $page >= $totalPages ? ' disabled' : '' ?>">
+              <a class="page-link" href="<?= e(products_build_url(['period' => $p['key'], 'q' => $q, 'page' => $page + 1])) ?>">Siguiente</a>
+            </li>
+          </ul>
+        </nav>
+        <?php endif; ?>
       </div>
-
     </div>
   </div>
 </main>

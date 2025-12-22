@@ -72,10 +72,12 @@ function reports_customers_list(PDO $pdo, int $userId, DateTimeImmutable $start,
 /**
  * @return array<int, array{description:string,quantity_sum:float,invoices_count:int,total_cents:int,currency:string}>
  */
-function reports_products_list(PDO $pdo, int $userId, DateTimeImmutable $start, DateTimeImmutable $end, string $search = '', int $limit = 20): array
+function reports_products_list(PDO $pdo, int $userId, DateTimeImmutable $start, DateTimeImmutable $end, string $search = '', int $limit = 20, int $page = 1): array
 {
     $search = trim($search);
     $limit = max(1, (int)$limit);
+    $page = max(1, (int)$page);
+    $offset = ($page - 1) * $limit;
 
     $where = 'inv.created_by = :user_id AND inv.created_at >= :start AND inv.created_at < :end';
     $params = [
@@ -89,7 +91,7 @@ function reports_products_list(PDO $pdo, int $userId, DateTimeImmutable $start, 
         $params['q'] = '%' . $search . '%';
     }
 
-    // LIMIT con entero validado: evitamos placeholders por compatibilidad MySQL/PDO.
+    // LIMIT y OFFSET para paginación
     $stmt = $pdo->prepare(
         'SELECT ii.description, ii.unit, inv.currency,
                 COALESCE(SUM(ii.quantity), 0) AS quantity_sum,
@@ -100,7 +102,7 @@ function reports_products_list(PDO $pdo, int $userId, DateTimeImmutable $start, 
          WHERE ' . $where . '
          GROUP BY ii.description, ii.unit, inv.currency
          ORDER BY total_cents DESC, quantity_sum DESC
-         LIMIT ' . $limit
+         LIMIT ' . $limit . ' OFFSET ' . $offset
     );
 
     $stmt->execute($params);
