@@ -621,7 +621,7 @@ if ($error !== '') {
 
             <div class="d-flex flex-wrap gap-2 justify-content-end mt-3">
               <button class="btn btn-primary action-btn" type="submit" name="action" value="download">Guardar y descargar</button>
-              <button class="btn btn-outline-primary action-btn" type="submit" name="action" value="email">Guardar y enviar por email</button>
+              <!--<button class="btn btn-outline-primary action-btn" type="submit" name="action" value="email">Guardar y enviar por email</button>-->
             </div>
           </form>
         </div>
