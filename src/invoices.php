@@ -41,20 +41,10 @@ function invoice_compute_line_from_base_price(string $unit, float $quantity, flo
         throw new InvalidArgumentException('Precio inválido.');
     }
 
-    // Pasamos precio base a centavos primero para mantener precisión
-    $baseCents = (int)round($priceBase * 100);
-
-    // Precio unitario mostrado según la unidad ingresada
-    $unitPriceCents = match ($unitKey) {
-        'g', 'ml' => (int)round($baseCents / 1000), // precio por gr/ml
-        default => $baseCents, // u, kg, l
-    };
-
-    // Subtotal según reglas de conversión
-    $lineTotalCents = match ($unitKey) {
-        'g', 'ml' => (int)round(($baseCents * $quantity) / 1000),
-        default => (int)round($baseCents * $quantity),
-    };
+    // Ahora el precio ingresado SIEMPRE es el total para esa cantidad
+    $lineTotalCents = (int)round($priceBase * 100);
+    // El precio unitario es el total dividido la cantidad
+    $unitPriceCents = (int)round($lineTotalCents / $quantity);
 
     return [
         'unit_price_cents' => $unitPriceCents,
