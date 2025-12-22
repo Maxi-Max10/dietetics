@@ -214,7 +214,7 @@ try {
                 <tr>
                   <th>Producto</th>
                   <th style="width:110px" class="text-end">Cantidad</th>
-                  <th style="width:120px" class="text-end">Facturas</th>
+                  
                   <th style="width:180px" class="text-end">Total</th>
                 </tr>
               </thead>
@@ -226,7 +226,7 @@ try {
                   <tr>
                     <td><?= e((string)$r['description']) ?> <span class="text-muted">(<?= e((string)$r['currency']) ?>)</span></td>
                     <td class="text-end"><?= e(number_format((float)$r['quantity_sum'], 2, ',', '.')) ?> <span class="text-muted"><?= e((string)($r['unit'] ?? '')) ?></span></td>
-                    <td class="text-end"><?= e((string)$r['invoices_count']) ?></td>
+                    
                     <td class="text-end"><?= e(money_format_cents((int)$r['total_cents'], (string)$r['currency'])) ?></td>
                   </tr>
                 <?php endforeach; ?>
