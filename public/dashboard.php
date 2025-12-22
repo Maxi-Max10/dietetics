@@ -604,7 +604,7 @@ if ($error !== '') {
                       <div class="d-flex gap-2">
                         <input class="form-control" name="item_quantity[]" value="1" inputmode="decimal" required style="max-width: 110px">
                         <select class="form-select" name="item_unit[]" required style="max-width: 110px">
-                          <option value="u" selected>Cant.</option>
+                          
                           <option value="g">g</option>
                           <option value="kg">kg</option>
                           <option value="ml">ml</option>
@@ -658,7 +658,7 @@ if ($error !== '') {
           <div class="d-flex gap-2">
             <input class="form-control" name="item_quantity[]" value="1" inputmode="decimal" required style="max-width: 110px">
             <select class="form-select" name="item_unit[]" required style="max-width: 110px">
-              <option value="u" selected>Cant.</option>
+            
               <option value="g">g</option>
               <option value="kg">kg</option>
               <option value="ml">ml</option>
