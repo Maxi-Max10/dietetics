@@ -89,18 +89,18 @@ function reports_products_list(PDO $pdo, int $userId, DateTimeImmutable $start, 
         $params['q'] = '%' . $search . '%';
     }
 
-        // LIMIT con entero validado: evitamos placeholders por compatibilidad MySQL/PDO.
-        $stmt = $pdo->prepare(
-        'SELECT ii.description, inv.currency,
+    // LIMIT con entero validado: evitamos placeholders por compatibilidad MySQL/PDO.
+    $stmt = $pdo->prepare(
+        'SELECT ii.description, ii.unit, inv.currency,
                 COALESCE(SUM(ii.quantity), 0) AS quantity_sum,
                 COUNT(DISTINCT inv.id) AS invoices_count,
                 COALESCE(SUM(ii.line_total_cents), 0) AS total_cents
          FROM invoice_items ii
          INNER JOIN invoices inv ON inv.id = ii.invoice_id
          WHERE ' . $where . '
-         GROUP BY ii.description, inv.currency
-            ORDER BY total_cents DESC, quantity_sum DESC
-            LIMIT ' . $limit
+         GROUP BY ii.description, ii.unit, inv.currency
+         ORDER BY total_cents DESC, quantity_sum DESC
+         LIMIT ' . $limit
     );
 
     $stmt->execute($params);
@@ -110,6 +110,7 @@ function reports_products_list(PDO $pdo, int $userId, DateTimeImmutable $start, 
     foreach ($rows as $r) {
         $out[] = [
             'description' => (string)($r['description'] ?? ''),
+            'unit' => (string)($r['unit'] ?? ''),
             'currency' => (string)($r['currency'] ?? 'ARS'),
             'quantity_sum' => (float)($r['quantity_sum'] ?? 0),
             'invoices_count' => (int)($r['invoices_count'] ?? 0),

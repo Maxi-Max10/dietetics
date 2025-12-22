@@ -225,7 +225,7 @@ try {
                 <?php foreach ($rows as $r): ?>
                   <tr>
                     <td><?= e((string)$r['description']) ?> <span class="text-muted">(<?= e((string)$r['currency']) ?>)</span></td>
-                    <td class="text-end"><?= e(number_format((float)$r['quantity_sum'], 2, ',', '.')) ?></td>
+                    <td class="text-end"><?= e(number_format((float)$r['quantity_sum'], 2, ',', '.')) ?> <span class="text-muted"><?= e((string)($r['unit'] ?? '')) ?></span></td>
                     <td class="text-end"><?= e((string)$r['invoices_count']) ?></td>
                     <td class="text-end"><?= e(money_format_cents((int)$r['total_cents'], (string)$r['currency'])) ?></td>
                   </tr>
