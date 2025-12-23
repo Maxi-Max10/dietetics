@@ -34,7 +34,7 @@ while ($row = $stmtInc->fetch()) {
 // Obtener egresos
 $stmtExp = $pdo->prepare('SELECT entry_date, SUM(amount_cents) AS total FROM finance_entries WHERE created_by = :user AND entry_type = "expense" AND entry_date >= :start AND entry_date <= :end GROUP BY entry_date ORDER BY entry_date ASC');
 $stmtExp->execute(['user' => $userId, 'start' => $start, 'end' => $end]);
-egresos = [];
+$egresos = [];
 while ($row = $stmtExp->fetch()) {
     $egresos[$row['entry_date']] = (int)$row['total'];
 }
