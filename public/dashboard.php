@@ -501,6 +501,35 @@ if ($error !== '') {
       </div>
 
       <div class="row g-3 mb-4">
+        <!-- Sección de gráfica Ingreso vs Egreso -->
+        <div class="col-12">
+          <div class="card card-lift mb-4">
+            <div class="card-header card-header-clean bg-white px-4 py-3 d-flex align-items-center justify-content-between">
+              <div>
+                <p class="muted-label mb-1">Gráfica</p>
+                <h2 class="h5 mb-0">Ingreso vs Egreso</h2>
+              </div>
+            </div>
+            <div class="card-body px-4 py-4">
+              <form id="filterForm" class="row g-3 mb-3">
+                <div class="col-md-5">
+                  <label for="startDate" class="form-label">Desde</label>
+                  <input type="date" class="form-control" id="startDate" name="startDate" required>
+                </div>
+                <div class="col-md-5">
+                  <label for="endDate" class="form-label">Hasta</label>
+                  <input type="date" class="form-control" id="endDate" name="endDate" required>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                  <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+                </div>
+              </form>
+              <div>
+                <canvas id="incomeExpenseChart" height="120"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="col-12 col-md-4">
           <div class="card card-lift h-100 kpi-card kpi-card--income">
             <div class="card-body px-4 py-3">
@@ -631,9 +660,66 @@ if ($error !== '') {
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <?php if (is_array($modal)): ?>
 <script>
+  // Lógica para la gráfica de ingreso vs egreso
+  document.addEventListener('DOMContentLoaded', function () {
+    const ctx = document.getElementById('incomeExpenseChart').getContext('2d');
+    let chart;
+
+    function fetchData(start, end) {
+      return fetch(`/api_income_expense.php?start=${start}&end=${end}`)
+        .then(res => res.json());
+    }
+
+    function renderChart(data) {
+      if (chart) chart.destroy();
+      chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: data.labels,
+          datasets: [
+            {
+              label: 'Ingresos',
+              data: data.ingresos,
+              backgroundColor: 'rgba(22, 163, 74, 0.7)',
+              borderColor: 'rgba(22, 163, 74, 1)',
+              borderWidth: 1
+            },
+            {
+              label: 'Egresos',
+              data: data.egresos,
+              backgroundColor: 'rgba(220, 38, 38, 0.7)',
+              borderColor: 'rgba(220, 38, 38, 1)',
+              borderWidth: 1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'top' },
+            title: { display: true, text: 'Ingresos vs Egresos' }
+          }
+        }
+      });
+    }
+
+    document.getElementById('filterForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const start = document.getElementById('startDate').value;
+      const end = document.getElementById('endDate').value;
+      fetchData(start, end).then(renderChart);
+    });
+
+    // Inicializar con rango actual
+    const today = new Date().toISOString().slice(0, 10);
+    document.getElementById('startDate').value = today;
+    document.getElementById('endDate').value = today;
+    fetchData(today, today).then(renderChart);
+  });
   (function () {
     if (!window.bootstrap) return;
     var el = document.getElementById('statusModal');
