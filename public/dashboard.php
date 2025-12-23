@@ -662,16 +662,20 @@ if ($error !== '') {
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-<?php if (is_array($modal)): ?>
 <script>
   // Lógica para la gráfica de ingreso vs egreso
   document.addEventListener('DOMContentLoaded', function () {
-    const ctx = document.getElementById('incomeExpenseChart').getContext('2d');
+    const canvas = document.getElementById('incomeExpenseChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
     let chart;
 
     function fetchData(start, end) {
-      return fetch(`/api_income_expense.php?start=${start}&end=${end}`)
-        .then(res => res.json());
+      return fetch(`/api_income_expense.php?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`)
+        .then(res => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.json();
+        });
     }
 
     function renderChart(data) {
@@ -718,8 +722,14 @@ if ($error !== '') {
     const today = new Date().toISOString().slice(0, 10);
     document.getElementById('startDate').value = today;
     document.getElementById('endDate').value = today;
-    fetchData(today, today).then(renderChart);
+    fetchData(today, today).then(renderChart).catch(err => {
+      console.error('No se pudo cargar la data del gráfico', err);
+    });
   });
+</script>
+
+<?php if (is_array($modal)): ?>
+<script>
   (function () {
     if (!window.bootstrap) return;
     var el = document.getElementById('statusModal');
