@@ -715,7 +715,9 @@ if ($error !== '') {
       e.preventDefault();
       const start = document.getElementById('startDate').value;
       const end = document.getElementById('endDate').value;
-      fetchData(start, end).then(renderChart);
+      fetchData(start, end).then(renderChart).catch(err => {
+        console.error('No se pudo cargar la data del gráfico', err);
+      });
     });
 
     // Inicializar con rango actual
