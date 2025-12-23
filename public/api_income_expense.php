@@ -33,21 +33,52 @@ if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $start) || !preg_match('/^\d{4}-\d{2}-\
     exit;
 }
 
-// Obtener ingresos
-$ingresos = [];
-$egresos = [];
+// Ingresos: ventas (facturas) + ingresos manuales (finance_entries)
+$salesIncome = [];   // DATE(created_at) => total_cents
+$manualIncome = [];  // entry_date => total_cents
+$egresos = [];       // entry_date => total_cents
 
 try {
-    $stmtInc = $pdo->prepare('SELECT entry_date, SUM(amount_cents) AS total FROM finance_entries WHERE created_by = :user AND entry_type = "income" AND entry_date >= :start AND entry_date <= :end GROUP BY entry_date ORDER BY entry_date ASC');
-    $stmtInc->execute(['user' => $userId, 'start' => $start, 'end' => $end]);
-    while ($row = $stmtInc->fetch()) {
-        $ingresos[$row['entry_date']] = (int)$row['total'];
+    // Ventas (facturas) en el rango [start, end]
+    $startDt = $start . ' 00:00:00';
+    $endDt = (new DateTimeImmutable($end . ' 00:00:00'))->modify('+1 day')->format('Y-m-d H:i:s');
+
+    $stmtSales = $pdo->prepare(
+        'SELECT DATE(created_at) AS d, COALESCE(SUM(total_cents), 0) AS total
+         FROM invoices
+         WHERE created_by = :user AND created_at >= :start_dt AND created_at < :end_dt
+         GROUP BY DATE(created_at)
+         ORDER BY d ASC'
+    );
+    $stmtSales->execute(['user' => $userId, 'start_dt' => $startDt, 'end_dt' => $endDt]);
+    while ($row = $stmtSales->fetch()) {
+        $salesIncome[(string)$row['d']] = (int)$row['total'];
     }
 
-    $stmtExp = $pdo->prepare('SELECT entry_date, SUM(amount_cents) AS total FROM finance_entries WHERE created_by = :user AND entry_type = "expense" AND entry_date >= :start AND entry_date <= :end GROUP BY entry_date ORDER BY entry_date ASC');
+    // Ingresos manuales
+    $stmtInc = $pdo->prepare(
+        'SELECT entry_date, COALESCE(SUM(amount_cents), 0) AS total
+         FROM finance_entries
+         WHERE created_by = :user AND entry_type = "income" AND entry_date >= :start AND entry_date <= :end
+         GROUP BY entry_date
+         ORDER BY entry_date ASC'
+    );
+    $stmtInc->execute(['user' => $userId, 'start' => $start, 'end' => $end]);
+    while ($row = $stmtInc->fetch()) {
+        $manualIncome[(string)$row['entry_date']] = (int)$row['total'];
+    }
+
+    // Egresos manuales
+    $stmtExp = $pdo->prepare(
+        'SELECT entry_date, COALESCE(SUM(amount_cents), 0) AS total
+         FROM finance_entries
+         WHERE created_by = :user AND entry_type = "expense" AND entry_date >= :start AND entry_date <= :end
+         GROUP BY entry_date
+         ORDER BY entry_date ASC'
+    );
     $stmtExp->execute(['user' => $userId, 'start' => $start, 'end' => $end]);
     while ($row = $stmtExp->fetch()) {
-        $egresos[$row['entry_date']] = (int)$row['total'];
+        $egresos[(string)$row['entry_date']] = (int)$row['total'];
     }
 } catch (Throwable $e) {
     http_response_code(500);
@@ -72,7 +103,8 @@ $data = [
     'egresos' => []
 ];
 foreach ($period as $d) {
-    $data['ingresos'][] = isset($ingresos[$d]) ? $ingresos[$d] / 100 : 0;
+    $incomeCents = (int)($salesIncome[$d] ?? 0) + (int)($manualIncome[$d] ?? 0);
+    $data['ingresos'][] = $incomeCents > 0 ? ($incomeCents / 100) : 0;
     $data['egresos'][] = isset($egresos[$d]) ? $egresos[$d] / 100 : 0;
 }
 
