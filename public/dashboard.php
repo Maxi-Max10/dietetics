@@ -84,9 +84,18 @@ try {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  $isAjax = ((string)($_POST['ajax'] ?? '') === '1')
+    || (isset($_SERVER['HTTP_ACCEPT']) && is_string($_SERVER['HTTP_ACCEPT']) && str_contains($_SERVER['HTTP_ACCEPT'], 'application/json'));
+
   $token = (string)($_POST['csrf_token'] ?? '');
   if (!csrf_verify($token)) {
     $error = 'Sesión inválida. Recargá e intentá de nuevo.';
+    if ($isAjax) {
+      http_response_code(400);
+      header('Content-Type: application/json');
+      echo json_encode(['ok' => false, 'error' => $error], JSON_UNESCAPED_UNICODE);
+      exit;
+    }
   } else {
     $action = (string)($_POST['action'] ?? '');
     $customerName = trim((string)($_POST['customer_name'] ?? ''));
@@ -115,11 +124,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $invoiceId = 0;
+    $validationError = false;
     try {
       $pdo = db($config);
       $invoiceId = invoices_create($pdo, $userId, $customerName, $customerEmail, $detail, $items, 'ARS', $customerDni);
     } catch (Throwable $e) {
       if ($e instanceof InvalidArgumentException) {
+        $validationError = true;
         $error = $e->getMessage();
       } else {
         $errorId = bin2hex(random_bytes(4));
@@ -128,6 +139,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           ? ('No se pudo guardar la factura. (código ' . $errorId . ')')
           : ('Error: ' . $e->getMessage());
       }
+    }
+
+    // Modo AJAX: no renderizar HTML, devolver JSON para que el front actualice la gráfica sin recargar.
+    if ($isAjax) {
+      if ($error !== '' || $invoiceId <= 0) {
+        http_response_code($validationError ? 400 : 500);
+        header('Content-Type: application/json');
+        echo json_encode(['ok' => false, 'error' => $error !== '' ? $error : 'No se pudo guardar la factura.'], JSON_UNESCAPED_UNICODE);
+        exit;
+      }
+
+      header('Content-Type: application/json');
+      echo json_encode(['ok' => true, 'invoice_id' => $invoiceId, 'action' => $action], JSON_UNESCAPED_UNICODE);
+      exit;
     }
 
     if ($error === '' && $invoiceId > 0) {
@@ -711,6 +736,18 @@ if ($error !== '') {
       });
     }
 
+    function refreshChart() {
+      const start = document.getElementById('startDate')?.value;
+      const end = document.getElementById('endDate')?.value;
+      if (!start || !end) return;
+      fetchData(start, end).then(renderChart).catch(err => {
+        console.error('No se pudo cargar la data del gráfico', err);
+      });
+    }
+
+    // Exponer para que otras acciones (como crear factura) refresquen la gráfica.
+    window.refreshIncomeExpenseChart = refreshChart;
+
     document.getElementById('filterForm').addEventListener('submit', function (e) {
       e.preventDefault();
       const start = document.getElementById('startDate').value;
@@ -726,6 +763,62 @@ if ($error !== '') {
     document.getElementById('endDate').value = today;
     fetchData(today, today).then(renderChart).catch(err => {
       console.error('No se pudo cargar la data del gráfico', err);
+    });
+  });
+</script>
+
+<script>
+  // Crear factura sin recargar: POST por fetch y refrescar gráfica al terminar.
+  document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('invoiceForm');
+    if (!form) return;
+
+    // Iframe oculto para descargar el PDF sin navegar fuera del dashboard.
+    let dlFrame = document.querySelector('iframe[name="invoiceDownloadFrame"]');
+    if (!dlFrame) {
+      dlFrame = document.createElement('iframe');
+      dlFrame.name = 'invoiceDownloadFrame';
+      dlFrame.style.display = 'none';
+      document.body.appendChild(dlFrame);
+    }
+
+    form.addEventListener('submit', function (e) {
+      // Si Chart.js no está disponible o fetch no existe, dejamos el submit normal.
+      if (!window.fetch || !window.FormData) return;
+
+      e.preventDefault();
+      const submitter = e.submitter;
+      const action = submitter && submitter.name === 'action' ? submitter.value : (form.querySelector('button[name="action"]')?.value || 'download');
+
+      const fd = new FormData(form);
+      fd.set('ajax', '1');
+      fd.set('action', action);
+
+      fetch('/dashboard.php', {
+        method: 'POST',
+        headers: { 'Accept': 'application/json' },
+        body: fd
+      })
+        .then(res => res.json())
+        .then(payload => {
+          if (!payload || payload.ok !== true) {
+            console.error('No se pudo crear la factura', payload);
+            return;
+          }
+
+          // Refrescar la gráfica con el rango actual.
+          if (typeof window.refreshIncomeExpenseChart === 'function') {
+            window.refreshIncomeExpenseChart();
+          }
+
+          // Descargar sin recargar.
+          if (payload.action === 'download' && payload.invoice_id) {
+            dlFrame.src = `/invoice_download.php?id=${encodeURIComponent(payload.invoice_id)}`;
+          }
+        })
+        .catch(err => {
+          console.error('Error creando la factura (AJAX)', err);
+        });
     });
   });
 </script>
