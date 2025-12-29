@@ -144,11 +144,15 @@ function invoice_render_html(array $data, array $options = []): string
       if ($unitRaw !== '') {
         $qty .= ' ' . $unitLabel($unitRaw);
       }
+            $unit = money_format_cents((int)($item['unit_price_cents'] ?? 0), $currency);
+
         $line = money_format_cents((int)($item['line_total_cents'] ?? 0), $currency);
 
         $rowsHtml .= "<tr>";
         $rowsHtml .= "<td>{$desc}</td>";
         $rowsHtml .= "<td style=\"text-align:right\">" . htmlspecialchars($qty, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . "</td>";
+        $rowsHtml .= "<td style=\"text-align:right\">" . htmlspecialchars($unit, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . "</td>";
+
         $rowsHtml .= "<td style=\"text-align:right\">" . htmlspecialchars($line, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . "</td>";
         $rowsHtml .= "</tr>";
     }
@@ -231,6 +235,8 @@ function invoice_render_html(array $data, array $options = []): string
             <tr>
               <th>Producto</th>
               <th style=\"text-align:right\">Cantidad</th>
+                            <th style=\"text-align:right\">Precio</th>
+
               <th style=\"text-align:right\">Subtotal</th>
             </tr>
           </thead>
