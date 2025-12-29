@@ -179,10 +179,9 @@ function invoice_build_pdf_from_template(array $data): array
     // Anchos de columnas dentro del área útil de la tabla.
     // Nota: calculamos todo en enteros (mm) y asignamos el remanente a la última columna
     // para evitar desfasajes visuales por redondeo.
-    $colDesc = (int)floor($tableUsableW * 0.60);
-    $colQty  = (int)floor($tableUsableW * 0.12);
-    $colUnit = (int)floor($tableUsableW * 0.14);
-    $colSub  = max(0, $tableUsableW - $colDesc - $colQty - $colUnit);
+    $colDesc = (int)floor($tableUsableW * 0.70);
+    $colQty  = (int)floor($tableUsableW * 0.15);
+    $colSub  = max(0, $tableUsableW - $colDesc - $colQty);
 
     $drawTableHeader = static function (
         setasign\Fpdi\Fpdi $pdf,
@@ -191,7 +190,6 @@ function invoice_build_pdf_from_template(array $data): array
         bool $fill,
         int $colDesc,
         int $colQty,
-        int $colUnit,
         int $colSub,
         callable $toPdfText
     ): void {
@@ -201,12 +199,11 @@ function invoice_build_pdf_from_template(array $data): array
         }
         $pdf->Cell($colDesc, $h, $toPdfText('Producto'), $border, 0, 'L', $fill);
         $pdf->Cell($colQty, $h, $toPdfText('Cant.'), $border, 0, 'R', $fill);
-        $pdf->Cell($colUnit, $h, $toPdfText('Precio'), $border, 0, 'R', $fill);
         $pdf->Cell($colSub, $h, $toPdfText('Subtotal'), $border, 1, 'R', $fill);
         $pdf->SetFont('Helvetica', '', 10);
     };
 
-    $drawTableHeader($pdf, $tableBorder, $tableHeaderH, $tableHeaderFill, $colDesc, $colQty, $colUnit, $colSub, $toPdfText);
+    $drawTableHeader($pdf, $tableBorder, $tableHeaderH, $tableHeaderFill, $colDesc, $colQty, $colSub, $toPdfText);
 
     $formatQty = static function (string $qty): string {
         $qty = trim($qty);
@@ -238,7 +235,6 @@ function invoice_build_pdf_from_template(array $data): array
         if ($unitRaw !== '') {
             $qty .= ' ' . $unitLabel($unitRaw);
         }
-        $unit = money_format_cents((int)($item['unit_price_cents'] ?? 0), $currency);
         $sub = money_format_cents((int)($item['line_total_cents'] ?? 0), $currency);
 
         $y = $pdf->GetY();
@@ -266,20 +262,19 @@ function invoice_build_pdf_from_template(array $data): array
             $pdf->SetLeftMargin($xTableLeft);
             $pdf->SetRightMargin($tableMarginX);
             $pdf->SetX($xTableLeft);
-            $drawTableHeader($pdf, $tableBorder, $tableHeaderH, $tableHeaderFill, $colDesc, $colQty, $colUnit, $colSub, $toPdfText);
+            $drawTableHeader($pdf, $tableBorder, $tableHeaderH, $tableHeaderFill, $colDesc, $colQty, $colSub, $toPdfText);
         }
 
         $pdf->SetX($xTableLeft);
         $pdf->Cell($colDesc, $tableRowH, $toPdfText($trimDesc($desc, 60)), $tableBorder, 0, 'L');
         $pdf->Cell($colQty, $tableRowH, $toPdfText($qty), $tableBorder, 0, 'R');
-        $pdf->Cell($colUnit, $tableRowH, $toPdfText($unit), $tableBorder, 0, 'R');
         $pdf->Cell($colSub, $tableRowH, $toPdfText($sub), $tableBorder, 1, 'R');
     }
 
     // Total
     $pdf->Ln(4);
     $pdf->SetFont('Helvetica', 'B', 12);
-    $pdf->Cell($colDesc + $colQty + $colUnit, 8, $toPdfText('TOTAL'), 0, 0, 'R');
+    $pdf->Cell($colDesc + $colQty, 8, $toPdfText('TOTAL'), 0, 0, 'R');
     $pdf->Cell($colSub, 8, $toPdfText(money_format_cents($totalCents, $currency)), 0, 1, 'R');
 
     // Detalle

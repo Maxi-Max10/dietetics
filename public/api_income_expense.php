@@ -103,7 +103,7 @@ $data = [
     'egresos' => []
 ];
 foreach ($period as $d) {
-    $incomeCents = (int)($salesIncome[$d] ?? 0) + (int)($manualIncome[$d] ?? 0);
+    $incomeCents = (int)($salesIncome[$d] ?? 0) + (int)($manualIncome[$d] ?? 0);    |1  1       
     $data['ingresos'][] = $incomeCents > 0 ? ($incomeCents / 100) : 0;
     $data['egresos'][] = isset($egresos[$d]) ? $egresos[$d] / 100 : 0;
 }
