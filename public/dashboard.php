@@ -99,6 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   } else {
     $action = (string)($_POST['action'] ?? '');
     $customerName = trim((string)($_POST['customer_name'] ?? ''));
+    $customerPhone = trim((string)($_POST['customer_phone'] ?? ''));
     $customerEmail = trim((string)($_POST['customer_email'] ?? ''));
     $customerDni = trim((string)($_POST['customer_dni'] ?? ''));
     $detail = trim((string)($_POST['detail'] ?? ''));
@@ -127,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $validationError = false;
     try {
       $pdo = db($config);
-      $invoiceId = invoices_create($pdo, $userId, $customerName, $customerEmail, $detail, $items, 'ARS', $customerDni);
+      $invoiceId = invoices_create($pdo, $userId, $customerName, $customerEmail, $detail, $items, 'ARS', $customerDni, $customerPhone);
     } catch (Throwable $e) {
       if ($e instanceof InvalidArgumentException) {
         $validationError = true;
@@ -633,8 +634,12 @@ if ($error !== '') {
                 <input class="form-control" id="customer_name" name="customer_name" required>
               </div>
               <div class="col-12 col-md-6">
-                <label class="form-label" for="customer_email">Email del cliente</label>
-                <input class="form-control" id="customer_email" name="customer_email" type="email" required>
+                <label class="form-label" for="customer_phone">Teléfono del cliente (opcional)</label>
+                <input class="form-control" id="customer_phone" name="customer_phone" inputmode="tel" autocomplete="tel">
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label" for="customer_email">Email del cliente (opcional)</label>
+                <input class="form-control" id="customer_email" name="customer_email" type="email" autocomplete="email">
               </div>
               <div class="col-12 col-md-6">
                 <label class="form-label" for="customer_dni">DNI del cliente (opcional)</label>

@@ -32,6 +32,7 @@ function invoice_build_pdf_from_template(array $data): array
     $invoiceId = (int)($invoice['id'] ?? 0);
     $customerName = (string)($invoice['customer_name'] ?? '');
     $customerEmail = (string)($invoice['customer_email'] ?? '');
+    $customerPhone = (string)($invoice['customer_phone'] ?? '');
     $customerDni = (string)($invoice['customer_dni'] ?? '');
     $detail = (string)($invoice['detail'] ?? '');
     $currency = (string)($invoice['currency'] ?? 'ARS');
@@ -156,14 +157,28 @@ function invoice_build_pdf_from_template(array $data): array
     $pdf->Cell(0, 6, $toPdfText('Cliente:'), 0, 1);
 
     $pdf->SetFont('Helvetica', '', 10);
-    $pdf->SetXY($xLeft, $yCustomer + 6);
+
+    $yLine = $yCustomer + 6;
+    $pdf->SetXY($xLeft, $yLine);
     $pdf->Cell(0, 6, $toPdfText($customerName), 0, 1);
-    $pdf->SetXY($xLeft, $yCustomer + 12);
-    $pdf->Cell(0, 6, $toPdfText($customerEmail), 0, 1);
+    $yLine += 6;
+
+    if (trim($customerPhone) !== '') {
+        $pdf->SetXY($xLeft, $yLine);
+        $pdf->Cell(0, 6, $toPdfText('Tel: ' . $customerPhone), 0, 1);
+        $yLine += 6;
+    }
+
+    if (trim($customerEmail) !== '') {
+        $pdf->SetXY($xLeft, $yLine);
+        $pdf->Cell(0, 6, $toPdfText($customerEmail), 0, 1);
+        $yLine += 6;
+    }
 
     if (trim($customerDni) !== '') {
-        $pdf->SetXY($xLeft, $yCustomer + 18);
+        $pdf->SetXY($xLeft, $yLine);
         $pdf->Cell(0, 6, $toPdfText('DNI: ' . $customerDni), 0, 1);
+        $yLine += 6;
     }
 
     // Tabla de items

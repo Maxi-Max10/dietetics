@@ -13,6 +13,7 @@ function invoice_render_html(array $data, array $options = []): string
     $id = (int)($invoice['id'] ?? 0);
     $customerName = (string)($invoice['customer_name'] ?? '');
     $customerEmail = (string)($invoice['customer_email'] ?? '');
+    $customerPhone = (string)($invoice['customer_phone'] ?? '');
     $detail = (string)($invoice['detail'] ?? '');
     $currency = (string)($invoice['currency'] ?? 'USD');
     $totalCents = (int)($invoice['total_cents'] ?? 0);
@@ -163,6 +164,14 @@ function invoice_render_html(array $data, array $options = []): string
 
     $totalFormatted = money_format_cents($totalCents, $currency);
 
+  $customerContactHtml = '';
+  if (trim($customerPhone) !== '') {
+    $customerContactHtml .= '<div class="muted">' . htmlspecialchars($customerPhone, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</div>';
+  }
+  if (trim($customerEmail) !== '') {
+    $customerContactHtml .= '<div class="muted">' . htmlspecialchars($customerEmail, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</div>';
+  }
+
     return "<!doctype html>
 <html lang=\"es\">
 <head>
@@ -221,7 +230,7 @@ function invoice_render_html(array $data, array $options = []): string
           <div class=\"meta-left\">
             <div class=\"muted\">Facturar a</div>
             <div style=\"font-weight:700; font-size: 13px\">" . htmlspecialchars($customerName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . "</div>
-            <div class=\"muted\">" . htmlspecialchars($customerEmail, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . "</div>
+            {$customerContactHtml}
           </div>
           <div class=\"meta-right\">
             <div class=\"badge\">" . htmlspecialchars(strtoupper($currency), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . "</div>

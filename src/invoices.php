@@ -55,13 +55,30 @@ function invoice_compute_line_from_base_price(string $unit, float $quantity, flo
 /**
  * @param array<int, array{description:string, quantity:string|float|int, unit?:string, unit_price:string|float|int}> $items
  */
-function invoices_create(PDO $pdo, int $createdBy, string $customerName, string $customerEmail, string $detail, array $items, string $currency = 'ARS', string $customerDni = ''): int
+function invoices_create(PDO $pdo, int $createdBy, string $customerName, string $customerEmail, string $detail, array $items, string $currency = 'ARS', string $customerDni = '', string $customerPhone = ''): int
 {
-    if ($customerName === '' || $customerEmail === '') {
+    $customerName = trim($customerName);
+    $customerEmail = trim($customerEmail);
+
+    $customerPhone = trim($customerPhone);
+
+    if ($customerName === '') {
         throw new InvalidArgumentException('Cliente inválido.');
     }
 
-    if (!filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {
+    if ($customerPhone !== '') {
+        $phoneLen = function_exists('mb_strlen') ? (int)mb_strlen($customerPhone, 'UTF-8') : strlen($customerPhone);
+        if ($phoneLen > 40) {
+            throw new InvalidArgumentException('Teléfono demasiado largo.');
+        }
+
+        if (!preg_match('/^[0-9+\-\s().]+$/', $customerPhone)) {
+            throw new InvalidArgumentException('Teléfono inválido.');
+        }
+    }
+
+    // Email opcional: si viene, validarlo.
+    if ($customerEmail !== '' && !filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {
         throw new InvalidArgumentException('Email de cliente inválido.');
     }
 
@@ -117,28 +134,50 @@ function invoices_create(PDO $pdo, int $createdBy, string $customerName, string 
     try {
         $supportsDni = invoices_supports_customer_dni($pdo);
 
-        if ($supportsDni) {
-            $stmt = $pdo->prepare('INSERT INTO invoices (created_by, customer_name, customer_email, customer_dni, detail, currency, total_cents) VALUES (:created_by, :customer_name, :customer_email, :customer_dni, :detail, :currency, :total_cents)');
-            $stmt->execute([
-                'created_by' => $createdBy,
-                'customer_name' => $customerName,
-                'customer_email' => $customerEmail,
-                'customer_dni' => $dni === '' ? null : $dni,
-                'detail' => $detail === '' ? null : $detail,
-                'currency' => strtoupper($currency) ?: 'USD',
-                'total_cents' => $totalCents,
-            ]);
-        } else {
-            $stmt = $pdo->prepare('INSERT INTO invoices (created_by, customer_name, customer_email, detail, currency, total_cents) VALUES (:created_by, :customer_name, :customer_email, :detail, :currency, :total_cents)');
-            $stmt->execute([
-                'created_by' => $createdBy,
-                'customer_name' => $customerName,
-                'customer_email' => $customerEmail,
-                'detail' => $detail === '' ? null : $detail,
-                'currency' => strtoupper($currency) ?: 'USD',
-                'total_cents' => $totalCents,
-            ]);
+        $supportsPhone = invoices_supports_customer_phone($pdo);
+
+        $detailDb = $detail;
+        if (!$supportsPhone && $customerPhone !== '') {
+            $prefix = 'Tel: ' . $customerPhone;
+            $detailDb = ($detailDb === '') ? $prefix : ($prefix . "\n" . $detailDb);
         }
+
+        $cols = ['created_by', 'customer_name', 'customer_email'];
+        $vals = [':created_by', ':customer_name', ':customer_email'];
+        $params = [
+            'created_by' => $createdBy,
+            'customer_name' => $customerName,
+            // Guardamos string vacío si el email no fue provisto (columna NOT NULL en algunos setups)
+            'customer_email' => $customerEmail,
+        ];
+
+        if ($supportsPhone) {
+            $cols[] = 'customer_phone';
+            $vals[] = ':customer_phone';
+            $params['customer_phone'] = $customerPhone === '' ? null : $customerPhone;
+        }
+
+        if ($supportsDni) {
+            $cols[] = 'customer_dni';
+            $vals[] = ':customer_dni';
+            $params['customer_dni'] = $dni === '' ? null : $dni;
+        }
+
+        $cols[] = 'detail';
+        $vals[] = ':detail';
+        $params['detail'] = $detailDb === '' ? null : $detailDb;
+
+        $cols[] = 'currency';
+        $vals[] = ':currency';
+        $params['currency'] = strtoupper($currency) ?: 'USD';
+
+        $cols[] = 'total_cents';
+        $vals[] = ':total_cents';
+        $params['total_cents'] = $totalCents;
+
+        $sql = 'INSERT INTO invoices (' . implode(', ', $cols) . ') VALUES (' . implode(', ', $vals) . ')';
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
 
         $invoiceId = (int)$pdo->lastInsertId();
 
@@ -242,6 +281,31 @@ function invoices_supports_customer_dni(PDO $pdo): bool
         return $cache;
     } catch (Throwable $e) {
         // Si no se puede consultar metadata, asumimos que no existe.
+        $cache = false;
+        return false;
+    }
+}
+
+function invoices_supports_customer_phone(PDO $pdo): bool
+{
+    static $cache = null;
+    if (is_bool($cache)) {
+        return $cache;
+    }
+
+    try {
+        $stmt = $pdo->prepare(
+            "SELECT 1
+             FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = 'invoices'
+               AND COLUMN_NAME = :col
+             LIMIT 1"
+        );
+        $stmt->execute(['col' => 'customer_phone']);
+        $cache = (bool)$stmt->fetchColumn();
+        return $cache;
+    } catch (Throwable $e) {
         $cache = false;
         return false;
     }
