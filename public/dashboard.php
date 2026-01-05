@@ -801,8 +801,14 @@ if ($error !== '') {
       });
     });
 
-    // Inicializar con rango actual
-    const today = new Date().toISOString().slice(0, 10);
+    // Inicializar con rango actual (fecha local, no UTC)
+    const toLocalISODate = (d) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    const today = toLocalISODate(new Date());
     document.getElementById('startDate').value = today;
     document.getElementById('endDate').value = today;
     fetchData(today, today).then(renderChart).catch(err => {
