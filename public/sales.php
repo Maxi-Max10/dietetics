@@ -22,9 +22,9 @@ try {
 
   $hasDni = invoices_supports_customer_dni($pdo);
   $summary = sales_summary_filtered($pdo, $userId, $p['start'], $p['end'], $q, $hasDni);
-  $rows = sales_list_filtered($pdo, $userId, $p['start'], $p['end'], $q, $hasDni, $limit);
 
   if (in_array($format, ['csv', 'xml', 'xlsx'], true)) {
+    $rows = sales_list_filtered($pdo, $userId, $p['start'], $p['end'], $q, $hasDni, $limit, false);
     try {
       $stamp = date('Ymd-His');
       $base = 'ventas-' . $p['key'] . '-' . $stamp;
@@ -54,6 +54,9 @@ try {
       exit;
     }
   }
+
+  // Vista HTML: adjuntamos productos por factura.
+  $rows = sales_list_filtered($pdo, $userId, $p['start'], $p['end'], $q, $hasDni, $limit, true);
 } catch (Throwable $e) {
     $p = sales_period('day');
     $summary = [];
@@ -341,6 +344,7 @@ function sales_active(string $current, string $key): string
                 <tr>
                   <th style="width:90px">#</th>
                   <th>Cliente</th>
+                  <th>Productos</th>
                   <th style="width:180px" class="text-end">Total</th>
                   <th style="width:200px">Fecha</th>
                 </tr>
@@ -348,13 +352,14 @@ function sales_active(string $current, string $key): string
               <tbody>
               <?php if (count($rows) === 0): ?>
                 <tr>
-                  <td colspan="4" class="text-muted">Sin resultados.</td>
+                  <td colspan="5" class="text-muted">Sin resultados.</td>
                 </tr>
               <?php else: ?>
                 <?php foreach ($rows as $r): ?>
                   <tr>
                     <td><?= e((string)$r['id']) ?></td>
                     <td><?= e((string)$r['customer_name']) ?></td>
+                    <td class="text-muted"><?= e((string)($r['products'] ?? '')) ?></td>
                     <td class="text-end"><?= e(money_format_cents((int)$r['total_cents'], (string)$r['currency'])) ?></td>
                     <td><?= e((string)$r['created_at']) ?></td>
                   </tr>

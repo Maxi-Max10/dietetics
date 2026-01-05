@@ -102,9 +102,9 @@ function sales_list(PDO $pdo, int $userId, DateTimeImmutable $start, DateTimeImm
 }
 
 /**
- * @return array<int, array{id:int,customer_name:string,customer_email:string,customer_dni:string,total_cents:int,currency:string,created_at:string}>
+ * @return array<int, array{id:int,customer_name:string,customer_email:string,customer_dni:string,total_cents:int,currency:string,created_at:string,products?:string}>
  */
-function sales_list_filtered(PDO $pdo, int $userId, DateTimeImmutable $start, DateTimeImmutable $end, string $search, bool $hasDni, int $limit = 20): array
+function sales_list_filtered(PDO $pdo, int $userId, DateTimeImmutable $start, DateTimeImmutable $end, string $search, bool $hasDni, int $limit = 20, bool $withItems = false): array
 {
     $search = trim($search);
     $limit = max(1, (int)$limit);
@@ -156,6 +156,84 @@ function sales_list_filtered(PDO $pdo, int $userId, DateTimeImmutable $start, Da
         ];
     }
 
+    if ($withItems && count($out) > 0) {
+        $invoiceIds = array_values(array_filter(array_map(static fn(array $r): int => (int)($r['id'] ?? 0), $out)));
+        if (count($invoiceIds) > 0) {
+            $itemsMap = sales_items_map_for_invoices($pdo, $invoiceIds);
+            foreach ($out as $i => $row) {
+                $id = (int)($row['id'] ?? 0);
+                if ($id > 0 && isset($itemsMap[$id])) {
+                    $out[$i]['products'] = $itemsMap[$id];
+                } else {
+                    $out[$i]['products'] = '';
+                }
+            }
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * @param array<int,int> $invoiceIds
+ * @return array<int,string> invoice_id => items string
+ */
+function sales_items_map_for_invoices(PDO $pdo, array $invoiceIds): array
+{
+    $invoiceIds = array_values(array_unique(array_map('intval', $invoiceIds)));
+    $invoiceIds = array_values(array_filter($invoiceIds, static fn(int $v): bool => $v > 0));
+    if (count($invoiceIds) === 0) {
+        return [];
+    }
+
+    $placeholders = implode(',', array_fill(0, count($invoiceIds), '?'));
+    $supportsUnit = function_exists('invoices_items_supports_unit') ? invoices_items_supports_unit($pdo) : false;
+
+    if ($supportsUnit) {
+        $sql = 'SELECT invoice_id, description, quantity, COALESCE(unit, "") AS unit FROM invoice_items WHERE invoice_id IN (' . $placeholders . ') ORDER BY invoice_id ASC, id ASC';
+    } else {
+        $sql = 'SELECT invoice_id, description, quantity, "" AS unit FROM invoice_items WHERE invoice_id IN (' . $placeholders . ') ORDER BY invoice_id ASC, id ASC';
+    }
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($invoiceIds);
+    $rows = $stmt->fetchAll();
+
+    $formatQty = static function ($qty): string {
+        $n = (float)str_replace(',', '.', (string)$qty);
+        $s = number_format($n, 2, '.', '');
+        return rtrim(rtrim($s, '0'), '.');
+    };
+
+    $byInvoice = [];
+    foreach ($rows as $r) {
+        $invoiceId = (int)($r['invoice_id'] ?? 0);
+        if ($invoiceId <= 0) {
+            continue;
+        }
+        $desc = trim((string)($r['description'] ?? ''));
+        if ($desc === '') {
+            continue;
+        }
+
+        $qty = $formatQty($r['quantity'] ?? '1');
+        $unit = strtolower(trim((string)($r['unit'] ?? '')));
+        $qtyLabel = $qty;
+        if ($unit !== '' && $unit !== 'u') {
+            $qtyLabel .= ' ' . $unit;
+        }
+
+        $label = $desc . ' (x' . $qtyLabel . ')';
+        if (!isset($byInvoice[$invoiceId])) {
+            $byInvoice[$invoiceId] = [];
+        }
+        $byInvoice[$invoiceId][] = $label;
+    }
+
+    $out = [];
+    foreach ($byInvoice as $invoiceId => $items) {
+        $out[(int)$invoiceId] = implode(', ', $items);
+    }
     return $out;
 }
 
