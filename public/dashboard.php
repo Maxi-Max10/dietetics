@@ -374,6 +374,18 @@ if ($error !== '') {
       font-size: 0.8rem;
     }
 
+    .chart-shell {
+      position: relative;
+      width: 100%;
+      height: 240px;
+    }
+
+    @media (max-width: 576px) {
+      .chart-shell {
+        height: 300px;
+      }
+    }
+
     @media (max-width: 768px) {
       .page-shell {
         padding: 1.5rem .75rem;
@@ -549,8 +561,8 @@ if ($error !== '') {
                   <button type="submit" class="btn btn-primary w-100">Filtrar</button>
                 </div>
               </form>
-              <div>
-                <canvas id="incomeExpenseChart" height="120"></canvas>
+              <div class="chart-shell">
+                <canvas id="incomeExpenseChart"></canvas>
               </div>
             </div>
           </div>
@@ -695,6 +707,15 @@ if ($error !== '') {
     const ctx = canvas.getContext('2d');
     let chart;
 
+    const isMobile = window.matchMedia && window.matchMedia('(max-width: 576px)').matches;
+
+    function compactDateLabel(label) {
+      if (typeof label !== 'string') return label;
+      const m = label.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!m) return label;
+      return `${m[3]}/${m[2]}`;
+    }
+
     function fetchData(start, end) {
       return fetch(`/api_income_expense.php?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`)
         .then(res => {
@@ -728,9 +749,27 @@ if ($error !== '') {
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false,
           plugins: {
             legend: { position: 'top' },
             title: { display: true, text: 'Ingresos vs Egresos' }
+          },
+          scales: {
+            x: {
+              ticks: {
+                autoSkip: true,
+                maxTicksLimit: isMobile ? 6 : 12,
+                maxRotation: 0,
+                minRotation: 0,
+                callback: function (value) {
+                  const raw = this.getLabelForValue(value);
+                  return compactDateLabel(raw);
+                }
+              }
+            },
+            y: {
+              beginAtZero: true
+            }
           }
         }
       });
