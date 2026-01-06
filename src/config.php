@@ -29,4 +29,8 @@ return [
     'security' => [
         'session_name' => getenv('SESSION_NAME') ?: (defined('SESSION_NAME') ? SESSION_NAME : 'dietetic_session'),
     ],
+    'speech' => [
+        'openai_api_key' => getenv('OPENAI_API_KEY') ?: (defined('OPENAI_API_KEY') ? OPENAI_API_KEY : ''),
+        'openai_transcribe_model' => getenv('OPENAI_TRANSCRIBE_MODEL') ?: (defined('OPENAI_TRANSCRIBE_MODEL') ? OPENAI_TRANSCRIBE_MODEL : 'whisper-1'),
+    ],
 ];

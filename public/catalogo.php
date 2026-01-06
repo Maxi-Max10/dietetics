@@ -278,7 +278,12 @@ if (is_array($edit)) {
 
             <div class="col-12 col-md-6">
               <label class="form-label" for="name">Producto</label>
-              <input class="form-control" id="name" name="name" value="<?= e($defaultName) ?>" required>
+              <div class="input-group">
+                <input class="form-control" id="name" name="name" value="<?= e($defaultName) ?>" required>
+                <button class="btn btn-outline-secondary" type="button" id="catalogVoiceBtn">Voz</button>
+              </div>
+              <input class="d-none" type="file" id="catalogVoiceFile" accept="audio/*" capture>
+              <div class="form-text">Podés decir: “arroz integral, precio 1500 pesos”. Si tu navegador no soporta voz, usá el micrófono del teclado (dictado) con el cursor en el campo.</div>
             </div>
             <div class="col-12 col-md-3">
               <label class="form-label" for="price">Precio</label>
@@ -376,6 +381,8 @@ if (is_array($edit)) {
   const cancelLink = document.getElementById('catalogCancel');
   const modeLabel = document.getElementById('catalogFormModeLabel');
   const modeTitle = document.getElementById('catalogFormModeTitle');
+  const voiceBtn = document.getElementById('catalogVoiceBtn');
+  const voiceFile = document.getElementById('catalogVoiceFile');
 
   const hideMsg = (el) => { if (!el) return; el.classList.add('d-none'); el.textContent = ''; };
   const showMsg = (el, msg) => { if (!el) return; el.textContent = msg; el.classList.remove('d-none'); };
@@ -482,6 +489,134 @@ if (is_array($edit)) {
     .replaceAll("'", '&#039;');
   const escapeAttr = escapeHtml;
 
+  const applyTranscriptToForm = (raw) => {
+    const text = String(raw || '').trim();
+    if (!text) return;
+
+    const lower = text.toLowerCase();
+
+    // Moneda
+    let currency = 'ARS';
+    if (/(\beuro\b|\beur\b)/i.test(lower)) currency = 'EUR';
+    if (/(\bd[oó]lar\b|\busd\b)/i.test(lower)) currency = 'USD';
+    if (/(\bars\b|\bpeso\b|\bpesos\b)/i.test(lower)) currency = 'ARS';
+
+    // Precio
+    let price = '';
+    const mPrecio = lower.match(/precio\s+([0-9]+(?:[\.,][0-9]{1,2})?)/i);
+    if (mPrecio && mPrecio[1]) {
+      price = mPrecio[1].replace(',', '.');
+    } else {
+      const nums = lower.match(/([0-9]+(?:[\.,][0-9]{1,2})?)/g);
+      if (nums && nums.length > 0) {
+        price = String(nums[nums.length - 1]).replace(',', '.');
+      }
+    }
+
+    // Nombre
+    let name = text
+      .replace(/\bprecio\b\s*[0-9]+(?:[\.,][0-9]{1,2})?/ig, '')
+      .replace(/\b(d[oó]lar|usd|euro|eur|ars|peso|pesos)\b/ig, '')
+      .replace(/[,]+/g, ' ')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+
+    if (name) nameInput.value = name;
+    if (price) priceInput.value = price;
+    if (currency) currencyInput.value = currency;
+
+    showMsg(clientSuccess, 'Voz detectada: ' + text);
+    if (!name) nameInput.focus();
+    else if (!price) priceInput.focus();
+  };
+
+  const transcribeAudioFile = async (file) => {
+    const fd = new FormData();
+    fd.append('csrf_token', csrfToken());
+    fd.append('audio', file);
+
+    const res = await fetch('/api_speech_to_text.php', {
+      method: 'POST',
+      headers: { 'Accept': 'application/json' },
+      body: fd,
+    });
+
+    const data = await res.json().catch(() => null);
+    if (!data || data.ok !== true) {
+      throw new Error((data && data.error) ? data.error : 'No se pudo transcribir el audio.');
+    }
+    return String(data.text || '').trim();
+  };
+
+  let recorder = null;
+  let recChunks = [];
+
+  const supportsMediaRecorder = () => {
+    return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+  };
+
+  const startOrStopRecording = async () => {
+    clearMsgs();
+
+    // Si el navegador no soporta grabación directa (muy común en iOS), abrimos selector de audio con capture.
+    if (!supportsMediaRecorder()) {
+      if (voiceFile) {
+        voiceFile.value = '';
+        voiceFile.click();
+        return;
+      }
+      nameInput.focus();
+      showMsg(clientSuccess, 'Usá el micrófono del teclado para dictar en “Producto”.');
+      return;
+    }
+
+    if (recorder && recorder.state === 'recording') {
+      recorder.stop();
+      return;
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    recChunks = [];
+    recorder = new MediaRecorder(stream);
+    const prevLabel = voiceBtn ? voiceBtn.textContent : '';
+
+    const setBusy = (busy, isRecording) => {
+      if (!voiceBtn) return;
+      voiceBtn.disabled = !!busy;
+      voiceBtn.textContent = isRecording ? 'Detener' : (prevLabel || 'Voz');
+    };
+
+    recorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) recChunks.push(e.data);
+    };
+    recorder.onerror = () => {
+      setBusy(false, false);
+      try { stream.getTracks().forEach(t => t.stop()); } catch (_) {}
+      showMsg(clientError, 'No se pudo grabar. Permití el micrófono e intentá de nuevo.');
+    };
+    recorder.onstart = () => {
+      setBusy(false, true);
+      showMsg(clientSuccess, 'Grabando… tocá “Detener” para transcribir.');
+    };
+    recorder.onstop = async () => {
+      setBusy(true, false);
+      try { stream.getTracks().forEach(t => t.stop()); } catch (_) {}
+
+      try {
+        const blob = new Blob(recChunks, { type: recorder.mimeType || 'audio/webm' });
+        const file = new File([blob], 'voz.webm', { type: blob.type || 'audio/webm' });
+        const text = await transcribeAudioFile(file);
+        applyTranscriptToForm(text);
+      } catch (err) {
+        showMsg(clientError, err && err.message ? err.message : String(err));
+      } finally {
+        setBusy(false, false);
+      }
+    };
+
+    recorder.start();
+  };
+
   // Búsqueda dinámica
   if (searchForm) {
     searchForm.addEventListener('submit', (e) => {
@@ -576,6 +711,27 @@ if (is_array($edit)) {
   refresh().catch(() => {
     // Si falla, queda el render server-side.
   });
+
+  // Carga por voz
+  if (voiceBtn) {
+    voiceBtn.addEventListener('click', () => {
+      startOrStopRecording().catch((err) => {
+        showMsg(clientError, err && err.message ? err.message : String(err));
+      });
+    });
+  }
+
+  if (voiceFile) {
+    voiceFile.addEventListener('change', () => {
+      const f = voiceFile.files && voiceFile.files[0] ? voiceFile.files[0] : null;
+      if (!f) return;
+      clearMsgs();
+      showMsg(clientSuccess, 'Transcribiendo audio…');
+      transcribeAudioFile(f)
+        .then((text) => applyTranscriptToForm(text))
+        .catch((err) => showMsg(clientError, err && err.message ? err.message : String(err)));
+    });
+  }
 })();
 </script>
 </body>

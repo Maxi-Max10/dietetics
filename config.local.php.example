@@ -21,3 +21,9 @@ define('DB_PASS', 'TU_DB_PASS');
 // define('SMTP_PASS', 'TU_PASSWORD_EMAIL');
 // define('SMTP_PORT', 587);
 // define('SMTP_SECURE', 'tls');
+
+// Voz / transcripción (para Catálogo)
+// Necesitás una API key de OpenAI para transcribir audio (iOS/Android/desktop).
+// define('OPENAI_API_KEY', 'TU_OPENAI_API_KEY');
+// Opcional: por defecto whisper-1
+// define('OPENAI_TRANSCRIBE_MODEL', 'whisper-1');

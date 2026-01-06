@@ -27,7 +27,7 @@ if (PHP_SAPI !== 'cli') {
         header('X-Frame-Options: SAMEORIGIN');
         header('X-Content-Type-Options: nosniff');
         header('Referrer-Policy: strict-origin-when-cross-origin');
-        header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
+        header('Permissions-Policy: geolocation=(), microphone=(self), camera=()');
         if ($https) {
             header('Strict-Transport-Security: max-age=31536000');
         }
@@ -63,6 +63,7 @@ require_once __DIR__ . DIRECTORY_SEPARATOR . 'invoice_pdf_template.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'mailer.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'finance.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'catalog.php';
+require_once __DIR__ . DIRECTORY_SEPARATOR . 'speech.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'stock.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'sales.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'reports.php';
