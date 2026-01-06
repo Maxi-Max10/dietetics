@@ -80,3 +80,20 @@ CREATE TABLE IF NOT EXISTS stock_items (
     FOREIGN KEY (created_by) REFERENCES users(id)
     ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Catálogo: lista de precios de productos
+CREATE TABLE IF NOT EXISTS catalog_products (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  created_by INT UNSIGNED NOT NULL,
+  name VARCHAR(190) NOT NULL,
+  price_cents INT UNSIGNED NOT NULL DEFAULT 0,
+  currency CHAR(3) NOT NULL DEFAULT 'ARS',
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_catalog_products_user_name (created_by, name),
+  KEY idx_catalog_products_created_by (created_by),
+  CONSTRAINT fk_catalog_products_users
+    FOREIGN KEY (created_by) REFERENCES users(id)
+    ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

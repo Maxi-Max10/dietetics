@@ -9,7 +9,7 @@ RewriteRule ^(src|database|vendor)/ - [F,L]
 # URLs amigables (ocultar .php)
 # Nota: se mantiene compatibilidad con URLs antiguas, pero se redirige a la versión "limpia".
 RewriteCond %{REQUEST_METHOD} !POST
-RewriteCond %{THE_REQUEST} \s/+(dashboard|sales|customers|products|income|expense|stock)\.php[\?\s] [NC]
+RewriteCond %{THE_REQUEST} \s/+(dashboard|sales|customers|products|income|expense|stock|catalogo)\.php[\?\s] [NC]
 RewriteRule ^ %1 [R=302,L]
 
 # Rutas sin extensión
@@ -32,6 +32,8 @@ RewriteRule ^income/(day|week|month|year)/?$ income.php?period=$1 [L,QSA]
 RewriteRule ^income/(day|week|month|year)/(20|50|100|120)/?$ income.php?period=$1&limit=$2 [L,QSA]
 RewriteRule ^expense/?$ expense.php [L,QSA]
 RewriteRule ^stock/?$ stock.php [L,QSA]
+
+RewriteRule ^catalogo/?$ catalogo.php [L,QSA]
 
 # Bloquear archivos de config y docs
 <FilesMatch "^(config\.local\.php|config\.local\.php\.example|README\.md|composer\.(json|lock))$">

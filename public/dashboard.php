@@ -503,6 +503,10 @@ if ($error !== '') {
         Productos
       </a>
 
+      <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center nav-view-btn nav-view-btn--products" href="/catalogo">
+        Catálogo
+      </a>
+
       <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center nav-view-btn nav-view-btn--income" href="/income">
         Ingresos
       </a>
