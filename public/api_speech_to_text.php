@@ -46,6 +46,14 @@ $tmp = (string)($file['tmp_name'] ?? '');
 $mime = (string)($file['type'] ?? 'audio/webm');
 $size = (int)($file['size'] ?? 0);
 
+// Algunos navegadores envían "audio/webm;codecs=opus". OpenAI espera un mime simple.
+if ($mime !== '' && str_contains($mime, ';')) {
+    $mime = trim(explode(';', $mime, 2)[0]);
+}
+if ($mime === '') {
+    $mime = 'audio/webm';
+}
+
 if ($tmp === '' || !is_uploaded_file($tmp)) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'Audio inválido'], JSON_UNESCAPED_UNICODE);
@@ -63,9 +71,18 @@ try {
     echo json_encode(['ok' => true, 'text' => $text], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
     error_log('api_speech_to_text.php error: ' . $e->getMessage());
-    $msg = ($config['app']['env'] ?? 'production') === 'production'
-        ? 'No se pudo transcribir el audio.'
-        : ('Error: ' . $e->getMessage());
+
+    $env = (string)($config['app']['env'] ?? 'production');
+    $rawMsg = (string)$e->getMessage();
+
+    $safeMsg = 'No se pudo transcribir el audio.';
+    if (stripos($rawMsg, 'OPENAI_API_KEY') !== false) {
+        $safeMsg = 'Transcripción no configurada (falta OPENAI_API_KEY).';
+    } elseif (stripos($rawMsg, 'cURL no disponible') !== false) {
+        $safeMsg = 'Tu hosting no permite transcripción server-side (cURL no disponible). Usá dictado del navegador.';
+    }
+
+    $msg = $env === 'production' ? $safeMsg : ('Error: ' . $rawMsg);
 
     http_response_code(500);
     echo json_encode(['ok' => false, 'error' => $msg], JSON_UNESCAPED_UNICODE);

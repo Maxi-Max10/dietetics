@@ -384,6 +384,8 @@ if (is_array($edit)) {
   const voiceBtn = document.getElementById('catalogVoiceBtn');
   const voiceFile = document.getElementById('catalogVoiceFile');
 
+  const defaultVoiceLabel = voiceBtn ? (voiceBtn.textContent || 'Voz') : 'Voz';
+
   const hideMsg = (el) => { if (!el) return; el.classList.add('d-none'); el.textContent = ''; };
   const showMsg = (el, msg) => { if (!el) return; el.textContent = msg; el.classList.remove('d-none'); };
   const clearMsgs = () => { hideMsg(clientSuccess); hideMsg(clientError); };
@@ -551,6 +553,80 @@ if (is_array($edit)) {
   let recorder = null;
   let recChunks = [];
 
+  const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognizer = null;
+  let isRecognizing = false;
+
+  const supportsSpeechRecognition = () => {
+    return !!SpeechRecognitionCtor;
+  };
+
+  const startOrStopDictation = async () => {
+    clearMsgs();
+
+    if (!supportsSpeechRecognition()) {
+      throw new Error('Este navegador no soporta dictado directo.');
+    }
+
+    const setUi = (busy, listening) => {
+      if (!voiceBtn) return;
+      voiceBtn.disabled = !!busy;
+      voiceBtn.textContent = listening ? 'Detener' : defaultVoiceLabel;
+    };
+
+    if (!recognizer) {
+      recognizer = new SpeechRecognitionCtor();
+      recognizer.lang = 'es-AR';
+      recognizer.continuous = false;
+      recognizer.interimResults = false;
+      try { recognizer.maxAlternatives = 1; } catch (_) {}
+
+      recognizer.onstart = () => {
+        isRecognizing = true;
+        setUi(false, true);
+        showMsg(clientSuccess, 'Escuchando… hablá ahora y esperá la transcripción.');
+      };
+
+      recognizer.onerror = (ev) => {
+        isRecognizing = false;
+        setUi(false, false);
+        const code = ev && ev.error ? String(ev.error) : '';
+        const msg = code === 'not-allowed'
+          ? 'Permiso de micrófono denegado. Habilitalo e intentá de nuevo.'
+          : 'No se pudo usar el dictado. Probá con grabación o el micrófono del teclado.';
+        showMsg(clientError, msg);
+      };
+
+      recognizer.onresult = (ev) => {
+        const t = ev && ev.results && ev.results[0] && ev.results[0][0] && ev.results[0][0].transcript
+          ? String(ev.results[0][0].transcript)
+          : '';
+        if (t.trim() !== '') {
+          applyTranscriptToForm(t);
+        }
+      };
+
+      recognizer.onend = () => {
+        isRecognizing = false;
+        setUi(false, false);
+      };
+    }
+
+    if (isRecognizing) {
+      try { recognizer.stop(); } catch (_) {}
+      return;
+    }
+
+    setUi(true, false);
+    try {
+      recognizer.start();
+    } catch (err) {
+      isRecognizing = false;
+      setUi(false, false);
+      throw err;
+    }
+  };
+
   const supportsMediaRecorder = () => {
     return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
   };
@@ -715,7 +791,19 @@ if (is_array($edit)) {
   // Carga por voz
   if (voiceBtn) {
     voiceBtn.addEventListener('click', () => {
-      startOrStopRecording().catch((err) => {
+      (async () => {
+        // Preferimos dictado directo (Web Speech API) cuando está disponible.
+        // Si falla (permiso, error del navegador), caemos a grabación/subida.
+        if (supportsSpeechRecognition()) {
+          try {
+            await startOrStopDictation();
+            return;
+          } catch (_) {
+            // El error ya lo mostramos; intentamos el fallback.
+          }
+        }
+        await startOrStopRecording();
+      })().catch((err) => {
         showMsg(clientError, err && err.message ? err.message : String(err));
       });
     });
