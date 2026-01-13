@@ -223,6 +223,10 @@ if (is_array($edit)) {
     .muted-label { color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.04em; font-size:.8rem; }
     @media (max-width:768px){ .page-shell{padding:1.5rem .75rem; padding-left:calc(.75rem + env(safe-area-inset-left)); padding-right:calc(.75rem + env(safe-area-inset-right));} .card-lift{border-radius:14px} }
     .navbar-logo { height:34px; width:auto; display:inline-block; }
+
+    .nav-toggle-btn { border-radius:12px; font-weight:600; }
+    .offcanvas-nav .list-group-item { border:1px solid rgba(15,23,42,.06); border-radius:14px; margin-bottom:.6rem; background:rgba(255,255,255,.85); box-shadow:0 10px 30px rgba(15,23,42,.06); }
+    .offcanvas-nav .list-group-item:active { transform: translateY(1px); }
   </style>
 </head>
 <body>
@@ -232,16 +236,58 @@ if (is_array($edit)) {
       <img src="/logo.png" alt="Logo" class="navbar-logo">
       <span><?= e($appName) ?></span>
     </a>
-    <div class="d-flex flex-wrap align-items-center gap-2 ms-auto justify-content-end">
-      <span class="pill">Admin</span>
-      <a class="btn btn-outline-primary btn-sm" href="/dashboard">Volver</a>
-      <form method="post" action="/logout.php" class="d-flex">
-        <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
-        <button type="submit" class="btn btn-outline-danger btn-sm">Salir</button>
-      </form>
+    <div class="ms-auto d-flex align-items-center gap-2 justify-content-end">
+      <span class="pill d-none d-lg-inline-flex">Admin</span>
+
+      <button class="btn btn-outline-primary btn-sm d-inline-flex align-items-center d-lg-none nav-toggle-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#appNavOffcanvas" aria-controls="appNavOffcanvas">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="me-1" aria-hidden="true">
+          <path d="M2.5 4h11" />
+          <path d="M2.5 8h11" />
+          <path d="M2.5 12h11" />
+        </svg>
+        Menú
+      </button>
+
+      <div class="d-none d-lg-flex flex-wrap align-items-center gap-2 justify-content-end">
+        <a class="btn btn-outline-primary btn-sm" href="/dashboard">Volver</a>
+        <form method="post" action="/logout.php" class="d-flex">
+          <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
+          <button type="submit" class="btn btn-outline-danger btn-sm">Salir</button>
+        </form>
+      </div>
     </div>
   </div>
 </nav>
+
+<div class="offcanvas offcanvas-end" tabindex="-1" id="appNavOffcanvas" aria-labelledby="appNavOffcanvasLabel">
+  <div class="offcanvas-header">
+    <div class="d-flex align-items-center gap-2">
+      <img src="/logo.png" alt="Logo" class="navbar-logo">
+      <h5 class="offcanvas-title mb-0" id="appNavOffcanvasLabel"><?= e($appName) ?></h5>
+      <span class="pill ms-1">Admin</span>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+  </div>
+  <div class="offcanvas-body">
+    <div class="list-group offcanvas-nav">
+      <a class="list-group-item list-group-item-action" href="/dashboard">Dashboard</a>
+      <a class="list-group-item list-group-item-action" href="/sales">Ventas</a>
+      <a class="list-group-item list-group-item-action" href="/customers">Clientes</a>
+      <a class="list-group-item list-group-item-action" href="/products">Productos</a>
+      <a class="list-group-item list-group-item-action" href="/catalogo">Catálogo</a>
+      <a class="list-group-item list-group-item-action" href="/income">Ingresos</a>
+      <a class="list-group-item list-group-item-action" href="/expense">Egresos</a>
+      <a class="list-group-item list-group-item-action" href="/stock">Stock</a>
+    </div>
+
+    <div class="mt-3">
+      <form method="post" action="/logout.php" class="d-flex">
+        <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
+        <button type="submit" class="btn btn-outline-danger w-100">Salir</button>
+      </form>
+    </div>
+  </div>
+</div>
 
 <main class="container page-shell">
   <div class="row justify-content-center">
@@ -361,6 +407,8 @@ if (is_array($edit)) {
     </div>
   </div>
 </main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 
 <script>
 (() => {
