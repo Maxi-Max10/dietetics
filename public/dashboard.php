@@ -272,6 +272,23 @@ if ($error !== '') {
       padding-right: calc(.75rem + env(safe-area-inset-right));
     }
 
+    .nav-toggle-btn {
+      border-radius: 12px;
+      font-weight: 600;
+    }
+
+    .offcanvas-nav .list-group-item {
+      border: 1px solid rgba(15, 23, 42, 0.06);
+      border-radius: 14px;
+      margin-bottom: .6rem;
+      background: rgba(255, 255, 255, 0.85);
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+    }
+
+    .offcanvas-nav .list-group-item:active {
+      transform: translateY(1px);
+    }
+
     .page-shell {
       padding: 2.5rem 0;
     }
@@ -475,8 +492,19 @@ if ($error !== '') {
       <img src="/logo.png" alt="Logo" class="navbar-logo">
       <span><?= e($appName) ?></span>
     </a>
-    <div class="d-flex flex-wrap align-items-center gap-2 ms-auto justify-content-end">
-      <span class="pill">Admin</span>
+    <div class="ms-auto d-flex align-items-center gap-2 justify-content-end">
+      <span class="pill d-none d-lg-inline-flex">Admin</span>
+
+      <button class="btn btn-outline-primary btn-sm d-inline-flex align-items-center d-lg-none nav-toggle-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#appNavOffcanvas" aria-controls="appNavOffcanvas">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="me-1" aria-hidden="true">
+          <path d="M2.5 4h11" />
+          <path d="M2.5 8h11" />
+          <path d="M2.5 12h11" />
+        </svg>
+        Menú
+      </button>
+
+      <div class="d-none d-lg-flex flex-wrap align-items-center gap-2 justify-content-end">
       <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center nav-view-btn nav-view-btn--sales" href="/sales">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="me-1" aria-hidden="true">
           <rect x="2" y="9" width="2" height="5" rx="0.5" />
@@ -516,7 +544,9 @@ if ($error !== '') {
       <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center nav-view-btn nav-view-btn--stock" href="/stock">
         Stock
       </a>
-      <form method="post" action="/logout.php" class="d-flex">
+      </div>
+
+      <form method="post" action="/logout.php" class="d-none d-lg-flex">
         <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
         <button type="submit" class="btn btn-outline-danger btn-sm d-inline-flex align-items-center">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="me-1" aria-hidden="true">
@@ -530,6 +560,94 @@ if ($error !== '') {
     </div>
   </div>
 </nav>
+
+<div class="offcanvas offcanvas-end" tabindex="-1" id="appNavOffcanvas" aria-labelledby="appNavOffcanvasLabel">
+  <div class="offcanvas-header">
+    <div class="d-flex align-items-center gap-2">
+      <img src="/logo.png" alt="Logo" class="navbar-logo">
+      <h5 class="offcanvas-title mb-0" id="appNavOffcanvasLabel"><?= e($appName) ?></h5>
+      <span class="pill ms-1">Admin</span>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+  </div>
+  <div class="offcanvas-body">
+    <div class="list-group offcanvas-nav">
+      <a class="list-group-item list-group-item-action d-flex align-items-center gap-2" href="/sales">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="2" y="9" width="2" height="5" rx="0.5" />
+          <rect x="7" y="6" width="2" height="8" rx="0.5" />
+          <rect x="12" y="3" width="2" height="11" rx="0.5" />
+        </svg>
+        Ventas
+      </a>
+      <a class="list-group-item list-group-item-action d-flex align-items-center gap-2" href="/customers">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="6" cy="5" r="2" />
+          <circle cx="11" cy="6" r="1.6" />
+          <path d="M2.5 14c0-2.3 1.9-4 4-4s4 1.7 4 4" />
+          <path d="M9.2 14c.2-1.7 1.6-3 3.3-3 1.8 0 3 1.2 3 3" />
+        </svg>
+        Clientes
+      </a>
+      <a class="list-group-item list-group-item-action d-flex align-items-center gap-2" href="/products">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="2.5" y="4.5" width="11" height="9" rx="1" />
+          <path d="M2.5 7.5h11" />
+          <path d="M6 4.5v3" />
+        </svg>
+        Productos
+      </a>
+      <a class="list-group-item list-group-item-action d-flex align-items-center gap-2" href="/catalogo">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 3.5h10" />
+          <path d="M3 6.5h10" />
+          <path d="M3 9.5h10" />
+          <path d="M3 12.5h10" />
+        </svg>
+        Catálogo
+      </a>
+      <a class="list-group-item list-group-item-action d-flex align-items-center gap-2" href="/income">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 11V6" />
+          <path d="M6.5 11V4" />
+          <path d="M10 11V7" />
+          <path d="M13.5 11V5" />
+        </svg>
+        Ingresos
+      </a>
+      <a class="list-group-item list-group-item-action d-flex align-items-center gap-2" href="/expense">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12.5 4.5 6 11" />
+          <path d="M8 5H4.5C3.7 5 3 5.7 3 6.5V10c0 .8.7 1.5 1.5 1.5H8" />
+          <path d="M11.5 11H9" />
+        </svg>
+        Egresos
+      </a>
+      <a class="list-group-item list-group-item-action d-flex align-items-center gap-2" href="/stock">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 5.5 8 3l5 2.5v5L8 13l-5-2.5v-5Z" />
+          <path d="M8 3v10" />
+          <path d="M3 5.5 8 8l5-2.5" />
+        </svg>
+        Stock
+      </a>
+    </div>
+
+    <div class="mt-3">
+      <form method="post" action="/logout.php" class="d-flex">
+        <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
+        <button type="submit" class="btn btn-outline-danger w-100 d-inline-flex align-items-center justify-content-center">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="me-1" aria-hidden="true">
+            <path d="M6 2.5H3.8c-.7 0-1.3.6-1.3 1.3v8.4c0 .7.6 1.3 1.3 1.3H6" />
+            <path d="M10 11.5 13.5 8 10 4.5" />
+            <path d="M13.5 8H6.2" />
+          </svg>
+          Salir
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
 
 <main class="container page-shell">
   <div class="row justify-content-center">
