@@ -505,7 +505,7 @@ if (is_array($edit)) {
 
     // Precio
     let price = '';
-    const mPrecio = lower.match(/precio\s+([0-9]+(?:[\.,][0-9]{1,2})?)/i);
+    const mPrecio = lower.match(/precios?\s*[:\-]?\s*\$?\s*([0-9]+(?:[\.,][0-9]{1,2})?)/i);
     if (mPrecio && mPrecio[1]) {
       price = mPrecio[1].replace(',', '.');
     } else {
@@ -517,8 +517,9 @@ if (is_array($edit)) {
 
     // Nombre
     let name = text
-      .replace(/\bprecio\b\s*[0-9]+(?:[\.,][0-9]{1,2})?/ig, '')
+      .replace(/\bprecios?\b\s*[:\-]?\s*\$?\s*[0-9]+(?:[\.,][0-9]{1,2})?/ig, '')
       .replace(/\b(d[oó]lar|usd|euro|eur|ars|peso|pesos)\b/ig, '')
+      .replace(/[\$€]/g, '')
       .replace(/[,]+/g, ' ')
       .replace(/\s{2,}/g, ' ')
       .trim();
