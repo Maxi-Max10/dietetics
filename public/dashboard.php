@@ -791,7 +791,7 @@ if ($error !== '') {
                 </thead>
                 <tbody>
                   <tr>
-                    <td><input class="form-control" name="item_description[]" required></td>
+                    <td><input class="form-control" name="item_description[]" list="catalogProductSuggestions" autocomplete="off" required></td>
                     <td>
                       <div class="d-flex gap-2">
                         <input class="form-control" name="item_quantity[]" value="1" inputmode="decimal" required style="max-width: 110px">
@@ -810,6 +810,8 @@ if ($error !== '') {
                 </tbody>
               </table>
             </div>
+
+            <datalist id="catalogProductSuggestions"></datalist>
 
             <div class="d-flex flex-wrap gap-2 justify-content-end mt-3">
               <button class="btn btn-primary action-btn" type="submit" name="action" value="download">Guardar y descargar</button>
@@ -1015,7 +1017,7 @@ if ($error !== '') {
     function addRow() {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><input class="form-control" name="item_description[]" required></td>
+        <td><input class="form-control" name="item_description[]" list="catalogProductSuggestions" autocomplete="off" required></td>
         <td>
           <div class="d-flex gap-2">
             <input class="form-control" name="item_quantity[]" value="1" inputmode="decimal" required style="max-width: 110px">
@@ -1043,6 +1045,109 @@ if ($error !== '') {
       if (!row) return;
       if (tbody.querySelectorAll('tr').length <= 1) return;
       row.remove();
+    });
+  })();
+</script>
+<script>
+  (function () {
+    const table = document.getElementById('itemsTable');
+    const datalist = document.getElementById('catalogProductSuggestions');
+    if (!table || !datalist) return;
+
+    const itemByName = new Map();
+    let debounceTimer = 0;
+    let inflight = null;
+
+    function normalizeName(name) {
+      return (name || '').trim().toLowerCase();
+    }
+
+    function renderOptions(items) {
+      itemByName.clear();
+      const opts = [];
+
+      for (const it of items || []) {
+        const name = String(it.name || '').trim();
+        if (!name) continue;
+        itemByName.set(normalizeName(name), it);
+        opts.push(`<option value="${name.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')}"></option>`);
+      }
+
+      datalist.innerHTML = opts.join('');
+    }
+
+    function fetchSuggestions(query) {
+      const q = String(query || '').trim();
+      if (inflight && typeof inflight.abort === 'function') {
+        inflight.abort();
+      }
+      inflight = new AbortController();
+
+      const url = `/api_catalog_suggest.php?q=${encodeURIComponent(q)}&limit=20`;
+      return fetch(url, { headers: { 'Accept': 'application/json' }, signal: inflight.signal })
+        .then(res => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.json();
+        })
+        .then(payload => {
+          const items = payload && Array.isArray(payload.items) ? payload.items : [];
+          renderOptions(items);
+        })
+        .catch(err => {
+          // Abort es normal cuando tipeamos rápido.
+          if (err && err.name === 'AbortError') return;
+          console.warn('No se pudieron cargar sugerencias del catálogo', err);
+        });
+    }
+
+    function scheduleFetch(query) {
+      window.clearTimeout(debounceTimer);
+      debounceTimer = window.setTimeout(() => {
+        fetchSuggestions(query);
+      }, 180);
+    }
+
+    function maybeFillPriceForRow(descInput) {
+      const row = descInput.closest('tr');
+      if (!row) return;
+      const priceInput = row.querySelector('input[name="item_unit_price[]"]');
+      if (!priceInput) return;
+
+      const key = normalizeName(descInput.value);
+      if (!key) return;
+
+      const item = itemByName.get(key);
+      if (!item) return;
+
+      const current = String(priceInput.value || '').trim();
+      const currentNum = current === '' ? NaN : Number(current);
+      if (current !== '' && Number.isFinite(currentNum) && currentNum > 0) return;
+
+      const price = Number(item.price);
+      if (!Number.isFinite(price) || price <= 0) return;
+      priceInput.value = price.toFixed(2);
+    }
+
+    table.addEventListener('focusin', function (e) {
+      const el = e.target;
+      if (!(el instanceof HTMLInputElement)) return;
+      if (el.name !== 'item_description[]') return;
+      // Al enfocar, mostramos sugerencias (aunque esté vacío: devuelve top-20 ordenado por nombre).
+      scheduleFetch(el.value);
+    });
+
+    table.addEventListener('input', function (e) {
+      const el = e.target;
+      if (!(el instanceof HTMLInputElement)) return;
+      if (el.name !== 'item_description[]') return;
+      scheduleFetch(el.value);
+    });
+
+    table.addEventListener('change', function (e) {
+      const el = e.target;
+      if (!(el instanceof HTMLInputElement)) return;
+      if (el.name !== 'item_description[]') return;
+      maybeFillPriceForRow(el);
     });
   })();
 </script>
