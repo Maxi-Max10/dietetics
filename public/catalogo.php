@@ -227,6 +227,64 @@ if (is_array($edit)) {
     .nav-toggle-btn { border-radius:12px; font-weight:600; }
     .offcanvas-nav .list-group-item { border:1px solid rgba(15,23,42,.06); border-radius:14px; margin-bottom:.6rem; background:rgba(255,255,255,.85); box-shadow:0 10px 30px rgba(15,23,42,.06); }
     .offcanvas-nav .list-group-item:active { transform: translateY(1px); }
+
+    .nav-shell {
+      display: inline-flex;
+      align-items: center;
+      gap: .25rem;
+      padding: .25rem;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, .04);
+      border: 1px solid rgba(15, 23, 42, .08);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .65);
+    }
+
+    .nav-link-pill {
+      appearance: none;
+      -webkit-appearance: none;
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      padding: .45rem .85rem;
+      border-radius: 999px;
+      font-weight: 650;
+      font-size: .92rem;
+      line-height: 1;
+      text-decoration: none;
+      white-space: nowrap;
+      cursor: pointer;
+      color: rgba(15, 23, 42, .78);
+      background: transparent;
+      border: 1px solid transparent;
+      transition: background .15s ease, box-shadow .15s ease, color .15s ease, transform .05s ease;
+    }
+
+    .nav-link-pill:hover,
+    .nav-link-pill:focus {
+      background: rgba(15, 23, 42, .06);
+      color: var(--ink);
+    }
+
+    .nav-link-pill.is-active,
+    .nav-link-pill[aria-current="page"] {
+      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+      color: #fff;
+      box-shadow: 0 12px 30px rgba(var(--accent-rgb), .28);
+    }
+
+    .nav-link-pill:active { transform: translateY(1px); }
+
+    .nav-link-pill--danger {
+      color: #b91c1c;
+      background: rgba(220, 38, 38, .08);
+      border-color: rgba(220, 38, 38, .18);
+    }
+
+    .nav-link-pill--danger:hover,
+    .nav-link-pill--danger:focus {
+      background: rgba(220, 38, 38, .12);
+      color: #991b1b;
+    }
   </style>
 </head>
 <body>
@@ -248,11 +306,21 @@ if (is_array($edit)) {
         Menú
       </button>
 
-      <div class="d-none d-lg-flex flex-wrap align-items-center gap-2 justify-content-end">
-        <a class="btn btn-outline-primary btn-sm" href="/dashboard">Volver</a>
+      <div class="d-none d-lg-flex align-items-center gap-2 justify-content-end">
+        <div class="nav-shell" role="navigation" aria-label="Secciones">
+          <a class="nav-link-pill" href="/dashboard">Dashboard</a>
+          <a class="nav-link-pill" href="/sales">Ventas</a>
+          <a class="nav-link-pill" href="/customers">Clientes</a>
+          <a class="nav-link-pill" href="/products">Productos</a>
+          <a class="nav-link-pill is-active" href="/catalogo" aria-current="page">Catálogo</a>
+          <a class="nav-link-pill" href="/income">Ingresos</a>
+          <a class="nav-link-pill" href="/expense">Egresos</a>
+          <a class="nav-link-pill" href="/stock">Stock</a>
+        </div>
+
         <form method="post" action="/logout.php" class="d-flex">
           <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
-          <button type="submit" class="btn btn-outline-danger btn-sm">Salir</button>
+          <button type="submit" class="nav-link-pill nav-link-pill--danger">Salir</button>
         </form>
       </div>
     </div>

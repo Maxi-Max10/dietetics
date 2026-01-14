@@ -373,6 +373,64 @@ if ($error !== '') {
     .nav-view-btn--expense { --nav-accent: var(--view-expense); --nav-accent-rgb: var(--view-expense-rgb); }
     .nav-view-btn--stock { --nav-accent: var(--view-stock); --nav-accent-rgb: var(--view-stock-rgb); }
 
+    .nav-shell {
+      display: inline-flex;
+      align-items: center;
+      gap: .25rem;
+      padding: .25rem;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, .04);
+      border: 1px solid rgba(15, 23, 42, .08);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .65);
+    }
+
+    .nav-link-pill {
+      appearance: none;
+      -webkit-appearance: none;
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      padding: .45rem .85rem;
+      border-radius: 999px;
+      font-weight: 650;
+      font-size: .92rem;
+      line-height: 1;
+      text-decoration: none;
+      white-space: nowrap;
+      cursor: pointer;
+      color: rgba(15, 23, 42, .78);
+      background: transparent;
+      border: 1px solid transparent;
+      transition: background .15s ease, box-shadow .15s ease, color .15s ease, transform .05s ease;
+    }
+
+    .nav-link-pill:hover,
+    .nav-link-pill:focus {
+      background: rgba(15, 23, 42, .06);
+      color: var(--ink);
+    }
+
+    .nav-link-pill.is-active,
+    .nav-link-pill[aria-current="page"] {
+      background: linear-gradient(135deg, var(--accent), #115e59);
+      color: #fff;
+      box-shadow: 0 12px 30px rgba(15, 118, 110, .28);
+    }
+
+    .nav-link-pill:active { transform: translateY(1px); }
+
+    .nav-link-pill--danger {
+      color: #b91c1c;
+      background: rgba(220, 38, 38, .08);
+      border-color: rgba(220, 38, 38, .18);
+    }
+
+    .nav-link-pill--danger:hover,
+    .nav-link-pill--danger:focus {
+      background: rgba(220, 38, 38, .12);
+      color: #991b1b;
+    }
+
     .table thead th {
       background: rgba(15, 118, 110, 0.08);
       border-bottom: none;
@@ -504,59 +562,23 @@ if ($error !== '') {
         Menú
       </button>
 
-      <div class="d-none d-lg-flex flex-wrap align-items-center gap-2 justify-content-end">
-      <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center nav-view-btn nav-view-btn--sales" href="/sales">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="me-1" aria-hidden="true">
-          <rect x="2" y="9" width="2" height="5" rx="0.5" />
-          <rect x="7" y="6" width="2" height="8" rx="0.5" />
-          <rect x="12" y="3" width="2" height="11" rx="0.5" />
-        </svg>
-        Ventas
-      </a>
-      <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center nav-view-btn nav-view-btn--customers" href="/customers">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="me-1" aria-hidden="true">
-          <circle cx="6" cy="5" r="2" />
-          <circle cx="11" cy="6" r="1.6" />
-          <path d="M2.5 14c0-2.3 1.9-4 4-4s4 1.7 4 4" />
-          <path d="M9.2 14c.2-1.7 1.6-3 3.3-3 1.8 0 3 1.2 3 3" />
-        </svg>
-        Clientes
-      </a>
-      <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center nav-view-btn nav-view-btn--products" href="/products">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="me-1" aria-hidden="true">
-          <rect x="2.5" y="4.5" width="11" height="9" rx="1" />
-          <path d="M2.5 7.5h11" />
-          <path d="M6 4.5v3" />
-        </svg>
-        Productos
-      </a>
+      <div class="d-none d-lg-flex align-items-center gap-2 justify-content-end">
+        <div class="nav-shell" role="navigation" aria-label="Secciones">
+          <a class="nav-link-pill is-active" href="/dashboard" aria-current="page">Dashboard</a>
+          <a class="nav-link-pill" href="/sales">Ventas</a>
+          <a class="nav-link-pill" href="/customers">Clientes</a>
+          <a class="nav-link-pill" href="/products">Productos</a>
+          <a class="nav-link-pill" href="/catalogo">Catálogo</a>
+          <a class="nav-link-pill" href="/income">Ingresos</a>
+          <a class="nav-link-pill" href="/expense">Egresos</a>
+          <a class="nav-link-pill" href="/stock">Stock</a>
+        </div>
 
-      <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center nav-view-btn nav-view-btn--products" href="/catalogo">
-        Catálogo
-      </a>
-
-      <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center nav-view-btn nav-view-btn--income" href="/income">
-        Ingresos
-      </a>
-      <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center nav-view-btn nav-view-btn--expense" href="/expense">
-        Egresos
-      </a>
-      <a class="btn btn-outline-primary btn-sm d-inline-flex align-items-center nav-view-btn nav-view-btn--stock" href="/stock">
-        Stock
-      </a>
+        <form method="post" action="/logout.php" class="d-flex">
+          <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
+          <button type="submit" class="nav-link-pill nav-link-pill--danger">Salir</button>
+        </form>
       </div>
-
-      <form method="post" action="/logout.php" class="d-none d-lg-flex">
-        <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
-        <button type="submit" class="btn btn-outline-danger btn-sm d-inline-flex align-items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="me-1" aria-hidden="true">
-            <path d="M6 2.5H3.8c-.7 0-1.3.6-1.3 1.3v8.4c0 .7.6 1.3 1.3 1.3H6" />
-            <path d="M10 11.5 13.5 8 10 4.5" />
-            <path d="M13.5 8H6.2" />
-          </svg>
-          Salir
-        </button>
-      </form>
     </div>
   </div>
 </nav>
