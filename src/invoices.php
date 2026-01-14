@@ -20,6 +20,52 @@ function invoice_normalize_unit(string $unit): string
 }
 
 /**
+ * @return 'count'|'mass'|'volume'
+ */
+function invoice_unit_group(string $unitKey): string
+{
+    $u = invoice_normalize_unit($unitKey);
+    return match ($u) {
+        'g', 'kg' => 'mass',
+        'ml', 'l' => 'volume',
+        default => 'count',
+    };
+}
+
+function invoice_convert_quantity(float $quantity, string $fromUnitKey, string $toUnitKey): float
+{
+    if (!is_finite($quantity) || $quantity < 0) {
+        throw new InvalidArgumentException('Cantidad inválida.');
+    }
+
+    $from = invoice_normalize_unit($fromUnitKey);
+    $to = invoice_normalize_unit($toUnitKey);
+
+    if ($from === $to) {
+        return $quantity;
+    }
+
+    $fromGroup = invoice_unit_group($from);
+    $toGroup = invoice_unit_group($to);
+    if ($fromGroup !== $toGroup) {
+        throw new InvalidArgumentException('Unidades incompatibles (' . $from . ' → ' . $to . ').');
+    }
+
+    if ($fromGroup === 'mass') {
+        $grams = ($from === 'kg') ? ($quantity * 1000.0) : $quantity;
+        return ($to === 'kg') ? ($grams / 1000.0) : $grams;
+    }
+
+    if ($fromGroup === 'volume') {
+        $ml = ($from === 'l') ? ($quantity * 1000.0) : $quantity;
+        return ($to === 'l') ? ($ml / 1000.0) : $ml;
+    }
+
+    // count: no conversion possible/needed
+    return $quantity;
+}
+
+/**
  * Calcula precio unitario mostrado (por la unidad elegida) y subtotal en centavos
  * a partir de un precio base por unidad/kg/l.
  *
@@ -221,7 +267,7 @@ function invoices_create(PDO $pdo, int $createdBy, string $customerName, string 
 
         if ($hasStock && function_exists('stock_adjust')) {
             $findStock = $pdo->prepare(
-                'SELECT id
+                'SELECT id, COALESCE(unit, \'\') AS unit
                  FROM stock_items
                  WHERE created_by = :created_by
                                      AND (LOWER(name) = LOWER(:q_name) OR sku = :q_sku)
@@ -246,7 +292,21 @@ function invoices_create(PDO $pdo, int $createdBy, string $customerName, string 
                     continue;
                 }
 
-                stock_adjust($pdo, $createdBy, $itemId, -1 * (float)$line['quantity']);
+                $soldUnitKey = (string)($line['unit'] ?? 'u');
+                $stockUnitRaw = trim((string)($row['unit'] ?? ''));
+                $stockUnitKey = invoice_normalize_unit($stockUnitRaw);
+
+                $qtySold = (float)($line['quantity'] ?? 0);
+                try {
+                    $qtyInStockUnit = invoice_convert_quantity($qtySold, $soldUnitKey, $stockUnitKey);
+                } catch (InvalidArgumentException $e) {
+                    throw new InvalidArgumentException('No se pudo descontar stock para "' . $q . '": ' . $e->getMessage());
+                }
+                if ($qtyInStockUnit <= 0) {
+                    continue;
+                }
+
+                stock_adjust($pdo, $createdBy, $itemId, -1 * $qtyInStockUnit);
             }
         }
 

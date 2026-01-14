@@ -273,7 +273,7 @@ try {
             </div>
             <div class="col-12 col-md-2">
               <label class="form-label" for="unit">Unidad</label>
-              <input class="form-control" id="unit" name="unit" placeholder="u / kg / lt" maxlength="24">
+              <input class="form-control" id="unit" name="unit" placeholder="u / g / kg / ml / l" maxlength="24">
             </div>
             <div class="col-12 col-md-2">
               <label class="form-label" for="quantity">Cantidad</label>
