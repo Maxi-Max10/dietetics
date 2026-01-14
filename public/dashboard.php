@@ -657,7 +657,6 @@ if ($error !== '') {
           <p class="muted-label mb-1">Panel</p>
           <h1 class="h3 mb-0">Administración de facturas</h1>
         </div>
-        <span class="text-muted">Usuario #<?= e((string)$userId) ?></span>
       </div>
 
       <div class="row g-3 mb-4">

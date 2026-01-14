@@ -159,7 +159,6 @@ try {
           <p class="muted-label mb-1">Finanzas</p>
           <h1 class="h3 mb-0">Egresos</h1>
         </div>
-        <span class="text-muted">Usuario #<?= e((string)$userId) ?></span>
       </div>
 
       <?php if ($flash !== ''): ?>

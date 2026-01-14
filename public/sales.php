@@ -323,7 +323,6 @@ function sales_active(string $current, string $key): string
           <h1 class="h3 mb-0">Ventas</h1>
           <div class="text-muted mt-1"><?= e($p['label']) ?></div>
         </div>
-        <span class="text-muted">Usuario #<?= e((string)$userId) ?></span>
       </div>
 
       <?php if (!empty($error ?? '')): ?>

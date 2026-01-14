@@ -233,7 +233,6 @@ try {
           <h1 class="h3 mb-0">Productos vendidos</h1>
           <div class="text-muted mt-1"><?= e($p['label']) ?></div>
         </div>
-        <span class="text-muted">Usuario #<?= e((string)$userId) ?></span>
       </div>
 
       <?php if ($error !== ''): ?>
