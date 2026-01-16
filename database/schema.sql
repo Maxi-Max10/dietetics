@@ -86,6 +86,7 @@ CREATE TABLE IF NOT EXISTS catalog_products (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   created_by INT UNSIGNED NOT NULL,
   name VARCHAR(190) NOT NULL,
+  description VARCHAR(255) NULL,
   price_cents INT UNSIGNED NOT NULL DEFAULT 0,
   currency CHAR(3) NOT NULL DEFAULT 'ARS',
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -97,3 +98,6 @@ CREATE TABLE IF NOT EXISTS catalog_products (
     FOREIGN KEY (created_by) REFERENCES users(id)
     ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Si ya tenías la tabla creada, podés agregar la columna con:
+-- ALTER TABLE catalog_products ADD COLUMN description VARCHAR(255) NULL AFTER name;

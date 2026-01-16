@@ -42,6 +42,7 @@ try {
         $items[] = [
             'id' => (int)($r['id'] ?? 0),
             'name' => (string)($r['name'] ?? ''),
+            'description' => (string)($r['description'] ?? ''),
             'price_cents' => $priceCents,
             'price' => $priceCents / 100,
             'currency' => (string)($r['currency'] ?? 'ARS'),

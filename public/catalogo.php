@@ -52,6 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && $wantsJson) {
       $out[] = [
         'id' => (int)($r['id'] ?? 0),
         'name' => (string)($r['name'] ?? ''),
+        'description' => (string)($r['description'] ?? ''),
         'price_cents' => (int)($r['price_cents'] ?? 0),
         'currency' => (string)($r['currency'] ?? 'ARS'),
         'price_formatted' => money_format_cents((int)($r['price_cents'] ?? 0), (string)($r['currency'] ?? 'ARS')),
@@ -63,9 +64,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && $wantsJson) {
     exit;
   } catch (Throwable $e) {
     error_log('catalogo.php ajax load error: ' . $e->getMessage());
-    $msg = ($config['app']['env'] ?? 'production') === 'production'
-      ? 'No se pudo cargar el catálogo.'
-      : ('Error: ' . $e->getMessage());
+    $rawMsg = $e->getMessage();
+    if (stripos($rawMsg, 'Falta la columna description') !== false) {
+      $msg = 'Falta actualizar la base de datos del catálogo. Ejecutá: ALTER TABLE catalog_products ADD COLUMN description VARCHAR(255) NULL AFTER name;';
+    } else {
+      $msg = ($config['app']['env'] ?? 'production') === 'production'
+        ? 'No se pudo cargar el catálogo.'
+        : ('Error: ' . $rawMsg);
+    }
 
     http_response_code(500);
     header('Content-Type: application/json; charset=utf-8');
@@ -98,10 +104,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($action === 'create') {
               $name = trim((string)($data['name'] ?? ''));
+              $description = trim((string)($data['description'] ?? ''));
               $price = (string)($data['price'] ?? '0');
               $currency = trim((string)($data['currency'] ?? 'ARS'));
 
-                catalog_create($pdo, $userId, $name, $price, $currency);
+                catalog_create($pdo, $userId, $name, $price, $currency, $description);
               if ($wantsJson) {
                 header('Content-Type: application/json; charset=utf-8');
                 echo json_encode(['ok' => true, 'message' => 'Producto agregado al catálogo.'], JSON_UNESCAPED_UNICODE);
@@ -116,10 +123,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($action === 'update') {
               $id = (int)($data['id'] ?? 0);
               $name = trim((string)($data['name'] ?? ''));
+              $description = trim((string)($data['description'] ?? ''));
               $price = (string)($data['price'] ?? '0');
               $currency = trim((string)($data['currency'] ?? 'ARS'));
 
-                catalog_update($pdo, $userId, $id, $name, $price, $currency);
+                catalog_update($pdo, $userId, $id, $name, $price, $currency, $description);
               if ($wantsJson) {
                 header('Content-Type: application/json; charset=utf-8');
                 echo json_encode(['ok' => true, 'message' => 'Producto actualizado.'], JSON_UNESCAPED_UNICODE);
@@ -148,9 +156,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new InvalidArgumentException('Acción inválida.');
         } catch (Throwable $e) {
             error_log('catalogo.php error: ' . $e->getMessage());
-            $error = ($config['app']['env'] ?? 'production') === 'production'
-                ? 'No se pudo procesar el catálogo.'
-                : ('Error: ' . $e->getMessage());
+            $rawMsg = $e->getMessage();
+            if (stripos($rawMsg, 'Falta la columna description') !== false) {
+              $error = 'Falta actualizar la base de datos del catálogo. Ejecutá: ALTER TABLE catalog_products ADD COLUMN description VARCHAR(255) NULL AFTER name;';
+            } else {
+              $error = ($config['app']['env'] ?? 'production') === 'production'
+                  ? 'No se pudo procesar el catálogo.'
+                  : ('Error: ' . $rawMsg);
+            }
 
           if ($wantsJson) {
             http_response_code(500);
@@ -178,14 +191,20 @@ try {
 } catch (Throwable $e) {
     error_log('catalogo.php load error: ' . $e->getMessage());
     $rows = [];
-    $error = $error !== '' ? $error : (
-        ($config['app']['env'] ?? 'production') === 'production'
+    if ($error === '') {
+      $rawMsg = $e->getMessage();
+      $error = stripos($rawMsg, 'Falta la columna description') !== false
+        ? 'Falta actualizar la base de datos del catálogo. Ejecutá: ALTER TABLE catalog_products ADD COLUMN description VARCHAR(255) NULL AFTER name;'
+        : (
+          ($config['app']['env'] ?? 'production') === 'production'
             ? 'No se pudo cargar el catálogo. ¿Ejecutaste el schema.sql?'
-            : ('Error: ' . $e->getMessage())
-    );
+            : ('Error: ' . $rawMsg)
+        );
+    }
 }
 
 $defaultName = is_array($edit) ? (string)($edit['name'] ?? '') : '';
+$defaultDescription = is_array($edit) ? (string)($edit['description'] ?? '') : '';
 $defaultCurrency = is_array($edit) ? (string)($edit['currency'] ?? 'ARS') : 'ARS';
 $defaultPrice = '';
 if (is_array($edit)) {
@@ -411,6 +430,11 @@ if (is_array($edit)) {
               </select>
             </div>
 
+            <div class="col-12">
+              <label class="form-label" for="description">Descripción <span class="text-muted">(opcional)</span></label>
+              <textarea class="form-control" id="description" name="description" rows="2" maxlength="255" placeholder="Ej: integral, sin TACC, sabor vainilla…"><?= e($defaultDescription) ?></textarea>
+            </div>
+
             <div class="col-12 d-flex flex-wrap gap-2 justify-content-end">
               <a class="btn btn-outline-secondary action-btn <?= $edit ? '' : 'd-none' ?>" id="catalogCancel" href="/catalogo<?= $q !== '' ? ('?q=' . rawurlencode($q)) : '' ?>">Cancelar</a>
               <button type="submit" class="btn btn-primary action-btn"><?= $edit ? 'Guardar cambios' : 'Agregar' ?></button>
@@ -437,17 +461,19 @@ if (is_array($edit)) {
               <thead>
                 <tr>
                   <th>Producto</th>
+                  <th>Descripción</th>
                   <th style="width:180px" class="text-end">Precio</th>
                   <th style="width:220px"></th>
                 </tr>
               </thead>
               <tbody id="catalogTbody">
               <?php if (count($rows) === 0): ?>
-                <tr><td colspan="3" class="text-muted">Sin resultados.</td></tr>
+                <tr><td colspan="4" class="text-muted">Sin resultados.</td></tr>
               <?php else: ?>
                 <?php foreach ($rows as $r): ?>
                   <tr>
                     <td><?= e((string)$r['name']) ?></td>
+                    <td class="text-muted"><?= e(trim((string)($r['description'] ?? '')) !== '' ? (string)$r['description'] : '—') ?></td>
                     <td class="text-end"><?= e(money_format_cents((int)$r['price_cents'], (string)$r['currency'])) ?></td>
                     <td class="text-end">
                       <div class="d-inline-flex gap-2">
@@ -456,6 +482,7 @@ if (is_array($edit)) {
                           href="/catalogo?edit=<?= e((string)$r['id']) ?><?= $q !== '' ? ('&q=' . rawurlencode($q)) : '' ?>"
                           data-id="<?= e((string)$r['id']) ?>"
                           data-name="<?= e((string)$r['name']) ?>"
+                          data-description="<?= e((string)($r['description'] ?? '')) ?>"
                           data-price="<?= e(number_format(((int)$r['price_cents']) / 100, 2, '.', '')) ?>"
                           data-currency="<?= e((string)$r['currency']) ?>"
                         >Editar</a>
@@ -491,6 +518,7 @@ if (is_array($edit)) {
   const actionInput = document.getElementById('catalogAction');
   const idInput = document.getElementById('catalogId');
   const nameInput = document.getElementById('name');
+  const descriptionInput = document.getElementById('description');
   const priceInput = document.getElementById('price');
   const currencyInput = document.getElementById('currency');
   const cancelLink = document.getElementById('catalogCancel');
@@ -512,6 +540,7 @@ if (is_array($edit)) {
     modeTitle.textContent = 'Agregar producto';
     cancelLink.classList.add('d-none');
     nameInput.value = '';
+    if (descriptionInput) descriptionInput.value = '';
     priceInput.value = '';
     currencyInput.value = 'ARS';
   };
@@ -523,6 +552,7 @@ if (is_array($edit)) {
     modeTitle.textContent = 'Modificar producto';
     cancelLink.classList.remove('d-none');
     nameInput.value = item.name || '';
+    if (descriptionInput) descriptionInput.value = item.description || '';
     priceInput.value = item.price || '';
     currencyInput.value = item.currency || 'ARS';
     nameInput.focus();
@@ -537,7 +567,7 @@ if (is_array($edit)) {
     tbody.innerHTML = '';
     if (!items || items.length === 0) {
       const tr = document.createElement('tr');
-      tr.innerHTML = '<td colspan="3" class="text-muted">Sin resultados.</td>';
+      tr.innerHTML = '<td colspan="4" class="text-muted">Sin resultados.</td>';
       tbody.appendChild(tr);
       return;
     }
@@ -547,8 +577,12 @@ if (is_array($edit)) {
       const priceRaw = (typeof it.price_cents === 'number')
         ? (it.price_cents / 100).toFixed(2)
         : '';
+
+      const descValue = String(it.description || '').trim();
+      const descHtml = descValue ? escapeHtml(descValue) : '<span class="text-muted">—</span>';
       tr.innerHTML = `
         <td>${escapeHtml(it.name || '')}</td>
+        <td class="text-muted">${descHtml}</td>
         <td class="text-end">${escapeHtml(it.price_formatted || '')}</td>
         <td class="text-end">
           <div class="d-inline-flex gap-2">
@@ -557,6 +591,7 @@ if (is_array($edit)) {
               href="/catalogo?edit=${encodeURIComponent(String(it.id))}${searchInput.value ? ('&q=' + encodeURIComponent(searchInput.value)) : ''}"
               data-id="${escapeAttr(String(it.id))}"
               data-name="${escapeAttr(it.name || '')}"
+              data-description="${escapeAttr(it.description || '')}"
               data-price="${escapeAttr(priceRaw)}"
               data-currency="${escapeAttr(it.currency || 'ARS')}"
             >Editar</a>
@@ -837,6 +872,7 @@ if (is_array($edit)) {
         action: actionInput.value,
         id: idInput.value,
         name: nameInput.value,
+        description: descriptionInput ? descriptionInput.value : '',
         price: priceInput.value,
         currency: currencyInput.value,
         q: searchInput.value || '',
@@ -861,6 +897,7 @@ if (is_array($edit)) {
       setEditMode({
         id: edit.getAttribute('data-id') || '',
         name: edit.getAttribute('data-name') || '',
+        description: edit.getAttribute('data-description') || '',
         price: edit.getAttribute('data-price') || '',
         currency: edit.getAttribute('data-currency') || 'ARS',
       });
