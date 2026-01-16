@@ -6,7 +6,7 @@ declare(strict_types=1);
 $localConfigPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'config.local.php';
 if (is_file($localConfigPath)) {
     /** @noinspection PhpIncludeInspection */
-    require $localConfigPath;
+    require_once $localConfigPath;
 }
 
 /**
