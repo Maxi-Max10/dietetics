@@ -247,7 +247,7 @@ $csrf = csrf_token();
 
                   <div class="mb-3"></div>
 
-                  <button type="submit" class="btn btn-brand w-100 auth-btn">Entrar</button>
+                  <button type="submit" class="btn btn-brand-light w-100 auth-btn">Entrar</button>
 
                   <p class="text-muted small mt-4 mb-0 text-center"><?= e($appName) ?></p>
                 </form>
