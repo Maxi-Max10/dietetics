@@ -18,7 +18,7 @@ function db(array $config): PDO
     $charset = (string)($db['charset'] ?? 'utf8mb4');
 
     if ($name === '' || $user === '') {
-        throw new RuntimeException('Falta configurar la base de datos (DB_NAME/DB_USER).');
+        throw new RuntimeException('Falta configurar la base de datos (DB_HOST/DB_NAME/DB_USER/DB_PASS).');
     }
 
     $dsn = "mysql:host={$host};dbname={$name};charset={$charset}";
