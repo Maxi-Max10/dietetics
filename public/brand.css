@@ -1,0 +1,47 @@
+:root {
+  --brand-sage: #96957E;
+  --brand-ink: #463B1E;
+  --brand-sand: #E7E3D5;
+
+  --brand-sage-rgb: 150, 149, 126;
+  --brand-ink-rgb: 70, 59, 30;
+  --brand-sand-rgb: 231, 227, 213;
+
+  /* Bootstrap theme overrides */
+  --bs-primary: var(--brand-ink);
+  --bs-primary-rgb: var(--brand-ink-rgb);
+  --bs-link-color: var(--brand-ink);
+  --bs-link-hover-color: var(--brand-sage);
+
+  --bs-body-color: #241e10;
+  --bs-body-bg: var(--brand-sand);
+}
+
+/* Unificar look de botones primarios si alguna vista no los redefine */
+.btn-primary {
+  --bs-btn-color: #fff;
+  --bs-btn-bg: var(--brand-ink);
+  --bs-btn-border-color: var(--brand-ink);
+  --bs-btn-hover-bg: #3b3219;
+  --bs-btn-hover-border-color: #3b3219;
+  --bs-btn-active-bg: #2f2713;
+  --bs-btn-active-border-color: #2f2713;
+}
+
+.btn-outline-primary {
+  --bs-btn-color: var(--brand-ink);
+  --bs-btn-border-color: var(--brand-ink);
+  --bs-btn-hover-bg: rgba(var(--brand-ink-rgb), 0.08);
+  --bs-btn-hover-border-color: var(--brand-ink);
+  --bs-btn-hover-color: var(--brand-ink);
+  --bs-btn-active-bg: rgba(var(--brand-ink-rgb), 0.14);
+  --bs-btn-active-border-color: var(--brand-ink);
+  --bs-btn-active-color: var(--brand-ink);
+}
+
+/* Formularios */
+.form-control:focus,
+.form-select:focus {
+  border-color: rgba(var(--brand-ink-rgb), 0.35);
+  box-shadow: 0 0 0 .25rem rgba(var(--brand-ink-rgb), 0.12);
+}

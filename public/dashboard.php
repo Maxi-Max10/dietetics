@@ -225,38 +225,39 @@ if ($error !== '') {
   <link rel="icon" type="image/png" href="/logo.png">
   <link rel="preload" as="image" href="/preload.png">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  <link rel="stylesheet" href="/brand.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --accent: #0f766e;
-      --accent-rgb: 15, 118, 110;
-      --accent-2: #f97316;
-      --ink: #0b1727;
-      --muted: #6b7280;
+      --accent: #463B1E;
+      --accent-rgb: 70, 59, 30;
+      --accent-2: #96957E;
+      --ink: #241e10;
+      --muted: #6b6453;
       --card: rgba(255, 255, 255, 0.9);
 
       /* Colores por vista (para que cada botón del navbar represente su sección) */
-      --view-sales: #2563eb;
-      --view-sales-rgb: 37, 99, 235;
-      --view-customers: #7c3aed;
-      --view-customers-rgb: 124, 58, 237;
-      --view-products: #059669;
-      --view-products-rgb: 5, 150, 105;
-      --view-income: #16a34a;
-      --view-income-rgb: 22, 163, 74;
-      --view-expense: #dc2626;
-      --view-expense-rgb: 220, 38, 38;
-      --view-stock: #7c3aed;
-      --view-stock-rgb: 124, 58, 237;
+      --view-sales: #96957E;
+      --view-sales-rgb: 150, 149, 126;
+      --view-customers: #96957E;
+      --view-customers-rgb: 150, 149, 126;
+      --view-products: #96957E;
+      --view-products-rgb: 150, 149, 126;
+      --view-income: #96957E;
+      --view-income-rgb: 150, 149, 126;
+      --view-expense: #96957E;
+      --view-expense-rgb: 150, 149, 126;
+      --view-stock: #96957E;
+      --view-stock-rgb: 150, 149, 126;
     }
 
     body {
       font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
-      background: radial-gradient(circle at 10% 20%, rgba(15, 118, 110, 0.18), transparent 35%),
-        radial-gradient(circle at 90% 10%, rgba(249, 115, 22, 0.18), transparent 35%),
-        linear-gradient(120deg, #f7fafc, #eef2ff);
+      background: radial-gradient(circle at 10% 20%, rgba(150, 149, 126, 0.22), transparent 38%),
+        radial-gradient(circle at 90% 10%, rgba(70, 59, 30, 0.12), transparent 40%),
+        linear-gradient(120deg, #fbfaf6, #E7E3D5);
       color: var(--ink);
       min-height: 100vh;
     }
@@ -322,7 +323,7 @@ if ($error !== '') {
       gap: 0.4rem;
       padding: 0.35rem 0.75rem;
       border-radius: 999px;
-      background: rgba(15, 118, 110, 0.1);
+      background: rgba(var(--accent-rgb), 0.10);
       color: var(--accent);
       font-weight: 600;
       font-size: 0.9rem;
@@ -335,9 +336,9 @@ if ($error !== '') {
     }
 
     .btn-primary, .btn-primary:hover, .btn-primary:focus {
-      background: linear-gradient(135deg, var(--accent), #115e59);
+      background: linear-gradient(135deg, var(--accent), #2f2713);
       border: none;
-      box-shadow: 0 10px 30px rgba(15, 118, 110, 0.25);
+      box-shadow: 0 10px 30px rgba(var(--accent-rgb), 0.25);
     }
 
     .btn-outline-primary {
@@ -346,7 +347,7 @@ if ($error !== '') {
     }
 
     .btn-outline-primary:hover, .btn-outline-primary:focus {
-      background: rgba(15, 118, 110, 0.1);
+      background: rgba(var(--accent-rgb), 0.10);
       color: var(--accent);
       border-color: var(--accent);
     }
@@ -413,9 +414,9 @@ if ($error !== '') {
 
     .nav-link-pill.is-active,
     .nav-link-pill[aria-current="page"] {
-      background: linear-gradient(135deg, var(--accent), #115e59);
+      background: linear-gradient(135deg, var(--accent), #2f2713);
       color: #fff;
-      box-shadow: 0 12px 30px rgba(15, 118, 110, .28);
+      box-shadow: 0 12px 30px rgba(var(--accent-rgb), 0.28);
     }
 
     .nav-link-pill:active { transform: translateY(1px); }
@@ -433,7 +434,7 @@ if ($error !== '') {
     }
 
     .table thead th {
-      background: rgba(15, 118, 110, 0.08);
+      background: rgba(var(--accent-rgb), 0.08);
       border-bottom: none;
       font-weight: 600;
       color: var(--ink);

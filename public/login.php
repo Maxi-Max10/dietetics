@@ -72,10 +72,12 @@ $csrf = csrf_token();
   <title>Login</title>
   <link rel="icon" type="image/png" href="/logo.png">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  <link rel="stylesheet" href="/brand.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <style>
     html, body { overflow-x: hidden; width: 100%; }
     .auth-shell { min-height: 100vh; overflow-x: hidden; }
+    .brand-hero { background: linear-gradient(135deg, #463B1E, #96957E); }
     .auth-container {
       width: 100%;
       padding-left: calc(.75rem + env(safe-area-inset-left));
@@ -135,7 +137,7 @@ $csrf = csrf_token();
         <div class="card shadow auth-card mx-auto">
           <div class="row g-0">
             <div class="col-lg-5">
-              <div class="auth-left bg-success bg-gradient text-white position-relative d-flex align-items-center justify-content-center p-4">
+              <div class="auth-left brand-hero text-white position-relative d-flex align-items-center justify-content-center p-4">
                 <div class="position-absolute auth-blob"></div>
                 <div class="auth-float f1"></div>
                 <div class="auth-float f2"></div>
@@ -177,7 +179,7 @@ $csrf = csrf_token();
 
                   <div class="mb-3"></div>
 
-                  <button type="submit" class="btn btn-success w-100 py-2">Login</button>
+                  <button type="submit" class="btn btn-primary w-100 py-2">Login</button>
 
                   <p class="text-muted small mt-4 mb-0 text-center"><?= e($appName) ?></p>
                 </form>

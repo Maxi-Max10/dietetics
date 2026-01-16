@@ -106,26 +106,27 @@ function sales_active(string $current, string $key): string
   <title>Ventas</title>
   <link rel="icon" type="image/png" href="/logo.png">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  <link rel="stylesheet" href="/brand.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --accent: #2563eb;
-      --accent-rgb: 37, 99, 235;
-      --accent-dark: #1d4ed8;
-      --accent-2: #06b6d4;
-      --accent-2-rgb: 6, 182, 212;
-      --ink: #0b1727;
-      --muted: #6b7280;
+      --accent: #463B1E;
+      --accent-rgb: 70, 59, 30;
+      --accent-dark: #2f2713;
+      --accent-2: #96957E;
+      --accent-2-rgb: 150, 149, 126;
+      --ink: #241e10;
+      --muted: #6b6453;
       --card: rgba(255, 255, 255, 0.9);
     }
 
     body {
       font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
-      background: radial-gradient(circle at 10% 20%, rgba(var(--accent-rgb), 0.18), transparent 35%),
-        radial-gradient(circle at 90% 10%, rgba(var(--accent-2-rgb), 0.18), transparent 35%),
-        linear-gradient(120deg, #f7fafc, #eef2ff);
+      background: radial-gradient(circle at 10% 20%, rgba(var(--accent-2-rgb), 0.22), transparent 38%),
+        radial-gradient(circle at 90% 10%, rgba(var(--accent-rgb), 0.12), transparent 40%),
+        linear-gradient(120deg, #fbfaf6, #E7E3D5);
       color: var(--ink);
       min-height: 100vh;
     }
