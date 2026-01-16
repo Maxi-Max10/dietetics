@@ -61,7 +61,7 @@ try {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title><?= e($appName) ?> - Egresos</title>
+  <title>Egresos</title>
   <link rel="icon" type="image/png" href="/logo.png">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -152,9 +152,8 @@ try {
 <body>
 <nav class="navbar navbar-expand-lg navbar-glass sticky-top">
   <div class="container py-2">
-    <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-dark mb-0 h4 text-decoration-none" href="/dashboard">
+    <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-dark mb-0 h4 text-decoration-none" href="/dashboard" aria-label="<?= e($appName) ?>">
       <img src="/logo.png" alt="Logo" class="navbar-logo">
-      <span><?= e($appName) ?></span>
     </a>
     <div class="ms-auto d-flex align-items-center gap-2 justify-content-end">
       <span class="pill d-none d-lg-inline-flex">Admin</span>
@@ -193,7 +192,7 @@ try {
   <div class="offcanvas-header">
     <div class="d-flex align-items-center gap-2">
       <img src="/logo.png" alt="Logo" class="navbar-logo">
-      <h5 class="offcanvas-title mb-0" id="appNavOffcanvasLabel"><?= e($appName) ?></h5>
+      <h5 class="offcanvas-title mb-0 visually-hidden" id="appNavOffcanvasLabel"><?= e($appName) ?></h5>
       <span class="pill ms-1">Admin</span>
     </div>
     <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
