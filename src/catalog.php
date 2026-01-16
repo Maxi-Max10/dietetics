@@ -18,8 +18,14 @@ function catalog_parse_price_to_cents(string|float|int $price): int
     $s = preg_replace('/\s+/', ' ', $s);
     $s = is_string($s) ? trim($s) : trim($raw);
 
+    // Aceptar miles con espacio (ej: "13 000")
+    $sNoSpaces = str_replace(' ', '', $s);
+    if ($sNoSpaces !== '') {
+        $s = $sNoSpaces;
+    }
+
     $mult = 1.0;
-    if (preg_match('/^([0-9]+(?:[\.,][0-9]{1,2})?)\s*(mil|miles|k)\b/u', $s, $m) === 1) {
+    if (preg_match('/^([0-9]+(?:[\.,][0-9]{1,2})?)(?:\s*)?(mil|miles|k)\b/u', $s, $m) === 1) {
         $mult = 1000.0;
         $s = (string)$m[1];
     }

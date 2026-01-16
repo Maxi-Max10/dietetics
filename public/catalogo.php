@@ -679,7 +679,7 @@ if (is_array($edit)) {
 
     const parseSpokenPrice = (lowerText) => {
       const s = String(lowerText || '').toLowerCase();
-      const numRe = '([0-9]{1,3}(?:[\\.,][0-9]{3})+(?:[\\.,][0-9]{1,2})?|[0-9]+(?:[\\.,][0-9]{1,2})?)';
+      const numRe = '([0-9]{1,3}(?:[\\.,\\s][0-9]{3})+(?:[\\.,][0-9]{1,2})?|[0-9]+(?:[\\.,][0-9]{1,2})?)';
 
       let m = s.match(new RegExp('precios?\\s*[:\\-]?\\s*\\$?\\s*' + numRe + '(?:\\s*(mil|miles|k))?\\b', 'i'));
       if (!m) {
@@ -713,7 +713,7 @@ if (is_array($edit)) {
     // Nombre
     let name = text
       .replace(/\bprecios?\b\s*[:\-]?\s*\$?\s*[0-9]+(?:[\.,][0-9]{1,2})?\s*(mil|miles|k)\b/ig, '')
-      .replace(/\bprecios?\b\s*[:\-]?\s*\$?\s*[0-9]{1,3}(?:[\.,][0-9]{3})+(?:[\.,][0-9]{1,2})?/ig, '')
+      .replace(/\bprecios?\b\s*[:\-]?\s*\$?\s*[0-9]{1,3}(?:[\.,\s][0-9]{3})+(?:[\.,][0-9]{1,2})?/ig, '')
       .replace(/\bprecios?\b\s*[:\-]?\s*\$?\s*[0-9]+(?:[\.,][0-9]{1,2})?/ig, '')
       .replace(/\b(d[oó]lar|usd|euro|eur|ars|peso|pesos)\b/ig, '')
       .replace(/[\$€]/g, '')
