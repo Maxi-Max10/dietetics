@@ -647,6 +647,53 @@ if (is_array($edit)) {
 
     const lower = text.toLowerCase();
 
+    const parseNumberToken = (token) => {
+      let s = String(token || '').trim().replace(/\s+/g, '');
+      if (!s) return null;
+
+      const hasDot = s.includes('.');
+      const hasComma = s.includes(',');
+
+      if (hasDot && hasComma) {
+        // Asumimos que el último separador es decimal y el otro miles.
+        const lastDot = s.lastIndexOf('.');
+        const lastComma = s.lastIndexOf(',');
+        if (lastComma > lastDot) {
+          // 13.000,50
+          s = s.replaceAll('.', '').replace(',', '.');
+        } else {
+          // 13,000.50
+          s = s.replaceAll(',', '');
+        }
+      } else if (/^\d{1,3}([\.,]\d{3})+$/.test(s)) {
+        // 13.000 o 13,000
+        s = s.replace(/[\.,]/g, '');
+      } else {
+        // Decimal simple: 13,50 -> 13.50
+        s = s.replace(',', '.');
+      }
+
+      const n = parseFloat(s);
+      return Number.isFinite(n) ? n : null;
+    };
+
+    const parseSpokenPrice = (lowerText) => {
+      const s = String(lowerText || '').toLowerCase();
+      const numRe = '([0-9]{1,3}(?:[\\.,][0-9]{3})+(?:[\\.,][0-9]{1,2})?|[0-9]+(?:[\\.,][0-9]{1,2})?)';
+
+      let m = s.match(new RegExp('precios?\\s*[:\\-]?\\s*\\$?\\s*' + numRe + '(?:\\s*(mil|miles|k))?\\b', 'i'));
+      if (!m) {
+        m = s.match(new RegExp('\\b' + numRe + '(?:\\s*(mil|miles|k))?\\b', 'i'));
+      }
+      if (!m || !m[1]) return null;
+
+      const base = parseNumberToken(m[1]);
+      if (base === null) return null;
+
+      const mult = (m[2] && String(m[2]).trim() !== '') ? 1000 : 1;
+      return base * mult;
+    };
+
     // Moneda
     let currency = 'ARS';
     if (/(\beuro\b|\beur\b)/i.test(lower)) currency = 'EUR';
@@ -655,18 +702,18 @@ if (is_array($edit)) {
 
     // Precio
     let price = '';
-    const mPrecio = lower.match(/precios?\s*[:\-]?\s*\$?\s*([0-9]+(?:[\.,][0-9]{1,2})?)/i);
-    if (mPrecio && mPrecio[1]) {
-      price = mPrecio[1].replace(',', '.');
-    } else {
-      const nums = lower.match(/([0-9]+(?:[\.,][0-9]{1,2})?)/g);
-      if (nums && nums.length > 0) {
-        price = String(nums[nums.length - 1]).replace(',', '.');
-      }
+    const parsedPrice = parseSpokenPrice(lower);
+    if (parsedPrice !== null) {
+      price = Number.isInteger(parsedPrice)
+        ? String(parsedPrice)
+        : String(parsedPrice.toFixed(2));
+      price = price.replace(/\.00$/, '');
     }
 
     // Nombre
     let name = text
+      .replace(/\bprecios?\b\s*[:\-]?\s*\$?\s*[0-9]+(?:[\.,][0-9]{1,2})?\s*(mil|miles|k)\b/ig, '')
+      .replace(/\bprecios?\b\s*[:\-]?\s*\$?\s*[0-9]{1,3}(?:[\.,][0-9]{3})+(?:[\.,][0-9]{1,2})?/ig, '')
       .replace(/\bprecios?\b\s*[:\-]?\s*\$?\s*[0-9]+(?:[\.,][0-9]{1,2})?/ig, '')
       .replace(/\b(d[oó]lar|usd|euro|eur|ars|peso|pesos)\b/ig, '')
       .replace(/[\$€]/g, '')

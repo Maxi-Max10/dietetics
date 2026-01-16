@@ -6,6 +6,52 @@ declare(strict_types=1);
  * Catálogo de productos (lista de precios).
  */
 
+function catalog_parse_price_to_cents(string|float|int $price): int
+{
+    $raw = trim((string)$price);
+    if ($raw === '') {
+        throw new InvalidArgumentException('Precio inválido.');
+    }
+
+    $s = function_exists('mb_strtolower') ? mb_strtolower($raw, 'UTF-8') : strtolower($raw);
+    $s = str_replace(['$', '€'], '', $s);
+    $s = preg_replace('/\s+/', ' ', $s);
+    $s = is_string($s) ? trim($s) : trim($raw);
+
+    $mult = 1.0;
+    if (preg_match('/^([0-9]+(?:[\.,][0-9]{1,2})?)\s*(mil|miles|k)\b/u', $s, $m) === 1) {
+        $mult = 1000.0;
+        $s = (string)$m[1];
+    }
+
+    // Normalizar separadores
+    $hasDot = str_contains($s, '.');
+    $hasComma = str_contains($s, ',');
+    if ($hasDot && $hasComma) {
+        // 13.000,50 -> 13000.50
+        $s = str_replace('.', '', $s);
+        $s = str_replace(',', '.', $s);
+    } elseif ($hasComma && !$hasDot) {
+        // 13,50 -> 13.50
+        $s = str_replace(',', '.', $s);
+    } else {
+        // dejar '.' como decimal
+    }
+
+    // Validar formato numérico final
+    if (preg_match('/^[0-9]+(?:\.[0-9]{1,2})?$/', $s) !== 1) {
+        throw new InvalidArgumentException('Precio inválido.');
+    }
+
+    $value = (float)$s;
+    if (!is_finite($value) || $value < 0) {
+        throw new InvalidArgumentException('Precio inválido.');
+    }
+
+    $cents = (int)round(($value * $mult) * 100);
+    return $cents;
+}
+
 function catalog_supports_table(PDO $pdo): bool
 {
     static $cache = null;
@@ -158,11 +204,7 @@ function catalog_create(PDO $pdo, int $createdBy, string $name, string|float|int
         throw new InvalidArgumentException('Nombre demasiado largo.');
     }
 
-    $priceFloat = (float)str_replace(',', '.', (string)$price);
-    if (!is_finite($priceFloat) || $priceFloat < 0) {
-        throw new InvalidArgumentException('Precio inválido.');
-    }
-    $priceCents = (int)round($priceFloat * 100);
+    $priceCents = catalog_parse_price_to_cents($price);
 
     $currency = strtoupper(trim($currency));
     if ($currency === '') {
@@ -208,11 +250,7 @@ function catalog_update(PDO $pdo, int $createdBy, int $id, string $name, string|
         throw new InvalidArgumentException('Nombre demasiado largo.');
     }
 
-    $priceFloat = (float)str_replace(',', '.', (string)$price);
-    if (!is_finite($priceFloat) || $priceFloat < 0) {
-        throw new InvalidArgumentException('Precio inválido.');
-    }
-    $priceCents = (int)round($priceFloat * 100);
+    $priceCents = catalog_parse_price_to_cents($price);
 
     $currency = strtoupper(trim($currency));
     if ($currency === '') {
