@@ -67,20 +67,24 @@
 /* Variante clara de marca (ideal para pantallas de login) */
 .btn-brand-light {
   --bs-btn-color: var(--brand-ink);
-  --bs-btn-bg: transparent;
+  --bs-btn-bg: rgba(var(--brand-sand-rgb), 0.92);
   --bs-btn-border-color: rgba(var(--brand-ink-rgb), 0.22);
+  --bs-btn-hover-bg: rgba(var(--brand-sand-rgb), 0.84);
   --bs-btn-hover-border-color: rgba(var(--brand-ink-rgb), 0.30);
+  --bs-btn-active-bg: rgba(var(--brand-sand-rgb), 0.78);
   --bs-btn-active-border-color: rgba(var(--brand-ink-rgb), 0.34);
   color: var(--brand-ink);
   border: 1px solid rgba(var(--brand-ink-rgb), 0.22);
-  background: linear-gradient(135deg, rgba(var(--brand-sand-rgb), 0.92), rgba(255, 255, 255, 0.92));
+  background-color: rgba(var(--brand-sand-rgb), 0.92) !important;
+  background-image: linear-gradient(135deg, rgba(var(--brand-sand-rgb), 0.92), rgba(255, 255, 255, 0.92)) !important;
   box-shadow: 0 14px 34px rgba(var(--brand-ink-rgb), 0.10);
 }
 
 .btn-brand-light:hover,
 .btn-brand-light:focus {
   color: var(--brand-ink);
-  background: linear-gradient(135deg, rgba(var(--brand-sand-rgb), 0.80), rgba(255, 255, 255, 0.95));
+  background-color: rgba(var(--brand-sand-rgb), 0.84) !important;
+  background-image: linear-gradient(135deg, rgba(var(--brand-sand-rgb), 0.80), rgba(255, 255, 255, 0.95)) !important;
   box-shadow: 0 16px 40px rgba(var(--brand-ink-rgb), 0.14);
 }
 
