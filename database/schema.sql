@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS invoices (
   customer_phone VARCHAR(40) NULL,
   customer_email VARCHAR(190) NOT NULL DEFAULT '',
   customer_dni VARCHAR(32) NULL,
+  customer_address VARCHAR(255) NULL,
   detail TEXT NULL,
   currency CHAR(3) NOT NULL DEFAULT 'ARS',
   total_cents INT UNSIGNED NOT NULL DEFAULT 0,
@@ -29,6 +30,9 @@ CREATE TABLE IF NOT EXISTS invoices (
     FOREIGN KEY (created_by) REFERENCES users(id)
     ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Si ya tenías la tabla creada, podés agregar la columna con:
+-- ALTER TABLE invoices ADD COLUMN customer_address VARCHAR(255) NULL AFTER customer_dni;
 
 CREATE TABLE IF NOT EXISTS invoice_items (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,

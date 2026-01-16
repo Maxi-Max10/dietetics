@@ -14,6 +14,7 @@ function invoice_render_html(array $data, array $options = []): string
     $customerName = (string)($invoice['customer_name'] ?? '');
     $customerEmail = (string)($invoice['customer_email'] ?? '');
     $customerPhone = (string)($invoice['customer_phone'] ?? '');
+    $customerAddress = (string)($invoice['customer_address'] ?? '');
     $detail = (string)($invoice['detail'] ?? '');
     $currency = (string)($invoice['currency'] ?? 'USD');
     $totalCents = (int)($invoice['total_cents'] ?? 0);
@@ -166,6 +167,9 @@ function invoice_render_html(array $data, array $options = []): string
   }
   if (trim($customerEmail) !== '') {
     $customerContactHtml .= '<div class="muted">' . htmlspecialchars($customerEmail, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</div>';
+  }
+  if (trim($customerAddress) !== '') {
+    $customerContactHtml .= '<div class="muted">' . htmlspecialchars($customerAddress, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</div>';
   }
 
     return "<!doctype html>

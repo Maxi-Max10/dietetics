@@ -101,7 +101,7 @@ function invoice_compute_line_from_base_price(string $unit, float $quantity, flo
 /**
  * @param array<int, array{description:string, quantity:string|float|int, unit?:string, unit_price:string|float|int}> $items
  */
-function invoices_create(PDO $pdo, int $createdBy, string $customerName, string $customerEmail, string $detail, array $items, string $currency = 'ARS', string $customerDni = '', string $customerPhone = ''): int
+function invoices_create(PDO $pdo, int $createdBy, string $customerName, string $customerEmail, string $detail, array $items, string $currency = 'ARS', string $customerDni = '', string $customerPhone = '', string $customerAddress = ''): int
 {
     $customerName = trim($customerName);
     $customerEmail = trim($customerEmail);
@@ -136,6 +136,12 @@ function invoices_create(PDO $pdo, int $createdBy, string $customerName, string 
     $dniLen = function_exists('mb_strlen') ? (int)mb_strlen($dni, 'UTF-8') : strlen($dni);
     if ($dni !== '' && $dniLen > 32) {
         throw new InvalidArgumentException('DNI demasiado largo.');
+    }
+
+    $customerAddress = trim($customerAddress);
+    $addressLen = function_exists('mb_strlen') ? (int)mb_strlen($customerAddress, 'UTF-8') : strlen($customerAddress);
+    if ($customerAddress !== '' && $addressLen > 255) {
+        throw new InvalidArgumentException('Domicilio demasiado largo.');
     }
 
     $normalized = [];
@@ -182,9 +188,16 @@ function invoices_create(PDO $pdo, int $createdBy, string $customerName, string 
 
         $supportsPhone = invoices_supports_customer_phone($pdo);
 
+        $supportsAddress = invoices_supports_customer_address($pdo);
+
         $detailDb = $detail;
         if (!$supportsPhone && $customerPhone !== '') {
             $prefix = 'Tel: ' . $customerPhone;
+            $detailDb = ($detailDb === '') ? $prefix : ($prefix . "\n" . $detailDb);
+        }
+
+        if (!$supportsAddress && $customerAddress !== '') {
+            $prefix = 'Domicilio: ' . $customerAddress;
             $detailDb = ($detailDb === '') ? $prefix : ($prefix . "\n" . $detailDb);
         }
 
@@ -207,6 +220,12 @@ function invoices_create(PDO $pdo, int $createdBy, string $customerName, string 
             $cols[] = 'customer_dni';
             $vals[] = ':customer_dni';
             $params['customer_dni'] = $dni === '' ? null : $dni;
+        }
+
+        if ($supportsAddress) {
+            $cols[] = 'customer_address';
+            $vals[] = ':customer_address';
+            $params['customer_address'] = $customerAddress === '' ? null : $customerAddress;
         }
 
         $cols[] = 'detail';
@@ -315,6 +334,31 @@ function invoices_create(PDO $pdo, int $createdBy, string $customerName, string 
     } catch (Throwable $e) {
         $pdo->rollBack();
         throw $e;
+    }
+}
+
+function invoices_supports_customer_address(PDO $pdo): bool
+{
+    static $cache = null;
+    if (is_bool($cache)) {
+        return $cache;
+    }
+
+    try {
+        $stmt = $pdo->prepare(
+            "SELECT 1
+             FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = 'invoices'
+               AND COLUMN_NAME = :col
+             LIMIT 1"
+        );
+        $stmt->execute(['col' => 'customer_address']);
+        $cache = (bool)$stmt->fetchColumn();
+        return $cache;
+    } catch (Throwable $e) {
+        $cache = false;
+        return false;
     }
 }
 

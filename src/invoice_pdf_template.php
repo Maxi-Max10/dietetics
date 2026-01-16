@@ -34,6 +34,7 @@ function invoice_build_pdf_from_template(array $data): array
     $customerEmail = (string)($invoice['customer_email'] ?? '');
     $customerPhone = (string)($invoice['customer_phone'] ?? '');
     $customerDni = (string)($invoice['customer_dni'] ?? '');
+    $customerAddress = (string)($invoice['customer_address'] ?? '');
     $detail = (string)($invoice['detail'] ?? '');
     $currency = (string)($invoice['currency'] ?? 'ARS');
     $totalCents = (int)($invoice['total_cents'] ?? 0);
@@ -178,6 +179,12 @@ function invoice_build_pdf_from_template(array $data): array
     if (trim($customerDni) !== '') {
         $pdf->SetXY($xLeft, $yLine);
         $pdf->Cell(0, 6, $toPdfText('DNI: ' . $customerDni), 0, 1);
+        $yLine += 6;
+    }
+
+    if (trim($customerAddress) !== '') {
+        $pdf->SetXY($xLeft, $yLine);
+        $pdf->Cell(0, 6, $toPdfText('Domicilio: ' . $customerAddress), 0, 1);
         $yLine += 6;
     }
 
