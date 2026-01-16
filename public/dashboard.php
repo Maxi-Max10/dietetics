@@ -10,7 +10,7 @@ $showPreload = !empty($_SESSION['preload_dashboard']);
 unset($_SESSION['preload_dashboard']);
 
 $config = app_config();
-$appName = (string)($config['app']['name'] ?? 'Dietetics');
+$appName = (string)($config['app']['name'] ?? 'Dietetic');
 $userId = (int)auth_user_id();
 $csrf = csrf_token();
 

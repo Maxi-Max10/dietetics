@@ -7,7 +7,7 @@ require_once __DIR__ . '/../src/bootstrap.php';
 auth_require_login();
 
 $config = app_config();
-$appName = (string)($config['app']['name'] ?? 'Dietetics');
+$appName = (string)($config['app']['name'] ?? 'Dietetic');
 $userId = (int)auth_user_id();
 $csrf = csrf_token();
 

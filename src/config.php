@@ -15,15 +15,15 @@ if (is_file($localConfigPath)) {
  */
 return [
     'app' => [
-        'name' => getenv('APP_NAME') ?: (defined('APP_NAME') ? APP_NAME : 'Dietetics'),
+        'name' => getenv('APP_NAME') ?: (defined('APP_NAME') ? APP_NAME : 'Dietetic'),
         'env' => getenv('APP_ENV') ?: (defined('APP_ENV') ? APP_ENV : 'production'),
         'base_url' => getenv('APP_BASE_URL') ?: (defined('APP_BASE_URL') ? APP_BASE_URL : ''),
     ],
     'db' => [
         'host' => getenv('DB_HOST') ?: (defined('DB_HOST') ? DB_HOST : 'localhost'),
-        'name' => getenv('DB_NAME') ?: (defined('DB_NAME') ? DB_NAME : 'u404968876_dietetics'),
-        'user' => getenv('DB_USER') ?: (defined('DB_USER') ? DB_USER : 'u404968876_dietetics'),
-        'pass' => getenv('DB_PASS') ?: (defined('DB_PASS') ? DB_PASS : 'Dietetics2025@'),
+        'name' => getenv('DB_NAME') ?: (defined('DB_NAME') ? DB_NAME : ''),
+        'user' => getenv('DB_USER') ?: (defined('DB_USER') ? DB_USER : ''),
+        'pass' => getenv('DB_PASS') ?: (defined('DB_PASS') ? DB_PASS : ''),
         'charset' => getenv('DB_CHARSET') ?: (defined('DB_CHARSET') ? DB_CHARSET : 'utf8mb4'),
     ],
     'security' => [
