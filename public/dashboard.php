@@ -223,6 +223,7 @@ if ($error !== '') {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><?= e($appName) ?> - Dashboard</title>
   <link rel="icon" type="image/png" href="/logo.png">
+  <link rel="preload" as="image" href="/preload.png">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -521,7 +522,7 @@ if ($error !== '') {
 <body>
 <?php if ($showPreload): ?>
   <div class="preload-overlay" id="preloadOverlay" aria-hidden="true">
-    <img src="/logo.png" alt="Logo">
+    <img src="/preload.png" alt="Cargando">
   </div>
 <?php endif; ?>
 
