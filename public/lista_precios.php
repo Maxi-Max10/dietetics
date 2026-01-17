@@ -301,6 +301,12 @@ $csrf = csrf_token();
       const priceBase = it.price_formatted || fmtMoney(it.price_cents || 0, it.currency || 'ARS');
       const price = it.price_label || (priceBase + (unit ? (' / ' + unit) : ''));
 
+      const helperText = (unit === 'kg')
+        ? 'Se cobra por kg. Si elegís g, se convierte automáticamente.'
+        : (unit === 'l')
+          ? 'Se cobra por litro. Si elegís ml, se convierte automáticamente.'
+          : '';
+
       const opts = unitOptionsFor(unit);
       const def = defaultQtyFor(unit);
       const hasSelect = opts.length > 1;
@@ -323,6 +329,7 @@ $csrf = csrf_token();
             <input type="number" class="form-control qty-input" value="${escapeHtml(def.value)}" min="${escapeHtml(qtyConfig.min)}" step="${escapeHtml(qtyConfig.step)}">
             ${unitSelectHtml}
           </div>
+          ${helperText ? `<div class="text-muted" style="font-size:.8rem; margin-top:.35rem; text-align:right;">${escapeHtml(helperText)}</div>` : ''}
         </td>
         <td class="text-end">
           <button type="button" class="btn btn-outline-primary btn-sm action-btn">Agregar</button>
