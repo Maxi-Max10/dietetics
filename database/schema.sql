@@ -49,6 +49,43 @@ CREATE TABLE IF NOT EXISTS invoice_items (
     ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Pedidos públicos (lista de precios + encargo para retirar en el local)
+CREATE TABLE IF NOT EXISTS customer_orders (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  created_by INT UNSIGNED NOT NULL,
+  customer_name VARCHAR(190) NOT NULL,
+  customer_phone VARCHAR(40) NULL,
+  customer_address VARCHAR(255) NULL,
+  notes TEXT NULL,
+  currency CHAR(3) NOT NULL DEFAULT 'ARS',
+  total_cents INT UNSIGNED NOT NULL DEFAULT 0,
+  status ENUM('new','confirmed','cancelled','fulfilled') NOT NULL DEFAULT 'new',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_customer_orders_created_by (created_by),
+  KEY idx_customer_orders_created_by_status_created_at (created_by, status, created_at),
+  CONSTRAINT fk_customer_orders_users
+    FOREIGN KEY (created_by) REFERENCES users(id)
+    ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS customer_order_items (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  order_id INT UNSIGNED NOT NULL,
+  product_id INT UNSIGNED NULL,
+  description VARCHAR(255) NOT NULL,
+  quantity DECIMAL(10,2) NOT NULL DEFAULT 1.00,
+  unit_price_cents INT UNSIGNED NOT NULL DEFAULT 0,
+  line_total_cents INT UNSIGNED NOT NULL DEFAULT 0,
+  PRIMARY KEY (id),
+  KEY idx_customer_order_items_order_id (order_id),
+  KEY idx_customer_order_items_product_id (product_id),
+  CONSTRAINT fk_customer_order_items_orders
+    FOREIGN KEY (order_id) REFERENCES customer_orders(id)
+    ON DELETE CASCADE ON UPDATE CASCADE
+  -- product_id no tiene FK porque el catálogo es por usuario y puede cambiar con el tiempo.
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Finanzas: ingresos/egresos manuales (no reemplaza ventas por facturas; es complementario)
 CREATE TABLE IF NOT EXISTS finance_entries (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,

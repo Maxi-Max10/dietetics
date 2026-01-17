@@ -571,6 +571,7 @@ if ($error !== '') {
           <a class="nav-link-pill" href="/customers">Clientes</a>
           <a class="nav-link-pill" href="/products">Productos</a>
           <a class="nav-link-pill" href="/catalogo">Catálogo</a>
+          <a class="nav-link-pill" href="/pedidos">Pedidos</a>
           <a class="nav-link-pill" href="/income">Ingresos</a>
           <a class="nav-link-pill" href="/expense">Egresos</a>
           <a class="nav-link-pill" href="/stock">Stock</a>
@@ -629,6 +630,15 @@ if ($error !== '') {
           <path d="M3 12.5h10" />
         </svg>
         Catálogo
+      </a>
+      <a class="list-group-item list-group-item-action d-flex align-items-center gap-2" href="/pedidos">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 3.5h10" />
+          <path d="M3 6.5h10" />
+          <path d="M3 9.5h7" />
+          <path d="M11.5 10.5 13 12l2-3" />
+        </svg>
+        Pedidos
       </a>
       <a class="list-group-item list-group-item-action d-flex align-items-center gap-2" href="/income">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
