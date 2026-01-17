@@ -174,7 +174,7 @@ $csrf = csrf_token();
   const orderForm = document.getElementById('orderForm');
   const orderMsg = document.getElementById('orderMsg');
 
-  /** cart: productId -> { id, name, price_cents, currency, qty } */
+  /** cart: productId -> { id, name, price_cents, currency, unit, qty_base, qty_display, qty_display_unit } */
   const cart = new Map();
   let lastCurrency = 'ARS';
 
@@ -182,6 +182,54 @@ $csrf = csrf_token();
     const amount = (cents || 0) / 100;
     const symbol = (String(currency || 'ARS').toUpperCase() === 'ARS') ? '$' : '$';
     return symbol + amount.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const unitOptionsFor = (baseUnit) => {
+    const u = String(baseUnit || '').trim();
+    if (u === 'kg') return ['g', 'kg'];
+    if (u === 'l') return ['ml', 'l'];
+    if (u === 'g') return ['g'];
+    if (u === 'ml') return ['ml'];
+    if (u === 'un') return ['un'];
+    return [''];
+  };
+
+  const defaultQtyFor = (baseUnit) => {
+    const u = String(baseUnit || '').trim();
+    if (u === 'kg') return { unit: 'g', value: '100' };
+    if (u === 'l') return { unit: 'ml', value: '100' };
+    if (u === 'un') return { unit: 'un', value: '1' };
+    if (u === 'g') return { unit: 'g', value: '100' };
+    if (u === 'ml') return { unit: 'ml', value: '100' };
+    return { unit: '', value: '1' };
+  };
+
+  const inputStepFor = (displayUnit) => {
+    const u = String(displayUnit || '').trim();
+    if (u === 'un') return { step: '1', min: '1' };
+    if (u === 'g' || u === 'ml') return { step: '1', min: '1' };
+    // kg / l (o vacío)
+    return { step: '0.01', min: '0.01' };
+  };
+
+  const toBaseQty = (qtyDisplay, displayUnit, baseUnit) => {
+    const q = Number(qtyDisplay);
+    if (!Number.isFinite(q) || q <= 0) return null;
+
+    const du = String(displayUnit || '').trim();
+    const bu = String(baseUnit || '').trim();
+
+    if (bu === 'kg') {
+      if (du === 'g') return q / 1000;
+      return q; // kg
+    }
+    if (bu === 'l') {
+      if (du === 'ml') return q / 1000;
+      return q; // l
+    }
+
+    // base ya es g/ml/un
+    return q;
   };
 
   const renderCart = () => {
@@ -204,16 +252,19 @@ $csrf = csrf_token();
     for (const it of cart.values()) {
       currency = it.currency || currency;
       lastCurrency = currency;
-      const line = Math.round((it.price_cents || 0) * (it.qty || 0));
+      const line = Math.round((it.price_cents || 0) * (it.qty_base || 0));
       totalCents += line;
 
       const row = document.createElement('div');
       row.className = 'list-group-item d-flex align-items-start justify-content-between gap-2';
       const unitLabel = it.unit ? (' / ' + it.unit) : '';
+      const qtyText = (it.qty_display_unit && it.qty_display_unit !== '')
+        ? (String(it.qty_display) + ' ' + String(it.qty_display_unit))
+        : String(it.qty_display);
       row.innerHTML = `
         <div class="me-2" style="min-width: 0;">
           <div class="fw-semibold text-truncate">${escapeHtml(it.name || '')}</div>
-          <div class="text-muted" style="font-size:.9rem;">${escapeHtml(String(it.qty))} × ${escapeHtml(fmtMoney(it.price_cents, currency) + unitLabel)}</div>
+          <div class="text-muted" style="font-size:.9rem;">${escapeHtml(qtyText)} × ${escapeHtml(fmtMoney(it.price_cents, currency) + unitLabel)}</div>
         </div>
         <button class="btn btn-sm btn-outline-danger" type="button" aria-label="Quitar">Quitar</button>
       `;
@@ -250,6 +301,17 @@ $csrf = csrf_token();
       const priceBase = it.price_formatted || fmtMoney(it.price_cents || 0, it.currency || 'ARS');
       const price = it.price_label || (priceBase + (unit ? (' / ' + unit) : ''));
 
+      const opts = unitOptionsFor(unit);
+      const def = defaultQtyFor(unit);
+      const hasSelect = opts.length > 1;
+      const qtyConfig = inputStepFor(def.unit);
+
+      const unitSelectHtml = hasSelect
+        ? `<select class="form-select form-select-sm" style="max-width: 86px;">
+            ${opts.map(u => `<option value="${escapeHtml(u)}" ${u === def.unit ? 'selected' : ''}>${escapeHtml(u)}</option>`).join('')}
+           </select>`
+        : `<span class="text-muted" style="font-size:.9rem;">${escapeHtml(def.unit || unit || '')}</span>`;
+
       tr.innerHTML = `
         <td>
           <div class="fw-semibold">${escapeHtml(name)}</div>
@@ -257,7 +319,10 @@ $csrf = csrf_token();
         </td>
         <td class="text-end fw-semibold">${escapeHtml(price)}</td>
         <td>
-          <input type="number" class="form-control qty-input" min="0.01" step="0.01" value="1">
+          <div class="d-flex align-items-center gap-2 justify-content-end">
+            <input type="number" class="form-control qty-input" value="${escapeHtml(def.value)}" min="${escapeHtml(qtyConfig.min)}" step="${escapeHtml(qtyConfig.step)}">
+            ${unitSelectHtml}
+          </div>
         </td>
         <td class="text-end">
           <button type="button" class="btn btn-outline-primary btn-sm action-btn">Agregar</button>
@@ -265,11 +330,36 @@ $csrf = csrf_token();
       `;
 
       const qtyInput = tr.querySelector('input');
+      const unitSelect = tr.querySelector('select');
       const btn = tr.querySelector('button');
+
+      if (unitSelect) {
+        unitSelect.addEventListener('change', () => {
+          const chosen = String(unitSelect.value || '').trim();
+          const cfg = inputStepFor(chosen);
+          qtyInput.min = cfg.min;
+          qtyInput.step = cfg.step;
+
+          // Ajuste simple de defaults al cambiar unidad
+          if (chosen === 'kg' || chosen === 'l') {
+            if (qtyInput.value === '' || Number(qtyInput.value) > 10) qtyInput.value = '0.1';
+          } else if (chosen === 'g' || chosen === 'ml') {
+            if (qtyInput.value === '' || Number(qtyInput.value) < 1) qtyInput.value = '100';
+          }
+        });
+      }
+
       btn.addEventListener('click', () => {
         const raw = String(qtyInput.value || '1').replace(',', '.');
         const qty = Number(raw);
         if (!Number.isFinite(qty) || qty <= 0) {
+          qtyInput.focus();
+          return;
+        }
+
+        const displayUnit = unitSelect ? String(unitSelect.value || '').trim() : (unit || '');
+        const qtyBase = toBaseQty(qty, displayUnit, unit);
+        if (qtyBase === null || !Number.isFinite(qtyBase) || qtyBase <= 0) {
           qtyInput.focus();
           return;
         }
@@ -280,7 +370,9 @@ $csrf = csrf_token();
           price_cents: Number(it.price_cents || 0),
           currency: String(it.currency || 'ARS'),
           unit: unit,
-          qty: qty,
+          qty_base: qtyBase,
+          qty_display: qty,
+          qty_display_unit: displayUnit,
         });
         renderCart();
       });
@@ -329,7 +421,8 @@ $csrf = csrf_token();
 
     const items = [];
     for (const it of cart.values()) {
-      items.push({ product_id: it.id, quantity: String(it.qty) });
+      // Enviamos cantidad en la unidad base del precio (ej: kg o l) para que el servidor calcule bien.
+      items.push({ product_id: it.id, quantity: String(it.qty_base) });
     }
 
     const payload = {
