@@ -209,10 +209,11 @@ $csrf = csrf_token();
 
       const row = document.createElement('div');
       row.className = 'list-group-item d-flex align-items-start justify-content-between gap-2';
+      const unitLabel = it.unit ? (' / ' + it.unit) : '';
       row.innerHTML = `
         <div class="me-2" style="min-width: 0;">
           <div class="fw-semibold text-truncate">${escapeHtml(it.name || '')}</div>
-          <div class="text-muted" style="font-size:.9rem;">${escapeHtml(String(it.qty))} × ${escapeHtml(fmtMoney(it.price_cents, currency))}</div>
+          <div class="text-muted" style="font-size:.9rem;">${escapeHtml(String(it.qty))} × ${escapeHtml(fmtMoney(it.price_cents, currency) + unitLabel)}</div>
         </div>
         <button class="btn btn-sm btn-outline-danger" type="button" aria-label="Quitar">Quitar</button>
       `;
@@ -245,7 +246,9 @@ $csrf = csrf_token();
       const tr = document.createElement('tr');
       const name = it.name || '';
       const desc = it.description || '';
-      const price = it.price_formatted || fmtMoney(it.price_cents || 0, it.currency || 'ARS');
+      const unit = String(it.unit || '').trim();
+      const priceBase = it.price_formatted || fmtMoney(it.price_cents || 0, it.currency || 'ARS');
+      const price = it.price_label || (priceBase + (unit ? (' / ' + unit) : ''));
 
       tr.innerHTML = `
         <td>
@@ -276,6 +279,7 @@ $csrf = csrf_token();
           name: name,
           price_cents: Number(it.price_cents || 0),
           currency: String(it.currency || 'ARS'),
+          unit: unit,
           qty: qty,
         });
         renderCart();

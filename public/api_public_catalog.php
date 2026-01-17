@@ -25,13 +25,17 @@ try {
 
     $out = [];
     foreach ($items as $r) {
+        $unit = trim((string)($r['unit'] ?? ''));
+        $priceFormatted = money_format_cents((int)($r['price_cents'] ?? 0), (string)($r['currency'] ?? 'ARS'));
         $out[] = [
             'id' => (int)($r['id'] ?? 0),
             'name' => (string)($r['name'] ?? ''),
             'description' => (string)($r['description'] ?? ''),
+            'unit' => $unit,
             'price_cents' => (int)($r['price_cents'] ?? 0),
             'currency' => (string)($r['currency'] ?? 'ARS'),
-            'price_formatted' => money_format_cents((int)($r['price_cents'] ?? 0), (string)($r['currency'] ?? 'ARS')),
+            'price_formatted' => $priceFormatted,
+            'price_label' => $priceFormatted . ($unit !== '' ? (' / ' . $unit) : ''),
         ];
     }
 

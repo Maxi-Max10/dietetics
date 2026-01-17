@@ -49,13 +49,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && $wantsJson) {
     $items = catalog_list($pdo, $userId, $qAjax, 300);
     $out = [];
     foreach ($items as $r) {
+      $unit = trim((string)($r['unit'] ?? ''));
+      $priceFormatted = money_format_cents((int)($r['price_cents'] ?? 0), (string)($r['currency'] ?? 'ARS'));
       $out[] = [
         'id' => (int)($r['id'] ?? 0),
         'name' => (string)($r['name'] ?? ''),
         'description' => (string)($r['description'] ?? ''),
+        'unit' => $unit,
         'price_cents' => (int)($r['price_cents'] ?? 0),
         'currency' => (string)($r['currency'] ?? 'ARS'),
-        'price_formatted' => money_format_cents((int)($r['price_cents'] ?? 0), (string)($r['currency'] ?? 'ARS')),
+        'price_formatted' => $priceFormatted,
+        'price_label' => $priceFormatted . ($unit !== '' ? (' / ' . $unit) : ''),
       ];
     }
 
@@ -105,10 +109,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($action === 'create') {
               $name = trim((string)($data['name'] ?? ''));
               $description = trim((string)($data['description'] ?? ''));
+              $unit = trim((string)($data['unit'] ?? ''));
               $price = (string)($data['price'] ?? '0');
               $currency = trim((string)($data['currency'] ?? 'ARS'));
 
-                catalog_create($pdo, $userId, $name, $price, $currency, $description);
+                catalog_create($pdo, $userId, $name, $price, $currency, $description, $unit);
               if ($wantsJson) {
                 header('Content-Type: application/json; charset=utf-8');
                 echo json_encode(['ok' => true, 'message' => 'Producto agregado al catálogo.'], JSON_UNESCAPED_UNICODE);
@@ -124,10 +129,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               $id = (int)($data['id'] ?? 0);
               $name = trim((string)($data['name'] ?? ''));
               $description = trim((string)($data['description'] ?? ''));
+              $unit = trim((string)($data['unit'] ?? ''));
               $price = (string)($data['price'] ?? '0');
               $currency = trim((string)($data['currency'] ?? 'ARS'));
 
-                catalog_update($pdo, $userId, $id, $name, $price, $currency, $description);
+                catalog_update($pdo, $userId, $id, $name, $price, $currency, $description, $unit);
               if ($wantsJson) {
                 header('Content-Type: application/json; charset=utf-8');
                 echo json_encode(['ok' => true, 'message' => 'Producto actualizado.'], JSON_UNESCAPED_UNICODE);
@@ -205,6 +211,7 @@ try {
 
 $defaultName = is_array($edit) ? (string)($edit['name'] ?? '') : '';
 $defaultDescription = is_array($edit) ? (string)($edit['description'] ?? '') : '';
+$defaultUnit = is_array($edit) ? (string)($edit['unit'] ?? '') : '';
 $defaultCurrency = is_array($edit) ? (string)($edit['currency'] ?? 'ARS') : 'ARS';
 $defaultPrice = '';
 if (is_array($edit)) {
@@ -422,6 +429,22 @@ if (is_array($edit)) {
               <input class="form-control" id="price" name="price" inputmode="decimal" placeholder="0.00" value="<?= e($defaultPrice) ?>" required>
             </div>
             <div class="col-12 col-md-3">
+              <label class="form-label" for="unit">Unidad</label>
+              <select class="form-select" id="unit" name="unit">
+                <?php foreach ([
+                  '' => '— (sin unidad)',
+                  'un' => 'Por unidad (un)',
+                  'kg' => 'Por kilo (kg)',
+                  'g' => 'Por gramo (g)',
+                  'l' => 'Por litro (l)',
+                  'ml' => 'Por mililitro (ml)',
+                ] as $k => $label): ?>
+                  <option value="<?= e($k) ?>" <?= (string)$defaultUnit === (string)$k ? 'selected' : '' ?>><?= e($label) ?></option>
+                <?php endforeach; ?>
+              </select>
+              <div class="form-text">Aclaración: el precio puede ser por <strong>kg / g / l / ml / unidad</strong>.</div>
+            </div>
+            <div class="col-12 col-md-3">
               <label class="form-label" for="currency">Moneda</label>
               <select class="form-select" id="currency" name="currency">
                 <?php foreach (['ARS', 'USD', 'EUR'] as $cur): ?>
@@ -471,10 +494,11 @@ if (is_array($edit)) {
                 <tr><td colspan="4" class="text-muted">Sin resultados.</td></tr>
               <?php else: ?>
                 <?php foreach ($rows as $r): ?>
+                  <?php $unit = trim((string)($r['unit'] ?? '')); ?>
                   <tr>
                     <td><?= e((string)$r['name']) ?></td>
                     <td class="text-muted"><?= e(trim((string)($r['description'] ?? '')) !== '' ? (string)$r['description'] : '—') ?></td>
-                    <td class="text-end"><?= e(money_format_cents((int)$r['price_cents'], (string)$r['currency'])) ?></td>
+                    <td class="text-end"><?= e(money_format_cents((int)$r['price_cents'], (string)$r['currency']) . ($unit !== '' ? (' / ' . $unit) : '')) ?></td>
                     <td class="text-end">
                       <div class="d-inline-flex gap-2">
                         <a
@@ -483,6 +507,7 @@ if (is_array($edit)) {
                           data-id="<?= e((string)$r['id']) ?>"
                           data-name="<?= e((string)$r['name']) ?>"
                           data-description="<?= e((string)($r['description'] ?? '')) ?>"
+                          data-unit="<?= e((string)($r['unit'] ?? '')) ?>"
                           data-price="<?= e(number_format(((int)$r['price_cents']) / 100, 2, '.', '')) ?>"
                           data-currency="<?= e((string)$r['currency']) ?>"
                         >Editar</a>
@@ -520,6 +545,7 @@ if (is_array($edit)) {
   const nameInput = document.getElementById('name');
   const descriptionInput = document.getElementById('description');
   const priceInput = document.getElementById('price');
+  const unitInput = document.getElementById('unit');
   const currencyInput = document.getElementById('currency');
   const cancelLink = document.getElementById('catalogCancel');
   const modeLabel = document.getElementById('catalogFormModeLabel');
@@ -542,6 +568,7 @@ if (is_array($edit)) {
     nameInput.value = '';
     if (descriptionInput) descriptionInput.value = '';
     priceInput.value = '';
+    if (unitInput) unitInput.value = '';
     currencyInput.value = 'ARS';
   };
 
@@ -554,6 +581,7 @@ if (is_array($edit)) {
     nameInput.value = item.name || '';
     if (descriptionInput) descriptionInput.value = item.description || '';
     priceInput.value = item.price || '';
+    if (unitInput) unitInput.value = item.unit || '';
     currencyInput.value = item.currency || 'ARS';
     nameInput.focus();
   };
@@ -580,10 +608,12 @@ if (is_array($edit)) {
 
       const descValue = String(it.description || '').trim();
       const descHtml = descValue ? escapeHtml(descValue) : '<span class="text-muted">—</span>';
+      const unit = String(it.unit || '').trim();
+      const priceLabel = it.price_label || ((it.price_formatted || '') + (unit ? (' / ' + unit) : ''));
       tr.innerHTML = `
         <td>${escapeHtml(it.name || '')}</td>
         <td class="text-muted">${descHtml}</td>
-        <td class="text-end">${escapeHtml(it.price_formatted || '')}</td>
+        <td class="text-end">${escapeHtml(priceLabel || '')}</td>
         <td class="text-end">
           <div class="d-inline-flex gap-2">
             <a
@@ -592,6 +622,7 @@ if (is_array($edit)) {
               data-id="${escapeAttr(String(it.id))}"
               data-name="${escapeAttr(it.name || '')}"
               data-description="${escapeAttr(it.description || '')}"
+              data-unit="${escapeAttr(unit)}"
               data-price="${escapeAttr(priceRaw)}"
               data-currency="${escapeAttr(it.currency || 'ARS')}"
             >Editar</a>
@@ -920,6 +951,7 @@ if (is_array($edit)) {
         id: idInput.value,
         name: nameInput.value,
         description: descriptionInput ? descriptionInput.value : '',
+        unit: unitInput ? unitInput.value : '',
         price: priceInput.value,
         currency: currencyInput.value,
         q: searchInput.value || '',
@@ -945,6 +977,7 @@ if (is_array($edit)) {
         id: edit.getAttribute('data-id') || '',
         name: edit.getAttribute('data-name') || '',
         description: edit.getAttribute('data-description') || '',
+        unit: edit.getAttribute('data-unit') || '',
         price: edit.getAttribute('data-price') || '',
         currency: edit.getAttribute('data-currency') || 'ARS',
       });
