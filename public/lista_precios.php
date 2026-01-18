@@ -45,6 +45,26 @@ $csrf = csrf_token();
     .small-help { color: var(--muted); font-size: .9rem; }
     @media (max-width: 992px) { .cart-sticky { position: static; } }
 
+    /* Mobile cart bar + offcanvas */
+    .mobile-cartbar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 1040; /* below offcanvas (1045), above content */
+      background: rgba(255,255,255,.92);
+      backdrop-filter: blur(12px);
+      border-top: 1px solid rgba(148,163,184,.35);
+      box-shadow: 0 -10px 30px rgba(15,23,42,.08);
+      padding: .65rem 0;
+    }
+    .mobile-cartbar .btn { border-radius: 14px; font-weight: 700; }
+    .mobile-cartbar .total { font-weight: 800; }
+
+    @media (max-width: 576px) {
+      body { padding-bottom: 84px; } /* evita que la barra tape contenido */
+    }
+
     /* Mobile-first polish */
     @media (max-width: 576px) {
       .page-shell { padding: 1rem 0; }
@@ -149,7 +169,7 @@ $csrf = csrf_token();
       </div>
     </div>
 
-    <div class="col-12 col-lg-4">
+    <div class="col-12 col-lg-4 d-none d-lg-block">
       <div class="cart-sticky">
         <div class="card card-lift">
           <div class="card-body p-4">
@@ -207,6 +227,78 @@ $csrf = csrf_token();
   </div>
 </main>
 
+<!-- Mobile bottom bar (shows current total + opens the order panel) -->
+<div class="mobile-cartbar d-lg-none" aria-label="Carrito móvil">
+  <div class="container">
+    <div class="d-flex align-items-center justify-content-between gap-2">
+      <div style="min-width:0;">
+        <div class="muted-label mb-0">Tu pedido</div>
+        <div class="total" id="mobileCartTotal">$0,00</div>
+      </div>
+      <button class="btn btn-primary action-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#cartOffcanvas" aria-controls="cartOffcanvas" id="mobileCartBtn" disabled>
+        Ver pedido <span class="badge text-bg-light ms-2" id="mobileCartCount">0</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Offcanvas cart/order for mobile -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="cartOffcanvas" aria-labelledby="cartOffcanvasLabel">
+  <div class="offcanvas-header">
+    <div>
+      <div class="muted-label">Tu pedido</div>
+      <h2 class="offcanvas-title h5 mb-0" id="cartOffcanvasLabel">Carrito</h2>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+  </div>
+  <div class="offcanvas-body">
+    <div id="cartEmptyMobile" class="text-muted">Todavía no agregaste productos.</div>
+    <div id="cartListMobile" class="list-group mb-3" style="display:none;"></div>
+
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <div class="fw-semibold">Total</div>
+      <div class="fw-bold" id="cartTotalMobile">$0,00</div>
+    </div>
+
+    <hr>
+
+    <form id="orderFormMobile" class="vstack gap-2" autocomplete="on">
+      <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
+
+      <div>
+        <label class="form-label mb-1" for="customerNameMobile">Nombre</label>
+        <input class="form-control" id="customerNameMobile" name="customer_name" required maxlength="190" autocomplete="name">
+      </div>
+
+      <div>
+        <label class="form-label mb-1" for="customerPhoneMobile">Teléfono / WhatsApp</label>
+        <input class="form-control" id="customerPhoneMobile" name="customer_phone" type="tel" inputmode="tel" maxlength="40" placeholder="Ej: 11 1234-5678" autocomplete="tel">
+      </div>
+
+      <div>
+        <label class="form-label mb-1" for="customerAddressMobile">Dirección (opcional)</label>
+        <input class="form-control" id="customerAddressMobile" name="customer_address" maxlength="255" autocomplete="street-address">
+      </div>
+
+      <div>
+        <label class="form-label mb-1" for="notesMobile">Notas (opcional)</label>
+        <textarea class="form-control" id="notesMobile" name="notes" rows="2" placeholder="Ej: sin sal, cortar fiambre, etc."></textarea>
+      </div>
+
+      <div class="d-grid mt-2">
+        <button type="submit" class="btn btn-primary action-btn" id="submitBtnMobile" disabled>Enviar pedido</button>
+      </div>
+
+      <div id="orderMsgMobile" class="small-help" style="display:none;"></div>
+    </form>
+
+    <div class="mt-3 small-help">
+      <div class="fw-semibold">Importante</div>
+      <div>Los precios pueden cambiar sin aviso. El pedido queda “a confirmar”.</div>
+    </div>
+  </div>
+</div>
+
 <script>
 (() => {
   const itemsTbody = document.getElementById('itemsTbody');
@@ -220,6 +312,17 @@ $csrf = csrf_token();
   const submitBtn = document.getElementById('submitBtn');
   const orderForm = document.getElementById('orderForm');
   const orderMsg = document.getElementById('orderMsg');
+
+  const cartEmptyMobile = document.getElementById('cartEmptyMobile');
+  const cartListMobile = document.getElementById('cartListMobile');
+  const cartTotalMobile = document.getElementById('cartTotalMobile');
+  const submitBtnMobile = document.getElementById('submitBtnMobile');
+  const orderFormMobile = document.getElementById('orderFormMobile');
+  const orderMsgMobile = document.getElementById('orderMsgMobile');
+
+  const mobileCartTotal = document.getElementById('mobileCartTotal');
+  const mobileCartBtn = document.getElementById('mobileCartBtn');
+  const mobileCartCount = document.getElementById('mobileCartCount');
 
   /** cart: productId -> { id, name, price_cents, currency, unit, qty_base, qty_display, qty_display_unit } */
   const cart = new Map();
@@ -283,47 +386,66 @@ $csrf = csrf_token();
     let totalCents = 0;
     let currency = lastCurrency;
 
-    if (cart.size === 0) {
-      cartEmpty.style.display = '';
-      cartList.style.display = 'none';
-      cartList.innerHTML = '';
-      cartTotal.textContent = fmtMoney(0, currency);
-      submitBtn.disabled = true;
-      return;
-    }
+    const calc = () => {
+      totalCents = 0;
+      currency = lastCurrency;
+      for (const it of cart.values()) {
+        currency = it.currency || currency;
+        lastCurrency = currency;
+        const line = Math.round((it.price_cents || 0) * (it.qty_base || 0));
+        totalCents += line;
+      }
+    };
 
-    cartEmpty.style.display = 'none';
-    cartList.style.display = '';
-    cartList.innerHTML = '';
+    const renderInto = (emptyEl, listEl, totalEl, submitEl) => {
+      if (!emptyEl || !listEl || !totalEl || !submitEl) return;
 
-    for (const it of cart.values()) {
-      currency = it.currency || currency;
-      lastCurrency = currency;
-      const line = Math.round((it.price_cents || 0) * (it.qty_base || 0));
-      totalCents += line;
+      if (cart.size === 0) {
+        emptyEl.style.display = '';
+        listEl.style.display = 'none';
+        listEl.innerHTML = '';
+        totalEl.textContent = fmtMoney(0, currency);
+        submitEl.disabled = true;
+        return;
+      }
 
-      const row = document.createElement('div');
-      row.className = 'list-group-item d-flex align-items-start justify-content-between gap-2';
-      const unitLabel = it.unit ? (' / ' + it.unit) : '';
-      const qtyText = (it.qty_display_unit && it.qty_display_unit !== '')
-        ? (String(it.qty_display) + ' ' + String(it.qty_display_unit))
-        : String(it.qty_display);
-      row.innerHTML = `
-        <div class="me-2" style="min-width: 0;">
-          <div class="fw-semibold text-truncate">${escapeHtml(it.name || '')}</div>
-          <div class="text-muted" style="font-size:.9rem;">${escapeHtml(qtyText)} × ${escapeHtml(fmtMoney(it.price_cents, currency) + unitLabel)}</div>
-        </div>
-        <button class="btn btn-sm btn-outline-danger" type="button" aria-label="Quitar">Quitar</button>
-      `;
-      row.querySelector('button').addEventListener('click', () => {
-        cart.delete(it.id);
-        renderCart();
-      });
-      cartList.appendChild(row);
-    }
+      emptyEl.style.display = 'none';
+      listEl.style.display = '';
+      listEl.innerHTML = '';
 
-    cartTotal.textContent = fmtMoney(totalCents, currency);
-    submitBtn.disabled = false;
+      for (const it of cart.values()) {
+        const row = document.createElement('div');
+        row.className = 'list-group-item d-flex align-items-start justify-content-between gap-2';
+        const unitLabel = it.unit ? (' / ' + it.unit) : '';
+        const qtyText = (it.qty_display_unit && it.qty_display_unit !== '')
+          ? (String(it.qty_display) + ' ' + String(it.qty_display_unit))
+          : String(it.qty_display);
+
+        row.innerHTML = `
+          <div class="me-2" style="min-width: 0;">
+            <div class="fw-semibold text-truncate">${escapeHtml(it.name || '')}</div>
+            <div class="text-muted" style="font-size:.9rem;">${escapeHtml(qtyText)} × ${escapeHtml(fmtMoney(it.price_cents, it.currency || currency) + unitLabel)}</div>
+          </div>
+          <button class="btn btn-sm btn-outline-danger" type="button" aria-label="Quitar">Quitar</button>
+        `;
+        row.querySelector('button').addEventListener('click', () => {
+          cart.delete(it.id);
+          renderCart();
+        });
+        listEl.appendChild(row);
+      }
+
+      totalEl.textContent = fmtMoney(totalCents, currency);
+      submitEl.disabled = false;
+    };
+
+    calc();
+    renderInto(cartEmpty, cartList, cartTotal, submitBtn);
+    renderInto(cartEmptyMobile, cartListMobile, cartTotalMobile, submitBtnMobile);
+
+    if (mobileCartTotal) mobileCartTotal.textContent = fmtMoney(totalCents, currency);
+    if (mobileCartCount) mobileCartCount.textContent = String(cart.size);
+    if (mobileCartBtn) mobileCartBtn.disabled = cart.size === 0;
   };
 
   const escapeHtml = (s) => String(s)
@@ -456,65 +578,79 @@ $csrf = csrf_token();
     t = setTimeout(() => load(searchInput.value.trim()), 250);
   });
 
-  orderForm.addEventListener('submit', async (ev) => {
-    ev.preventDefault();
+  const bindOrderForm = (formEl, msgEl, submitEl) => {
+    if (!formEl || !msgEl || !submitEl) return;
 
-    orderMsg.style.display = 'none';
-    orderMsg.textContent = '';
+    formEl.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
 
-    if (cart.size === 0) {
-      return;
-    }
+      msgEl.style.display = 'none';
+      msgEl.textContent = '';
 
-    const items = [];
-    for (const it of cart.values()) {
-      // Enviamos cantidad en la unidad base del precio (ej: kg o l) para que el servidor calcule bien.
-      items.push({ product_id: it.id, quantity: String(it.qty_base) });
-    }
+      if (cart.size === 0) return;
 
-    const payload = {
-      ajax: 1,
-      csrf_token: orderForm.querySelector('input[name="csrf_token"]').value,
-      customer_name: document.getElementById('customerName').value,
-      customer_phone: document.getElementById('customerPhone').value,
-      customer_address: document.getElementById('customerAddress').value,
-      notes: document.getElementById('notes').value,
-      items,
-    };
-
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Enviando…';
-
-    try {
-      const res = await fetch('/api_public_order.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json().catch(() => null);
-
-      if (!res.ok || !data || data.ok !== true) {
-        const msg = (data && data.error) ? data.error : 'No se pudo enviar el pedido.';
-        orderMsg.textContent = msg;
-        orderMsg.style.display = '';
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Enviar pedido';
-        return;
+      const items = [];
+      for (const it of cart.values()) {
+        // Enviamos cantidad en la unidad base del precio (ej: kg o l) para que el servidor calcule bien.
+        items.push({ product_id: it.id, quantity: String(it.qty_base) });
       }
 
-      orderMsg.textContent = (data.message || 'Pedido enviado.') + ' Total: ' + (data.total_formatted || '');
-      orderMsg.style.display = '';
-      cart.clear();
-      renderCart();
-      submitBtn.textContent = 'Enviado';
+      const csrfInput = formEl.querySelector('input[name="csrf_token"]');
+      const payload = {
+        ajax: 1,
+        csrf_token: csrfInput ? csrfInput.value : '',
+        customer_name: String(formEl.elements['customer_name']?.value || ''),
+        customer_phone: String(formEl.elements['customer_phone']?.value || ''),
+        customer_address: String(formEl.elements['customer_address']?.value || ''),
+        notes: String(formEl.elements['notes']?.value || ''),
+        items,
+      };
 
-    } catch (e) {
-      orderMsg.textContent = 'No se pudo enviar el pedido.';
-      orderMsg.style.display = '';
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Enviar pedido';
-    }
-  });
+      submitEl.disabled = true;
+      const originalText = submitEl.textContent;
+      submitEl.textContent = 'Enviando…';
+
+      try {
+        const res = await fetch('/api_public_order.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => null);
+
+        if (!res.ok || !data || data.ok !== true) {
+          const msg = (data && data.error) ? data.error : 'No se pudo enviar el pedido.';
+          msgEl.textContent = msg;
+          msgEl.style.display = '';
+          submitEl.disabled = false;
+          submitEl.textContent = originalText;
+          return;
+        }
+
+        msgEl.textContent = (data.message || 'Pedido enviado.') + ' Total: ' + (data.total_formatted || '');
+        msgEl.style.display = '';
+        cart.clear();
+        renderCart();
+        submitEl.textContent = 'Enviado';
+
+        // Si estamos en el offcanvas, lo cerramos.
+        const ocEl = document.getElementById('cartOffcanvas');
+        if (ocEl && window.bootstrap && window.bootstrap.Offcanvas) {
+          const oc = window.bootstrap.Offcanvas.getInstance(ocEl) || window.bootstrap.Offcanvas.getOrCreateInstance(ocEl);
+          oc.hide();
+        }
+
+      } catch (e) {
+        msgEl.textContent = 'No se pudo enviar el pedido.';
+        msgEl.style.display = '';
+        submitEl.disabled = false;
+        submitEl.textContent = originalText;
+      }
+    });
+  };
+
+  bindOrderForm(orderForm, orderMsg, submitBtn);
+  bindOrderForm(orderFormMobile, orderMsgMobile, submitBtnMobile);
 
   renderCart();
   load('');
