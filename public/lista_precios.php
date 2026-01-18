@@ -35,13 +35,27 @@ $csrf = csrf_token();
     /* Hojas de fondo (distintos tamaños y orientaciones) */
     .bg-leaves { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
     .bg-leaf { position: absolute; background: url('/fondo.png') no-repeat center / contain; opacity: .12; filter: drop-shadow(0 18px 40px rgba(15,23,42,.08)); }
-    .bg-leaf.leaf-1 { width: 260px; height: 260px; left: -70px; top: 90px; transform: rotate(-18deg); opacity: .10; }
-    .bg-leaf.leaf-2 { width: 360px; height: 360px; right: -120px; top: -80px; transform: rotate(22deg) scaleX(-1); opacity: .11; }
-    .bg-leaf.leaf-3 { width: 220px; height: 220px; right: -60px; bottom: 120px; transform: rotate(145deg); opacity: .09; }
-    .bg-leaf.leaf-4 { width: 320px; height: 320px; left: -110px; bottom: -90px; transform: rotate(95deg) scaleX(-1); opacity: .08; }
+
+    /* Distribución por toda la pantalla */
+    .bg-leaf.leaf-1  { width: 240px; height: 240px; left: -90px;  top: 80px;   transform: rotate(-18deg); opacity: .09; }
+    .bg-leaf.leaf-2  { width: 320px; height: 320px; right: -140px; top: -110px; transform: rotate(22deg) scaleX(-1); opacity: .10; }
+    .bg-leaf.leaf-3  { width: 210px; height: 210px; right: -70px;  top: 38%;    transform: rotate(145deg); opacity: .08; }
+    .bg-leaf.leaf-4  { width: 280px; height: 280px; left: -140px;  top: 52%;    transform: rotate(95deg) scaleX(-1); opacity: .07; }
+    .bg-leaf.leaf-5  { width: 180px; height: 180px; left: 14%;     top: -70px;  transform: rotate(-40deg); opacity: .06; }
+    .bg-leaf.leaf-6  { width: 220px; height: 220px; left: 62%;     top: 18%;    transform: rotate(28deg); opacity: .07; }
+    .bg-leaf.leaf-7  { width: 160px; height: 160px; right: 14%;    top: 58%;    transform: rotate(-120deg) scaleX(-1); opacity: .06; }
+    .bg-leaf.leaf-8  { width: 260px; height: 260px; right: -110px; bottom: 80px; transform: rotate(35deg); opacity: .07; }
+    .bg-leaf.leaf-9  { width: 200px; height: 200px; left: 10%;     bottom: 120px; transform: rotate(155deg); opacity: .06; }
+    .bg-leaf.leaf-10 { width: 340px; height: 340px; left: -160px;  bottom: -140px; transform: rotate(75deg); opacity: .07; }
+    .bg-leaf.leaf-11 { width: 190px; height: 190px; left: 46%;     bottom: -90px; transform: rotate(-10deg) scaleX(-1); opacity: .06; }
+    .bg-leaf.leaf-12 { width: 230px; height: 230px; right: 34%;    bottom: 22%;  transform: rotate(110deg); opacity: .06; }
     @media (max-width: 576px) {
-      .bg-leaf.leaf-2 { width: 280px; height: 280px; right: -120px; top: -120px; }
-      .bg-leaf.leaf-4 { width: 240px; height: 240px; left: -110px; bottom: -110px; }
+      /* En móvil reducimos un poco tamaños para que no tapen */
+      .bg-leaf { opacity: .08; }
+      .bg-leaf.leaf-2  { width: 260px; height: 260px; right: -140px; top: -140px; }
+      .bg-leaf.leaf-10 { width: 260px; height: 260px; left: -150px; bottom: -150px; }
+      .bg-leaf.leaf-6  { width: 170px; height: 170px; left: 58%; top: 22%; }
+      .bg-leaf.leaf-12 { width: 180px; height: 180px; right: 26%; bottom: 18%; }
     }
 
     /* Asegura que el contenido quede por encima del fondo */
@@ -134,6 +148,14 @@ $csrf = csrf_token();
   <div class="bg-leaf leaf-2"></div>
   <div class="bg-leaf leaf-3"></div>
   <div class="bg-leaf leaf-4"></div>
+  <div class="bg-leaf leaf-5"></div>
+  <div class="bg-leaf leaf-6"></div>
+  <div class="bg-leaf leaf-7"></div>
+  <div class="bg-leaf leaf-8"></div>
+  <div class="bg-leaf leaf-9"></div>
+  <div class="bg-leaf leaf-10"></div>
+  <div class="bg-leaf leaf-11"></div>
+  <div class="bg-leaf leaf-12"></div>
 </div>
 <nav class="navbar navbar-expand-lg navbar-glass sticky-top">
   <div class="container py-2">
