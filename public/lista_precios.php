@@ -30,7 +30,22 @@ $csrf = csrf_token();
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root { --accent:#463B1E; --accent-rgb:70,59,30; --accent-dark:#2f2713; --accent-2:#96957E; --accent-2-rgb:150,149,126; --ink:#241e10; --muted:#6b6453; --card:rgba(255,255,255,.9); }
-    body { font-family:'Space Grotesk','Segoe UI',sans-serif; background: radial-gradient(circle at 10% 20%, rgba(var(--accent-2-rgb),.22), transparent 38%), radial-gradient(circle at 90% 10%, rgba(var(--accent-rgb),.12), transparent 40%), linear-gradient(120deg,#fbfaf6,#E7E3D5); color:var(--ink); min-height:100vh; }
+    body { position: relative; font-family:'Space Grotesk','Segoe UI',sans-serif; background: radial-gradient(circle at 10% 20%, rgba(var(--accent-2-rgb),.22), transparent 38%), radial-gradient(circle at 90% 10%, rgba(var(--accent-rgb),.12), transparent 40%), linear-gradient(120deg,#fbfaf6,#E7E3D5); color:var(--ink); min-height:100vh; }
+
+    /* Hojas de fondo (distintos tamaños y orientaciones) */
+    .bg-leaves { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+    .bg-leaf { position: absolute; background: url('/fondo.png') no-repeat center / contain; opacity: .12; filter: drop-shadow(0 18px 40px rgba(15,23,42,.08)); }
+    .bg-leaf.leaf-1 { width: 260px; height: 260px; left: -70px; top: 90px; transform: rotate(-18deg); opacity: .10; }
+    .bg-leaf.leaf-2 { width: 360px; height: 360px; right: -120px; top: -80px; transform: rotate(22deg) scaleX(-1); opacity: .11; }
+    .bg-leaf.leaf-3 { width: 220px; height: 220px; right: -60px; bottom: 120px; transform: rotate(145deg); opacity: .09; }
+    .bg-leaf.leaf-4 { width: 320px; height: 320px; left: -110px; bottom: -90px; transform: rotate(95deg) scaleX(-1); opacity: .08; }
+    @media (max-width: 576px) {
+      .bg-leaf.leaf-2 { width: 280px; height: 280px; right: -120px; top: -120px; }
+      .bg-leaf.leaf-4 { width: 240px; height: 240px; left: -110px; bottom: -110px; }
+    }
+
+    /* Asegura que el contenido quede por encima del fondo */
+    nav.navbar, main, .mobile-cartbar { position: relative; z-index: 1; }
     .navbar-glass { background:rgba(255,255,255,.9); backdrop-filter:blur(12px); border:1px solid rgba(15,23,42,.06); box-shadow:0 10px 40px rgba(15,23,42,.08); }
     .page-shell { padding:2rem 0; }
     .card-lift { background:var(--card); border:1px solid rgba(15,23,42,.06); box-shadow:0 18px 50px rgba(15,23,42,.07); border-radius:18px; }
@@ -114,6 +129,12 @@ $csrf = csrf_token();
   </style>
 </head>
 <body>
+<div class="bg-leaves" aria-hidden="true">
+  <div class="bg-leaf leaf-1"></div>
+  <div class="bg-leaf leaf-2"></div>
+  <div class="bg-leaf leaf-3"></div>
+  <div class="bg-leaf leaf-4"></div>
+</div>
 <nav class="navbar navbar-expand-lg navbar-glass sticky-top">
   <div class="container py-2">
     <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-dark mb-0 h5 text-decoration-none" href="/" aria-label="<?= e($appName) ?>">
