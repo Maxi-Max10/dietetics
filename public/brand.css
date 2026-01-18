@@ -17,6 +17,12 @@
   --bs-body-bg: var(--brand-sand);
 }
 
+/* Fondo admin uniforme */
+body.has-leaves-bg {
+  background-color: #f2f0e7 !important;
+  background-image: none !important;
+}
+
 /* Unificar look de botones primarios si alguna vista no los redefine */
 .btn-primary {
   --bs-btn-color: #fff;
