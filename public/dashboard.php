@@ -530,7 +530,21 @@ if ($error !== '') {
     }
   </style>
 </head>
-<body>
+<body class="has-leaves-bg">
+<div class="bg-leaves" aria-hidden="true">
+  <div class="bg-leaf leaf-1"></div>
+  <div class="bg-leaf leaf-2"></div>
+  <div class="bg-leaf leaf-3"></div>
+  <div class="bg-leaf leaf-4"></div>
+  <div class="bg-leaf leaf-5"></div>
+  <div class="bg-leaf leaf-6"></div>
+  <div class="bg-leaf leaf-7"></div>
+  <div class="bg-leaf leaf-8"></div>
+  <div class="bg-leaf leaf-9"></div>
+  <div class="bg-leaf leaf-10"></div>
+  <div class="bg-leaf leaf-11"></div>
+  <div class="bg-leaf leaf-12"></div>
+</div>
 <?php if ($showPreload): ?>
   <div class="preload-overlay" id="preloadOverlay" aria-hidden="true">
     <img src="/preload.png" alt="Cargando">

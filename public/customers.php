@@ -200,7 +200,21 @@ try {
     }
   </style>
 </head>
-<body>
+<body class="has-leaves-bg">
+<div class="bg-leaves" aria-hidden="true">
+  <div class="bg-leaf leaf-1"></div>
+  <div class="bg-leaf leaf-2"></div>
+  <div class="bg-leaf leaf-3"></div>
+  <div class="bg-leaf leaf-4"></div>
+  <div class="bg-leaf leaf-5"></div>
+  <div class="bg-leaf leaf-6"></div>
+  <div class="bg-leaf leaf-7"></div>
+  <div class="bg-leaf leaf-8"></div>
+  <div class="bg-leaf leaf-9"></div>
+  <div class="bg-leaf leaf-10"></div>
+  <div class="bg-leaf leaf-11"></div>
+  <div class="bg-leaf leaf-12"></div>
+</div>
 <nav class="navbar navbar-expand-lg navbar-glass sticky-top">
   <div class="container py-2">
     <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-dark mb-0 h4 text-decoration-none" href="/dashboard" aria-label="<?= e($appName) ?>">

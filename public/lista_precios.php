@@ -33,8 +33,8 @@ $csrf = csrf_token();
     body { position: relative; font-family:'Space Grotesk','Segoe UI',sans-serif; background: radial-gradient(circle at 10% 20%, rgba(var(--accent-2-rgb),.22), transparent 38%), radial-gradient(circle at 90% 10%, rgba(var(--accent-rgb),.12), transparent 40%), linear-gradient(120deg,#fbfaf6,#E7E3D5); color:var(--ink); min-height:100vh; }
 
     /* Hojas de fondo (distintos tamaños y orientaciones) */
-    .bg-leaves { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
-    .bg-leaf { position: absolute; background: url('/fondo.png') no-repeat center / contain; opacity: .12; filter: drop-shadow(0 18px 40px rgba(15,23,42,.08)); }
+    .bg-leaves { position: fixed; inset: 0; pointer-events: none; z-index: -1; overflow: hidden; }
+    .bg-leaf { position: absolute; background: url('/fondo.php') no-repeat center / contain; opacity: .12; filter: drop-shadow(0 18px 40px rgba(15,23,42,.08)); }
 
     /* Distribución por toda la pantalla */
     .bg-leaf.leaf-1  { width: 240px; height: 240px; left: -90px;  top: 80px;   transform: rotate(-18deg); opacity: .09; }
@@ -142,7 +142,7 @@ $csrf = csrf_token();
     }
   </style>
 </head>
-<body>
+<body class="has-leaves-bg">
 <div class="bg-leaves" aria-hidden="true">
   <div class="bg-leaf leaf-1"></div>
   <div class="bg-leaf leaf-2"></div>
