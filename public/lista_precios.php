@@ -44,6 +44,53 @@ $csrf = csrf_token();
     .qty-input { width: 86px; }
     .small-help { color: var(--muted); font-size: .9rem; }
     @media (max-width: 992px) { .cart-sticky { position: static; } }
+
+    /* Mobile-first polish */
+    @media (max-width: 576px) {
+      .page-shell { padding: 1rem 0; }
+      .navbar .container { padding-top: .5rem !important; padding-bottom: .5rem !important; }
+      .card-body.p-4 { padding: 1rem !important; }
+      .qty-input { width: 104px; }
+
+      /* Table -> stacked cards */
+      .table-mobile thead { display: none; }
+      .table-mobile tbody tr {
+        display: block;
+        background: rgba(255,255,255,.7);
+        border: 1px solid rgba(148,163,184,.35);
+        border-radius: 16px;
+        padding: .85rem;
+        margin-bottom: .75rem;
+        box-shadow: 0 10px 30px rgba(15,23,42,.06);
+      }
+      .table-mobile tbody td {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .75rem;
+        border: none !important;
+        padding: .35rem 0;
+      }
+      .table-mobile tbody td::before {
+        content: attr(data-label);
+        flex: 0 0 auto;
+        color: var(--muted);
+        font-weight: 700;
+        font-size: .82rem;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+      }
+      .table-mobile tbody td[data-label="Producto"] {
+        display: block;
+        padding-bottom: .55rem;
+      }
+      .table-mobile tbody td[data-label="Producto"]::before { display: none; }
+
+      .table-mobile .qty-wrap { justify-content: flex-end !important; }
+      .table-mobile .qty-wrap select { max-width: 96px !important; }
+      .table-mobile .action-btn { width: 100%; }
+      .table-mobile .btn-sm { padding: .55rem .9rem; font-size: 1rem; }
+    }
   </style>
 </head>
 <body>
@@ -81,7 +128,7 @@ $csrf = csrf_token();
           </div>
 
           <div class="table-responsive mt-3">
-            <table class="table align-middle">
+            <table class="table table-mobile align-middle">
               <thead>
                 <tr>
                   <th>Producto</th>
@@ -124,17 +171,17 @@ $csrf = csrf_token();
 
               <div>
                 <label class="form-label mb-1" for="customerName">Nombre</label>
-                <input class="form-control" id="customerName" name="customer_name" required maxlength="190">
+                <input class="form-control" id="customerName" name="customer_name" required maxlength="190" autocomplete="name">
               </div>
 
               <div>
                 <label class="form-label mb-1" for="customerPhone">Teléfono / WhatsApp</label>
-                <input class="form-control" id="customerPhone" name="customer_phone" maxlength="40" placeholder="Ej: 11 1234-5678">
+                <input class="form-control" id="customerPhone" name="customer_phone" type="tel" inputmode="tel" maxlength="40" placeholder="Ej: 11 1234-5678" autocomplete="tel">
               </div>
 
               <div>
                 <label class="form-label mb-1" for="customerAddress">Dirección (opcional)</label>
-                <input class="form-control" id="customerAddress" name="customer_address" maxlength="255">
+                <input class="form-control" id="customerAddress" name="customer_address" maxlength="255" autocomplete="street-address">
               </div>
 
               <div>
@@ -313,18 +360,18 @@ $csrf = csrf_token();
         : `<span class="text-muted" style="font-size:.9rem;">${escapeHtml(def.unit || unit || '')}</span>`;
 
       tr.innerHTML = `
-        <td>
+        <td data-label="Producto">
           <div class="fw-semibold">${escapeHtml(name)}</div>
           ${desc ? `<div class="text-muted" style="font-size:.9rem;">${escapeHtml(desc)}</div>` : ''}
         </td>
-        <td class="text-end fw-semibold">${escapeHtml(price)}</td>
-        <td>
-          <div class="d-flex align-items-center gap-2 justify-content-end">
+        <td class="text-end fw-semibold" data-label="Precio">${escapeHtml(price)}</td>
+        <td data-label="Cantidad">
+          <div class="d-flex align-items-center gap-2 justify-content-end qty-wrap">
             <input type="number" class="form-control qty-input" value="${escapeHtml(def.value)}" min="${escapeHtml(qtyConfig.min)}" step="${escapeHtml(qtyConfig.step)}">
             ${unitSelectHtml}
           </div>
         </td>
-        <td class="text-end">
+        <td class="text-end" data-label="">
           <button type="button" class="btn btn-outline-primary btn-sm action-btn">Agregar</button>
         </td>
       `;
