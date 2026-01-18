@@ -43,6 +43,8 @@ try {
 
     $customerName = (string)($data['customer_name'] ?? '');
     $customerPhone = (string)($data['customer_phone'] ?? '');
+    $customerEmail = (string)($data['customer_email'] ?? '');
+    $customerDni = (string)($data['customer_dni'] ?? '');
     $customerAddress = (string)($data['customer_address'] ?? '');
     $notes = (string)($data['notes'] ?? '');
 
@@ -54,7 +56,7 @@ try {
     $pdo = db($config);
 
     $ownerId = orders_public_catalog_owner_id($pdo, $config);
-    $res = orders_create_public($pdo, $ownerId, $customerName, $customerPhone, $customerAddress, $notes, $items);
+    $res = orders_create_public($pdo, $ownerId, $customerName, $customerPhone, $customerAddress, $notes, $items, $customerEmail, $customerDni);
 
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode([

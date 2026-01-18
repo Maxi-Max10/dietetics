@@ -74,6 +74,8 @@ CREATE TABLE IF NOT EXISTS customer_order_items (
   order_id INT UNSIGNED NOT NULL,
   product_id INT UNSIGNED NULL,
   description VARCHAR(255) NOT NULL,
+  customer_email VARCHAR(190) NULL,
+  customer_dni VARCHAR(32) NULL,
   quantity DECIMAL(10,2) NOT NULL DEFAULT 1.00,
   unit_price_cents INT UNSIGNED NOT NULL DEFAULT 0,
   line_total_cents INT UNSIGNED NOT NULL DEFAULT 0,

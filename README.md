@@ -23,6 +23,17 @@ Ver [docs/FUNCIONALIDAD_APP.md](docs/FUNCIONALIDAD_APP.md).
 1. En phpMyAdmin ejecutá `database/schema.sql` en tu DB.
 2. Creá un usuario inicial en la tabla `users`.
 
+### Datos del cliente en Pedidos (opcional)
+Si querés que el carrito guarde **Email** y **DNI** del cliente en los pedidos públicos, asegurate de tener estas columnas en `customer_orders`.
+
+Si ya tenías la tabla creada, podés migrar con:
+
+```sql
+ALTER TABLE customer_orders
+	ADD COLUMN customer_email VARCHAR(190) NULL AFTER customer_phone,
+	ADD COLUMN customer_dni VARCHAR(32) NULL AFTER customer_email;
+```
+
 ### DNI (opcional)
 Si querés poder **guardar y buscar por DNI** en Ventas, asegurate de tener la columna `customer_dni` en `invoices`.
 

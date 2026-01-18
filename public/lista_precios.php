@@ -200,6 +200,16 @@ $csrf = csrf_token();
               </div>
 
               <div>
+                <label class="form-label mb-1" for="customerEmail">Email (opcional)</label>
+                <input class="form-control" id="customerEmail" name="customer_email" type="email" inputmode="email" maxlength="190" placeholder="Ej: cliente@mail.com" autocomplete="email">
+              </div>
+
+              <div>
+                <label class="form-label mb-1" for="customerDni">DNI (opcional)</label>
+                <input class="form-control" id="customerDni" name="customer_dni" inputmode="numeric" maxlength="32" placeholder="Ej: 12345678" autocomplete="off">
+              </div>
+
+              <div>
                 <label class="form-label mb-1" for="customerAddress">Dirección (opcional)</label>
                 <input class="form-control" id="customerAddress" name="customer_address" maxlength="255" autocomplete="street-address">
               </div>
@@ -273,6 +283,16 @@ $csrf = csrf_token();
       <div>
         <label class="form-label mb-1" for="customerPhoneMobile">Teléfono / WhatsApp</label>
         <input class="form-control" id="customerPhoneMobile" name="customer_phone" type="tel" inputmode="tel" maxlength="40" placeholder="Ej: 11 1234-5678" autocomplete="tel">
+      </div>
+
+      <div>
+        <label class="form-label mb-1" for="customerEmailMobile">Email (opcional)</label>
+        <input class="form-control" id="customerEmailMobile" name="customer_email" type="email" inputmode="email" maxlength="190" placeholder="Ej: cliente@mail.com" autocomplete="email">
+      </div>
+
+      <div>
+        <label class="form-label mb-1" for="customerDniMobile">DNI (opcional)</label>
+        <input class="form-control" id="customerDniMobile" name="customer_dni" inputmode="numeric" maxlength="32" placeholder="Ej: 12345678" autocomplete="off">
       </div>
 
       <div>
@@ -601,6 +621,8 @@ $csrf = csrf_token();
         csrf_token: csrfInput ? csrfInput.value : '',
         customer_name: String(formEl.elements['customer_name']?.value || ''),
         customer_phone: String(formEl.elements['customer_phone']?.value || ''),
+        customer_email: String(formEl.elements['customer_email']?.value || ''),
+        customer_dni: String(formEl.elements['customer_dni']?.value || ''),
         customer_address: String(formEl.elements['customer_address']?.value || ''),
         notes: String(formEl.elements['notes']?.value || ''),
         items,

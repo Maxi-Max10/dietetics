@@ -149,7 +149,7 @@ function orders_parse_qty(string|float|int $qty): float
  * @param array<int, array{product_id:int, quantity:string|float|int}> $items
  * @return array{order_id:int,total_cents:int,currency:string}
  */
-function orders_create_public(PDO $pdo, int $createdBy, string $customerName, string $customerPhone, string $customerAddress, string $notes, array $items): array
+function orders_create_public(PDO $pdo, int $createdBy, string $customerName, string $customerPhone, string $customerAddress, string $notes, array $items, string $customerEmail = '', string $customerDni = ''): array
 {
     if (!orders_supports_tables($pdo)) {
         throw new RuntimeException('No se encontraron las tablas de pedidos. Ejecutá database/schema.sql.');
@@ -270,11 +270,7 @@ function orders_create_public(PDO $pdo, int $createdBy, string $customerName, st
 
     $pdo->beginTransaction();
     try {
-        $stmt = $pdo->prepare(
-            'INSERT INTO customer_orders (created_by, customer_name, customer_phone, customer_address, notes, currency, total_cents, status)
-             VALUES (:created_by, :customer_name, :customer_phone, :customer_address, :notes, :currency, :total_cents, :status)'
-        );
-        $stmt->execute([
+        $paramsBase = [
             'created_by' => $createdBy,
             'customer_name' => $customerName,
             'customer_phone' => ($customerPhone === '' ? null : $customerPhone),
@@ -283,7 +279,25 @@ function orders_create_public(PDO $pdo, int $createdBy, string $customerName, st
             'currency' => $currency,
             'total_cents' => $totalCents,
             'status' => 'new',
-        ]);
+        ];
+
+        // Compatibilidad: si la DB no tiene aún customer_email/customer_dni, no rompemos el insert.
+        try {
+            $stmt = $pdo->prepare(
+                'INSERT INTO customer_orders (created_by, customer_name, customer_phone, customer_email, customer_dni, customer_address, notes, currency, total_cents, status)
+                 VALUES (:created_by, :customer_name, :customer_phone, :customer_email, :customer_dni, :customer_address, :notes, :currency, :total_cents, :status)'
+            );
+            $stmt->execute($paramsBase + [
+                'customer_email' => trim($customerEmail) !== '' ? trim($customerEmail) : null,
+                'customer_dni' => trim($customerDni) !== '' ? trim($customerDni) : null,
+            ]);
+        } catch (Throwable $e) {
+            $stmt = $pdo->prepare(
+                'INSERT INTO customer_orders (created_by, customer_name, customer_phone, customer_address, notes, currency, total_cents, status)
+                 VALUES (:created_by, :customer_name, :customer_phone, :customer_address, :notes, :currency, :total_cents, :status)'
+            );
+            $stmt->execute($paramsBase);
+        }
 
         $orderId = (int)$pdo->lastInsertId();
         if ($orderId <= 0) {
