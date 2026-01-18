@@ -44,8 +44,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($action === 'update_status') {
                 $orderId = (int)($_POST['order_id'] ?? 0);
                 $status = (string)($_POST['status'] ?? '');
-                orders_update_status($pdo, $userId, $orderId, $status);
-                $_SESSION['flash'] = 'Estado actualizado.';
+                $invoiceId = orders_update_status($pdo, $userId, $orderId, $status);
+                if ($status === 'fulfilled' && $invoiceId > 0) {
+                  $_SESSION['flash'] = 'Estado actualizado. Venta registrada (Factura #' . $invoiceId . ').';
+                } else {
+                  $_SESSION['flash'] = 'Estado actualizado.';
+                }
 
               $qs = [];
               if ($scope !== '') {

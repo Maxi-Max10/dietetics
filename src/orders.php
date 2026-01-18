@@ -60,6 +60,42 @@ function orders_count_new(PDO $pdo, int $createdBy): int
     return orders_count_status($pdo, $createdBy, 'new');
 }
 
+function orders_invoice_marker(int $orderId): string
+{
+    return '[order:' . (int)$orderId . ']';
+}
+
+function orders_find_invoice_for_order(PDO $pdo, int $createdBy, int $orderId): int
+{
+    $createdBy = (int)$createdBy;
+    $orderId = (int)$orderId;
+    if ($createdBy <= 0 || $orderId <= 0) {
+        return 0;
+    }
+
+    // Evitar duplicados: buscamos un marcador en el campo detail.
+    $needle = '%' . orders_invoice_marker($orderId) . '%';
+
+    try {
+        $stmt = $pdo->prepare(
+            'SELECT id
+             FROM invoices
+             WHERE created_by = :user_id
+               AND COALESCE(detail, \'\') LIKE :needle
+             ORDER BY id DESC
+             LIMIT 1'
+        );
+        $stmt->execute([
+            'user_id' => $createdBy,
+            'needle' => $needle,
+        ]);
+        return (int)($stmt->fetchColumn() ?: 0);
+    } catch (Throwable $e) {
+        // Si la tabla no existe (setup parcial) o falla la query, no bloqueamos.
+        return 0;
+    }
+}
+
 function orders_public_catalog_owner_id(PDO $pdo, array $config): int
 {
     $cfg = $config['public_catalog'] ?? [];
@@ -396,14 +432,14 @@ function orders_get(PDO $pdo, int $createdBy, int $orderId): array
         throw new RuntimeException('Pedido no encontrado.');
     }
 
-    $itemStmt = $pdo->prepare('SELECT description, quantity, unit_price_cents, line_total_cents FROM customer_order_items WHERE order_id = :order_id ORDER BY id ASC');
+    $itemStmt = $pdo->prepare('SELECT product_id, description, quantity, unit_price_cents, line_total_cents FROM customer_order_items WHERE order_id = :order_id ORDER BY id ASC');
     $itemStmt->execute(['order_id' => (int)$orderId]);
     $items = $itemStmt->fetchAll();
 
     return ['order' => $order, 'items' => $items];
 }
 
-function orders_update_status(PDO $pdo, int $createdBy, int $orderId, string $status): void
+function orders_update_status(PDO $pdo, int $createdBy, int $orderId, string $status): int
 {
     if (!orders_supports_tables($pdo)) {
         throw new RuntimeException('No se encontraron las tablas de pedidos.');
@@ -415,11 +451,113 @@ function orders_update_status(PDO $pdo, int $createdBy, int $orderId, string $st
         throw new InvalidArgumentException('Estado inválido.');
     }
 
-    $stmt = $pdo->prepare('UPDATE customer_orders SET status = :status WHERE id = :id AND created_by = :created_by');
-    $stmt->execute(['status' => $status, 'id' => (int)$orderId, 'created_by' => (int)$createdBy]);
+    $createdBy = (int)$createdBy;
+    $orderId = (int)$orderId;
 
-    if ($stmt->rowCount() === 0) {
-        // validar existencia
-        orders_get($pdo, $createdBy, $orderId);
+    // Cargar pedido y items (también valida existencia).
+    $g = orders_get($pdo, $createdBy, $orderId);
+    $order = is_array($g['order'] ?? null) ? $g['order'] : [];
+    $items = is_array($g['items'] ?? null) ? $g['items'] : [];
+    $currentStatus = (string)($order['status'] ?? 'new');
+
+    $invoiceId = 0;
+
+    // Si pasa a "Entregado", registramos la venta en invoices + invoice_items.
+    if ($status === 'fulfilled' && $currentStatus !== 'fulfilled') {
+        $invoiceId = orders_find_invoice_for_order($pdo, $createdBy, $orderId);
+
+        if ($invoiceId <= 0) {
+            $customerName = (string)($order['customer_name'] ?? '');
+            $customerPhone = (string)($order['customer_phone'] ?? '');
+            $customerAddress = (string)($order['customer_address'] ?? '');
+            $notes = trim((string)($order['notes'] ?? ''));
+            $currency = (string)($order['currency'] ?? 'ARS');
+
+            $detailLines = [];
+            $detailLines[] = 'Pedido #' . $orderId . ' (retiro)';
+            if ($notes !== '') {
+                $detailLines[] = 'Notas: ' . $notes;
+            }
+            $detailLines[] = orders_invoice_marker($orderId);
+            $detail = implode("\n", $detailLines);
+
+            $unitByProductId = [];
+            $productIds = [];
+            foreach ($items as $it) {
+                $pid = (int)($it['product_id'] ?? 0);
+                if ($pid > 0) {
+                    $productIds[] = $pid;
+                }
+            }
+
+            $productIds = array_values(array_unique($productIds));
+            if (count($productIds) > 0) {
+                try {
+                    $placeholders = implode(',', array_fill(0, count($productIds), '?'));
+                    $stmtUnits = $pdo->prepare('SELECT id, COALESCE(unit, "") AS unit FROM catalog_products WHERE created_by = ? AND id IN (' . $placeholders . ')');
+                    $stmtUnits->execute(array_merge([$createdBy], $productIds));
+                    foreach ($stmtUnits->fetchAll() as $r) {
+                        $pid = (int)($r['id'] ?? 0);
+                        $u = trim((string)($r['unit'] ?? ''));
+                        if ($pid > 0 && $u !== '') {
+                            $unitByProductId[$pid] = $u;
+                        }
+                    }
+                } catch (Throwable $e) {
+                    // Si falla (tabla inexistente o query), seguimos con 'u'.
+                }
+            }
+
+            $invItems = [];
+            foreach ($items as $it) {
+                $desc = trim((string)($it['description'] ?? ''));
+                $qty = (string)($it['quantity'] ?? '1');
+                $lineTotalCents = (int)($it['line_total_cents'] ?? 0);
+                $pid = (int)($it['product_id'] ?? 0);
+                if ($desc === '') {
+                    continue;
+                }
+                if ($lineTotalCents <= 0) {
+                    throw new InvalidArgumentException('No se puede generar venta: hay items con precio 0.');
+                }
+
+                // invoices_create interpreta unit_price como el TOTAL de ese ítem (en moneda), no en centavos.
+                $lineTotal = number_format($lineTotalCents / 100, 2, '.', '');
+                $unit = 'u';
+                if ($pid > 0 && isset($unitByProductId[$pid]) && trim((string)$unitByProductId[$pid]) !== '') {
+                    $unit = (string)$unitByProductId[$pid];
+                }
+
+                $invItems[] = [
+                    'description' => $desc,
+                    'quantity' => $qty,
+                    'unit' => $unit,
+                    'unit_price' => $lineTotal,
+                ];
+            }
+
+            if (count($invItems) === 0) {
+                throw new InvalidArgumentException('No se puede generar venta: el pedido no tiene items válidos.');
+            }
+
+            // Esto crea la factura y, si hay stock_items compatibles, descuenta stock automáticamente.
+            $invoiceId = invoices_create(
+                $pdo,
+                $createdBy,
+                $customerName,
+                '',
+                $detail,
+                $invItems,
+                $currency,
+                '',
+                $customerPhone,
+                $customerAddress
+            );
+        }
     }
+
+    $stmt = $pdo->prepare('UPDATE customer_orders SET status = :status WHERE id = :id AND created_by = :created_by');
+    $stmt->execute(['status' => $status, 'id' => $orderId, 'created_by' => $createdBy]);
+
+    return $invoiceId;
 }
