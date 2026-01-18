@@ -55,6 +55,8 @@ CREATE TABLE IF NOT EXISTS customer_orders (
   created_by INT UNSIGNED NOT NULL,
   customer_name VARCHAR(190) NOT NULL,
   customer_phone VARCHAR(40) NULL,
+  customer_email VARCHAR(190) NULL,
+  customer_dni VARCHAR(32) NULL,
   customer_address VARCHAR(255) NULL,
   notes TEXT NULL,
   currency CHAR(3) NOT NULL DEFAULT 'ARS',

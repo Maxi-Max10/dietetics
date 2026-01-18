@@ -10,12 +10,18 @@ function reports_supports_customer_dni(PDO $pdo): bool
     return invoices_supports_customer_dni($pdo);
 }
 
+function reports_supports_customer_address(PDO $pdo): bool
+{
+    return invoices_supports_customer_address($pdo);
+}
+
 /**
- * @return array<int, array{customer_name:string,customer_email:string,customer_dni:string,invoices_count:int,total_cents:int,currency:string,last_purchase:string}>
+ * @return array<int, array{customer_name:string,customer_email:string,customer_dni:string,customer_address:string,invoices_count:int,total_cents:int,currency:string,last_purchase:string}>
  */
 function reports_customers_list(PDO $pdo, int $userId, DateTimeImmutable $start, DateTimeImmutable $end, string $search = '', int $limit = 20): array
 {
     $hasDni = reports_supports_customer_dni($pdo);
+    $hasAddress = reports_supports_customer_address($pdo);
     $search = trim($search);
     $limit = max(1, (int)$limit);
 
@@ -37,11 +43,13 @@ function reports_customers_list(PDO $pdo, int $userId, DateTimeImmutable $start,
     }
 
     $selectDni = $hasDni ? 'customer_dni' : "''";
+    $selectAddress = $hasAddress ? 'MAX(COALESCE(customer_address, ""))' : "''";
     $groupBy = 'customer_name, customer_email, currency' . ($hasDni ? ', customer_dni' : '');
 
     // LIMIT con entero validado: evitamos placeholders por compatibilidad MySQL/PDO.
     $stmt = $pdo->prepare(
         'SELECT customer_name, customer_email, ' . $selectDni . ' AS customer_dni, currency,
+            ' . $selectAddress . ' AS customer_address,
                 COUNT(*) AS invoices_count, COALESCE(SUM(total_cents), 0) AS total_cents, MAX(created_at) AS last_purchase
          FROM invoices
          WHERE ' . $where . '
@@ -59,6 +67,7 @@ function reports_customers_list(PDO $pdo, int $userId, DateTimeImmutable $start,
             'customer_name' => (string)($r['customer_name'] ?? ''),
             'customer_email' => (string)($r['customer_email'] ?? ''),
             'customer_dni' => (string)($r['customer_dni'] ?? ''),
+            'customer_address' => (string)($r['customer_address'] ?? ''),
             'currency' => (string)($r['currency'] ?? 'ARS'),
             'invoices_count' => (int)($r['invoices_count'] ?? 0),
             'total_cents' => (int)($r['total_cents'] ?? 0),

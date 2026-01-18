@@ -60,7 +60,7 @@ try {
             $stamp = date('Ymd-His');
             $base = 'clientes-' . $p['key'] . '-' . $stamp;
 
-            $headers = ['customer_name', 'customer_email', 'customer_dni', 'currency', 'invoices_count', 'total_cents', 'last_purchase'];
+            $headers = ['customer_name', 'customer_email', 'customer_dni', 'customer_address', 'currency', 'invoices_count', 'total_cents', 'last_purchase'];
 
             if ($format === 'csv') {
                 reports_export_csv($headers, $rows, $base . '.csv');
@@ -327,6 +327,7 @@ try {
                   <th>Cliente</th>
                   <th style="width:240px">Email</th>
                   <th style="width:140px">DNI</th>
+                  <th style="width:260px">Domicilio</th>
                   <th style="width:110px" class="text-end">Facturas</th>
                   <th style="width:180px" class="text-end">Total</th>
                   <th style="width:200px">Última compra</th>
@@ -334,13 +335,14 @@ try {
               </thead>
               <tbody>
               <?php if (count($rows) === 0): ?>
-                <tr><td colspan="6" class="text-muted">Sin resultados.</td></tr>
+                <tr><td colspan="7" class="text-muted">Sin resultados.</td></tr>
               <?php else: ?>
                 <?php foreach ($rows as $r): ?>
                   <tr>
                     <td><?= e((string)$r['customer_name']) ?></td>
                     <td><?= e((string)$r['customer_email']) ?></td>
                     <td><?= e((string)$r['customer_dni']) ?></td>
+                    <td><?= e((string)($r['customer_address'] ?? '')) ?></td>
                     <td class="text-end"><?= e((string)$r['invoices_count']) ?></td>
                     <td class="text-end"><?= e(money_format_cents((int)$r['total_cents'], (string)$r['currency'])) ?></td>
                     <td><?= e((string)$r['last_purchase']) ?></td>

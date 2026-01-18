@@ -29,6 +29,30 @@ function orders_supports_tables(PDO $pdo): bool
     }
 }
 
+function orders_supports_item_customer_fields(PDO $pdo): bool
+{
+    static $cache = null;
+    if (is_bool($cache)) {
+        return $cache;
+    }
+
+    try {
+        $stmt = $pdo->prepare(
+            "SELECT COUNT(*)
+             FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = 'customer_order_items'
+               AND COLUMN_NAME IN ('customer_email','customer_dni')"
+        );
+        $stmt->execute();
+        $cache = ((int)$stmt->fetchColumn() >= 2);
+        return $cache;
+    } catch (Throwable $e) {
+        $cache = false;
+        return false;
+    }
+}
+
 function orders_count_status(PDO $pdo, int $createdBy, string $status = ''): int
 {
     if (!orders_supports_tables($pdo)) {
@@ -94,6 +118,77 @@ function orders_find_invoice_for_order(PDO $pdo, int $createdBy, int $orderId): 
         // Si la tabla no existe (setup parcial) o falla la query, no bloqueamos.
         return 0;
     }
+}
+
+function orders_sync_invoice_customer_fields(PDO $pdo, int $createdBy, int $invoiceId, string $customerName, string $customerEmail, string $customerDni, string $customerPhone, string $customerAddress): void
+{
+    $createdBy = (int)$createdBy;
+    $invoiceId = (int)$invoiceId;
+    if ($createdBy <= 0 || $invoiceId <= 0) {
+        return;
+    }
+
+    $supportsDni = invoices_supports_customer_dni($pdo);
+    $supportsPhone = invoices_supports_customer_phone($pdo);
+    $supportsAddress = invoices_supports_customer_address($pdo);
+
+    $cols = ['customer_name', 'customer_email'];
+    if ($supportsDni) {
+        $cols[] = 'customer_dni';
+    }
+    if ($supportsPhone) {
+        $cols[] = 'customer_phone';
+    }
+    if ($supportsAddress) {
+        $cols[] = 'customer_address';
+    }
+
+    $stmt = $pdo->prepare('SELECT ' . implode(', ', $cols) . ' FROM invoices WHERE id = :id AND created_by = :created_by LIMIT 1');
+    $stmt->execute(['id' => $invoiceId, 'created_by' => $createdBy]);
+    $inv = $stmt->fetch();
+    if (!$inv || !is_array($inv)) {
+        return;
+    }
+
+    $set = [];
+    $params = ['id' => $invoiceId, 'created_by' => $createdBy];
+
+    $newName = trim($customerName);
+    if ($newName !== '' && trim((string)($inv['customer_name'] ?? '')) === '') {
+        $set[] = 'customer_name = :customer_name';
+        $params['customer_name'] = $newName;
+    }
+
+    $newEmail = trim($customerEmail);
+    if ($newEmail !== '' && trim((string)($inv['customer_email'] ?? '')) === '') {
+        $set[] = 'customer_email = :customer_email';
+        $params['customer_email'] = $newEmail;
+    }
+
+    $newDni = trim($customerDni);
+    if ($supportsDni && $newDni !== '' && trim((string)($inv['customer_dni'] ?? '')) === '') {
+        $set[] = 'customer_dni = :customer_dni';
+        $params['customer_dni'] = $newDni;
+    }
+
+    $newPhone = trim($customerPhone);
+    if ($supportsPhone && $newPhone !== '' && trim((string)($inv['customer_phone'] ?? '')) === '') {
+        $set[] = 'customer_phone = :customer_phone';
+        $params['customer_phone'] = $newPhone;
+    }
+
+    $newAddress = trim($customerAddress);
+    if ($supportsAddress && $newAddress !== '' && trim((string)($inv['customer_address'] ?? '')) === '') {
+        $set[] = 'customer_address = :customer_address';
+        $params['customer_address'] = $newAddress;
+    }
+
+    if (count($set) === 0) {
+        return;
+    }
+
+    $upd = $pdo->prepare('UPDATE invoices SET ' . implode(', ', $set) . ' WHERE id = :id AND created_by = :created_by');
+    $upd->execute($params);
 }
 
 function orders_public_catalog_owner_id(PDO $pdo, array $config): int
@@ -304,20 +399,33 @@ function orders_create_public(PDO $pdo, int $createdBy, string $customerName, st
             throw new RuntimeException('No se pudo crear el pedido.');
         }
 
-        $itemStmt = $pdo->prepare(
-            'INSERT INTO customer_order_items (order_id, product_id, description, quantity, unit_price_cents, line_total_cents)
-             VALUES (:order_id, :product_id, :description, :quantity, :unit_price_cents, :line_total_cents)'
-        );
+        $supportsItemCustomerFields = orders_supports_item_customer_fields($pdo);
+        if ($supportsItemCustomerFields) {
+            $itemStmt = $pdo->prepare(
+                'INSERT INTO customer_order_items (order_id, product_id, description, customer_email, customer_dni, quantity, unit_price_cents, line_total_cents)
+                 VALUES (:order_id, :product_id, :description, :customer_email, :customer_dni, :quantity, :unit_price_cents, :line_total_cents)'
+            );
+        } else {
+            $itemStmt = $pdo->prepare(
+                'INSERT INTO customer_order_items (order_id, product_id, description, quantity, unit_price_cents, line_total_cents)
+                 VALUES (:order_id, :product_id, :description, :quantity, :unit_price_cents, :line_total_cents)'
+            );
+        }
 
         foreach ($orderItems as $it) {
-            $itemStmt->execute([
+            $params = [
                 'order_id' => $orderId,
                 'product_id' => (int)$it['product_id'],
                 'description' => (string)$it['description'],
                 'quantity' => (string)$it['quantity'],
                 'unit_price_cents' => (int)$it['unit_price_cents'],
                 'line_total_cents' => (int)$it['line_total_cents'],
-            ]);
+            ];
+            if ($supportsItemCustomerFields) {
+                $params['customer_email'] = trim($customerEmail) !== '' ? trim($customerEmail) : null;
+                $params['customer_dni'] = trim($customerDni) !== '' ? trim($customerDni) : null;
+            }
+            $itemStmt->execute($params);
         }
 
         $pdo->commit();
@@ -446,7 +554,11 @@ function orders_get(PDO $pdo, int $createdBy, int $orderId): array
         throw new RuntimeException('Pedido no encontrado.');
     }
 
-    $itemStmt = $pdo->prepare('SELECT product_id, description, quantity, unit_price_cents, line_total_cents FROM customer_order_items WHERE order_id = :order_id ORDER BY id ASC');
+    if (orders_supports_item_customer_fields($pdo)) {
+        $itemStmt = $pdo->prepare('SELECT product_id, description, customer_email, customer_dni, quantity, unit_price_cents, line_total_cents FROM customer_order_items WHERE order_id = :order_id ORDER BY id ASC');
+    } else {
+        $itemStmt = $pdo->prepare('SELECT product_id, description, quantity, unit_price_cents, line_total_cents FROM customer_order_items WHERE order_id = :order_id ORDER BY id ASC');
+    }
     $itemStmt->execute(['order_id' => (int)$orderId]);
     $items = $itemStmt->fetchAll();
 
@@ -477,15 +589,30 @@ function orders_update_status(PDO $pdo, int $createdBy, int $orderId, string $st
     $invoiceId = 0;
 
     // Si pasa a "Entregado", registramos la venta en invoices + invoice_items.
-    if ($status === 'fulfilled' && $currentStatus !== 'fulfilled') {
+    // Si ya estaba entregado, sincronizamos datos faltantes hacia la factura existente.
+    if ($status === 'fulfilled') {
         $invoiceId = orders_find_invoice_for_order($pdo, $createdBy, $orderId);
 
         if ($invoiceId <= 0) {
             $customerName = (string)($order['customer_name'] ?? '');
             $customerPhone = (string)($order['customer_phone'] ?? '');
+            $customerEmail = (string)($order['customer_email'] ?? '');
+            $customerDni = (string)($order['customer_dni'] ?? '');
             $customerAddress = (string)($order['customer_address'] ?? '');
             $notes = trim((string)($order['notes'] ?? ''));
             $currency = (string)($order['currency'] ?? 'ARS');
+
+            // Fallback: si la tabla customer_orders todavía no tiene email/DNI,
+            // intentamos tomarlos de customer_order_items (si existen columnas).
+            if ((trim($customerEmail) === '' || trim($customerDni) === '') && count($items) > 0) {
+                $first = is_array($items[0] ?? null) ? $items[0] : [];
+                if (trim($customerEmail) === '' && isset($first['customer_email'])) {
+                    $customerEmail = (string)($first['customer_email'] ?? '');
+                }
+                if (trim($customerDni) === '' && isset($first['customer_dni'])) {
+                    $customerDni = (string)($first['customer_dni'] ?? '');
+                }
+            }
 
             $detailLines = [];
             $detailLines[] = 'Pedido #' . $orderId . ' (retiro)';
@@ -559,14 +686,35 @@ function orders_update_status(PDO $pdo, int $createdBy, int $orderId, string $st
                 $pdo,
                 $createdBy,
                 $customerName,
-                '',
+                $customerEmail,
                 $detail,
                 $invItems,
                 $currency,
-                '',
+                $customerDni,
                 $customerPhone,
                 $customerAddress
             );
+        }
+
+        // Con la factura creada o encontrada, intentamos completar datos faltantes.
+        if ($invoiceId > 0) {
+            $customerName = (string)($order['customer_name'] ?? '');
+            $customerPhone = (string)($order['customer_phone'] ?? '');
+            $customerEmail = (string)($order['customer_email'] ?? '');
+            $customerDni = (string)($order['customer_dni'] ?? '');
+            $customerAddress = (string)($order['customer_address'] ?? '');
+
+            if ((trim($customerEmail) === '' || trim($customerDni) === '') && count($items) > 0) {
+                $first = is_array($items[0] ?? null) ? $items[0] : [];
+                if (trim($customerEmail) === '' && isset($first['customer_email'])) {
+                    $customerEmail = (string)($first['customer_email'] ?? '');
+                }
+                if (trim($customerDni) === '' && isset($first['customer_dni'])) {
+                    $customerDni = (string)($first['customer_dni'] ?? '');
+                }
+            }
+
+            orders_sync_invoice_customer_fields($pdo, $createdBy, $invoiceId, $customerName, $customerEmail, $customerDni, $customerPhone, $customerAddress);
         }
     }
 
