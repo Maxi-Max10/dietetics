@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../src/bootstrap.php';
 
+// Vista unificada: mantenemos /pedidos_hoy solo por compatibilidad.
+header('Location: /pedidos?scope=today', true, 302);
+exit;
+
+__halt_compiler();
+
 auth_require_login();
 
 $config = app_config();

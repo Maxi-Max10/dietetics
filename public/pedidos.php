@@ -17,6 +17,12 @@ $error = '';
 
 $viewId = isset($_GET['view']) ? (int)$_GET['view'] : 0;
 $statusFilter = trim((string)($_GET['status'] ?? ''));
+$scope = trim((string)($_GET['scope'] ?? ''));
+
+$tz = new DateTimeZone('America/Argentina/Buenos_Aires');
+$now = new DateTimeImmutable('now', $tz);
+$todayStart = $now->setTime(0, 0, 0);
+$todayEnd = $todayStart->modify('+1 day');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $token = (string)($_POST['csrf_token'] ?? '');
@@ -31,7 +37,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $status = (string)($_POST['status'] ?? '');
                 orders_update_status($pdo, $userId, $orderId, $status);
                 $_SESSION['flash'] = 'Estado actualizado.';
-                header('Location: /pedidos' . ($viewId > 0 ? ('?view=' . $viewId) : ($statusFilter !== '' ? ('?status=' . rawurlencode($statusFilter)) : '')));
+
+              $qs = [];
+              if ($scope !== '') {
+                $qs[] = 'scope=' . rawurlencode($scope);
+              }
+              if ($statusFilter !== '') {
+                $qs[] = 'status=' . rawurlencode($statusFilter);
+              }
+              if ($viewId > 0) {
+                $qs[] = 'view=' . rawurlencode((string)$viewId);
+              }
+
+              header('Location: /pedidos' . (count($qs) > 0 ? ('?' . implode('&', $qs)) : ''));
                 exit;
             }
 
@@ -56,7 +74,11 @@ try {
         $viewItems = $g['items'] ?? [];
     }
 
-    $rows = orders_list($pdo, $userId, $statusFilter, 200);
+    if ($scope === 'today') {
+      $rows = orders_list_between($pdo, $userId, $todayStart, $todayEnd, $statusFilter, 300);
+    } else {
+      $rows = orders_list($pdo, $userId, $statusFilter, 200);
+    }
 } catch (Throwable $e) {
     error_log('pedidos.php load error: ' . $e->getMessage());
     $rows = [];
@@ -141,7 +163,6 @@ $label = function (string $status): string {
           <h1 class="h3 mb-0">Pedidos (retiro)</h1>
         </div>
         <div class="d-flex gap-2 flex-wrap">
-          <a class="btn btn-outline-primary action-btn" href="/pedidos_hoy">Ver pedidos de hoy</a>
           <a class="btn btn-outline-primary action-btn" href="/lista_precios">Abrir lista pública</a>
         </div>
       </div>
@@ -156,6 +177,13 @@ $label = function (string $status): string {
       <div class="card card-lift mb-4">
         <div class="card-body p-4">
           <form class="row g-2 align-items-end" method="get" action="/pedidos">
+            <div class="col-12 col-md-4">
+              <label class="form-label" for="scope">Rango</label>
+              <select class="form-select" id="scope" name="scope">
+                <option value="" <?= $scope === '' ? 'selected' : '' ?>>Todos</option>
+                <option value="today" <?= $scope === 'today' ? 'selected' : '' ?>>Hoy</option>
+              </select>
+            </div>
             <div class="col-12 col-md-4">
               <label class="form-label" for="status">Estado</label>
               <select class="form-select" id="status" name="status">
@@ -279,7 +307,14 @@ $label = function (string $status): string {
                     <td><?= e((string)($r['created_at'] ?? '')) ?></td>
                     <td class="text-end fw-semibold"><?= e(money_format_cents((int)($r['total_cents'] ?? 0), (string)($r['currency'] ?? 'ARS'))) ?></td>
                     <td><span class="badge <?= e($badge((string)($r['status'] ?? ''))) ?>"><?= e($label((string)($r['status'] ?? ''))) ?></span></td>
-                    <td class="text-end"><a class="btn btn-outline-primary btn-sm action-btn" href="/pedidos?view=<?= e((string)($r['id'] ?? 0)) ?>">Ver</a></td>
+                    <?php
+                      $qs = [];
+                      if ($scope !== '') { $qs[] = 'scope=' . rawurlencode($scope); }
+                      if ($statusFilter !== '') { $qs[] = 'status=' . rawurlencode($statusFilter); }
+                      $qs[] = 'view=' . rawurlencode((string)($r['id'] ?? 0));
+                      $viewHref = '/pedidos?' . implode('&', $qs);
+                    ?>
+                    <td class="text-end"><a class="btn btn-outline-primary btn-sm action-btn" href="<?= e($viewHref) ?>">Ver</a></td>
                   </tr>
                 <?php endforeach; ?>
               <?php endif; ?>
