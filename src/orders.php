@@ -29,6 +29,37 @@ function orders_supports_tables(PDO $pdo): bool
     }
 }
 
+function orders_count_status(PDO $pdo, int $createdBy, string $status = ''): int
+{
+    if (!orders_supports_tables($pdo)) {
+        return 0;
+    }
+
+    $createdBy = (int)$createdBy;
+    if ($createdBy <= 0) {
+        return 0;
+    }
+
+    $status = trim($status);
+
+    $sql = 'SELECT COUNT(*) FROM customer_orders WHERE created_by = :user_id';
+    $params = ['user_id' => $createdBy];
+
+    if ($status !== '') {
+        $sql .= ' AND status = :status';
+        $params['status'] = $status;
+    }
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    return (int)$stmt->fetchColumn();
+}
+
+function orders_count_new(PDO $pdo, int $createdBy): int
+{
+    return orders_count_status($pdo, $createdBy, 'new');
+}
+
 function orders_public_catalog_owner_id(PDO $pdo, array $config): int
 {
     $cfg = $config['public_catalog'] ?? [];

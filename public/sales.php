@@ -11,6 +11,15 @@ $appName = (string)($config['app']['name'] ?? 'Dietetic');
 $userId = (int)auth_user_id();
 $csrf = csrf_token();
 
+$newOrdersCount = 0;
+try {
+  $pdoNav = db($config);
+  $newOrdersCount = orders_count_new($pdoNav, $userId);
+} catch (Throwable $e) {
+  error_log('sales.php nav count error: ' . $e->getMessage());
+  $newOrdersCount = 0;
+}
+
 $period = (string)($_GET['period'] ?? 'day');
 $q = trim((string)($_GET['q'] ?? ''));
 $format = strtolower(trim((string)($_GET['format'] ?? '')));
@@ -325,7 +334,7 @@ function sales_active(string $current, string $key): string
           <a class="nav-link-pill" href="/customers">Clientes</a>
           <a class="nav-link-pill" href="/products">Productos</a>
           <a class="nav-link-pill" href="/catalogo">Catálogo</a>
-          <a class="nav-link-pill" href="/pedidos">Pedidos</a>
+          <a class="nav-link-pill" href="/pedidos">Pedidos<?php if ($newOrdersCount > 0): ?><span class="badge rounded-pill text-bg-danger ms-1"><?= e((string)$newOrdersCount) ?></span><?php endif; ?></a>
           <a class="nav-link-pill" href="/income">Ingresos</a>
           <a class="nav-link-pill" href="/expense">Egresos</a>
           <a class="nav-link-pill" href="/stock">Stock</a>
@@ -356,7 +365,7 @@ function sales_active(string $current, string $key): string
       <a class="list-group-item list-group-item-action" href="/customers">Clientes</a>
       <a class="list-group-item list-group-item-action" href="/products">Productos</a>
       <a class="list-group-item list-group-item-action" href="/catalogo">Catálogo</a>
-      <a class="list-group-item list-group-item-action" href="/pedidos">Pedidos</a>
+      <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" href="/pedidos"><span>Pedidos</span><?php if ($newOrdersCount > 0): ?><span class="badge rounded-pill text-bg-danger"><?= e((string)$newOrdersCount) ?></span><?php endif; ?></a>
       <a class="list-group-item list-group-item-action" href="/income">Ingresos</a>
       <a class="list-group-item list-group-item-action" href="/expense">Egresos</a>
       <a class="list-group-item list-group-item-action" href="/stock">Stock</a>
