@@ -296,6 +296,61 @@ function orders_list(PDO $pdo, int $createdBy, string $status = '', int $limit =
     return $out;
 }
 
+/**
+ * Listado de pedidos en un rango [start, end) por created_at.
+ *
+ * @return array<int, array{id:int,customer_name:string,customer_phone:string,customer_address:string,notes:string,currency:string,total_cents:int,status:string,created_at:string}>
+ */
+function orders_list_between(PDO $pdo, int $createdBy, DateTimeImmutable $start, DateTimeImmutable $end, string $status = '', int $limit = 200): array
+{
+    if (!orders_supports_tables($pdo)) {
+        throw new RuntimeException('No se encontraron las tablas de pedidos.');
+    }
+
+    $createdBy = (int)$createdBy;
+    $limit = max(1, min(500, (int)$limit));
+    $status = trim($status);
+
+    $where = 'created_by = :created_by AND created_at >= :start AND created_at < :end';
+    $params = [
+        'created_by' => $createdBy,
+        'start' => $start->format('Y-m-d H:i:s'),
+        'end' => $end->format('Y-m-d H:i:s'),
+    ];
+
+    if ($status !== '') {
+        $where .= ' AND status = :status';
+        $params['status'] = $status;
+    }
+
+    $stmt = $pdo->prepare(
+        'SELECT id, customer_name, COALESCE(customer_phone, "") AS customer_phone, COALESCE(customer_address, "") AS customer_address,
+                COALESCE(notes, "") AS notes, currency, total_cents, status, created_at
+         FROM customer_orders
+         WHERE ' . $where . '
+         ORDER BY created_at DESC, id DESC
+         LIMIT ' . $limit
+    );
+    $stmt->execute($params);
+
+    $rows = $stmt->fetchAll();
+    $out = [];
+    foreach ($rows as $r) {
+        $out[] = [
+            'id' => (int)($r['id'] ?? 0),
+            'customer_name' => (string)($r['customer_name'] ?? ''),
+            'customer_phone' => (string)($r['customer_phone'] ?? ''),
+            'customer_address' => (string)($r['customer_address'] ?? ''),
+            'notes' => (string)($r['notes'] ?? ''),
+            'currency' => (string)($r['currency'] ?? 'ARS'),
+            'total_cents' => (int)($r['total_cents'] ?? 0),
+            'status' => (string)($r['status'] ?? 'new'),
+            'created_at' => (string)($r['created_at'] ?? ''),
+        ];
+    }
+    return $out;
+}
+
 /** @return array{order:array,items:array<int,array>} */
 function orders_get(PDO $pdo, int $createdBy, int $orderId): array
 {

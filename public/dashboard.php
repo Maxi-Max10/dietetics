@@ -572,6 +572,7 @@ if ($error !== '') {
           <a class="nav-link-pill" href="/products">Productos</a>
           <a class="nav-link-pill" href="/catalogo">Catálogo</a>
           <a class="nav-link-pill" href="/pedidos">Pedidos</a>
+          <a class="nav-link-pill" href="/pedidos_hoy">Pedidos hoy</a>
           <a class="nav-link-pill" href="/income">Ingresos</a>
           <a class="nav-link-pill" href="/expense">Egresos</a>
           <a class="nav-link-pill" href="/stock">Stock</a>
@@ -639,6 +640,16 @@ if ($error !== '') {
           <path d="M11.5 10.5 13 12l2-3" />
         </svg>
         Pedidos
+      </a>
+      <a class="list-group-item list-group-item-action d-flex align-items-center gap-2" href="/pedidos_hoy">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M5 2.8h6" />
+          <path d="M4 4.5h8" />
+          <path d="M3.5 6.5h9" />
+          <path d="M3.5 9.5h6" />
+          <path d="M10.6 9.4 12 10.8l2-2.6" />
+        </svg>
+        Pedidos hoy
       </a>
       <a class="list-group-item list-group-item-action d-flex align-items-center gap-2" href="/income">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

@@ -18,6 +18,12 @@ $error = '';
 $viewId = isset($_GET['view']) ? (int)$_GET['view'] : 0;
 $statusFilter = trim((string)($_GET['status'] ?? ''));
 
+$tz = new DateTimeZone('America/Argentina/Buenos_Aires');
+$now = new DateTimeImmutable('now', $tz);
+$start = $now->setTime(0, 0, 0);
+$end = $start->modify('+1 day');
+$todayLabel = $start->format('d/m/Y');
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $token = (string)($_POST['csrf_token'] ?? '');
     if (!csrf_verify($token)) {
@@ -31,13 +37,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $status = (string)($_POST['status'] ?? '');
                 orders_update_status($pdo, $userId, $orderId, $status);
                 $_SESSION['flash'] = 'Estado actualizado.';
-                header('Location: /pedidos' . ($viewId > 0 ? ('?view=' . $viewId) : ($statusFilter !== '' ? ('?status=' . rawurlencode($statusFilter)) : '')));
+                $qs = [];
+                if ($viewId > 0) {
+                    $qs[] = 'view=' . rawurlencode((string)$viewId);
+                }
+                if ($statusFilter !== '') {
+                    $qs[] = 'status=' . rawurlencode($statusFilter);
+                }
+                header('Location: /pedidos_hoy' . (count($qs) > 0 ? ('?' . implode('&', $qs)) : ''));
                 exit;
             }
 
             throw new InvalidArgumentException('Acción inválida.');
         } catch (Throwable $e) {
-            error_log('pedidos.php error: ' . $e->getMessage());
+            error_log('pedidos_hoy.php error: ' . $e->getMessage());
             $error = (($config['app']['env'] ?? 'production') === 'production') ? 'No se pudo procesar el pedido.' : ('Error: ' . $e->getMessage());
         }
     }
@@ -56,9 +69,9 @@ try {
         $viewItems = $g['items'] ?? [];
     }
 
-    $rows = orders_list($pdo, $userId, $statusFilter, 200);
+    $rows = orders_list_between($pdo, $userId, $start, $end, $statusFilter, 300);
 } catch (Throwable $e) {
-    error_log('pedidos.php load error: ' . $e->getMessage());
+    error_log('pedidos_hoy.php load error: ' . $e->getMessage());
     $rows = [];
     if ($error === '') {
         $error = (($config['app']['env'] ?? 'production') === 'production')
@@ -93,7 +106,7 @@ $label = function (string $status): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Pedidos</title>
+  <title>Pedidos de hoy</title>
   <link rel="icon" type="image/png" href="/logo.png">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
   <link rel="stylesheet" href="/brand.css">
@@ -122,8 +135,8 @@ $label = function (string $status): string {
       <img src="/logo.png" alt="Logo" style="height:34px;width:auto;">
     </a>
     <div class="ms-auto d-flex align-items-center gap-2">
-      <span class="pill">Admin</span>
-      <a class="btn btn-outline-primary btn-sm action-btn" href="/dashboard">Volver</a>
+      <span class="pill">Pedidos hoy</span>
+      <a class="btn btn-outline-primary btn-sm action-btn" href="/pedidos">Ver todos</a>
       <form method="post" action="/logout.php" class="d-flex">
         <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
         <button type="submit" class="btn btn-outline-danger btn-sm action-btn">Salir</button>
@@ -138,10 +151,9 @@ $label = function (string $status): string {
       <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4 gap-3">
         <div>
           <p class="muted-label mb-1">Ventas</p>
-          <h1 class="h3 mb-0">Pedidos (retiro)</h1>
+          <h1 class="h3 mb-0">Pedidos de hoy <span class="text-muted" style="font-size:.9em;">(<?= e($todayLabel) ?>)</span></h1>
         </div>
         <div class="d-flex gap-2 flex-wrap">
-          <a class="btn btn-outline-primary action-btn" href="/pedidos_hoy">Ver pedidos de hoy</a>
           <a class="btn btn-outline-primary action-btn" href="/lista_precios">Abrir lista pública</a>
         </div>
       </div>
@@ -155,7 +167,7 @@ $label = function (string $status): string {
 
       <div class="card card-lift mb-4">
         <div class="card-body p-4">
-          <form class="row g-2 align-items-end" method="get" action="/pedidos">
+          <form class="row g-2 align-items-end" method="get" action="/pedidos_hoy">
             <div class="col-12 col-md-4">
               <label class="form-label" for="status">Estado</label>
               <select class="form-select" id="status" name="status">
@@ -183,7 +195,7 @@ $label = function (string $status): string {
               </div>
               <div class="d-flex align-items-center gap-2">
                 <span class="badge <?= e($badge((string)($view['status'] ?? ''))) ?>"><?= e($label((string)($view['status'] ?? ''))) ?></span>
-                <a class="btn btn-outline-primary btn-sm action-btn" href="/pedidos">Cerrar</a>
+                <a class="btn btn-outline-primary btn-sm action-btn" href="/pedidos_hoy">Cerrar</a>
               </div>
             </div>
 
@@ -259,7 +271,7 @@ $label = function (string $status): string {
                 <th>#</th>
                 <th>Cliente</th>
                 <th>Teléfono</th>
-                <th>Fecha</th>
+                <th>Hora</th>
                 <th class="text-end">Total</th>
                 <th>Estado</th>
                 <th class="text-end"></th>
@@ -268,7 +280,7 @@ $label = function (string $status): string {
               <tbody>
               <?php if (count($rows) === 0): ?>
                 <tr>
-                  <td colspan="7" class="text-center text-muted py-4">No hay pedidos.</td>
+                  <td colspan="7" class="text-center text-muted py-4">No hay pedidos hoy.</td>
                 </tr>
               <?php else: ?>
                 <?php foreach ($rows as $r): ?>
@@ -276,10 +288,10 @@ $label = function (string $status): string {
                     <td><?= e((string)($r['id'] ?? '')) ?></td>
                     <td><?= e((string)($r['customer_name'] ?? '')) ?></td>
                     <td><?= e((string)($r['customer_phone'] ?? '')) ?></td>
-                    <td><?= e((string)($r['created_at'] ?? '')) ?></td>
+                    <td><?= e(substr((string)($r['created_at'] ?? ''), 11, 5)) ?></td>
                     <td class="text-end fw-semibold"><?= e(money_format_cents((int)($r['total_cents'] ?? 0), (string)($r['currency'] ?? 'ARS'))) ?></td>
                     <td><span class="badge <?= e($badge((string)($r['status'] ?? ''))) ?>"><?= e($label((string)($r['status'] ?? ''))) ?></span></td>
-                    <td class="text-end"><a class="btn btn-outline-primary btn-sm action-btn" href="/pedidos?view=<?= e((string)($r['id'] ?? 0)) ?>">Ver</a></td>
+                    <td class="text-end"><a class="btn btn-outline-primary btn-sm action-btn" href="/pedidos_hoy?view=<?= e((string)($r['id'] ?? 0)) ?>">Ver</a></td>
                   </tr>
                 <?php endforeach; ?>
               <?php endif; ?>
