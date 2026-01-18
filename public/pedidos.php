@@ -126,6 +126,7 @@ $label = function (string $status): string {
     :root { --accent:#463B1E; --accent-rgb:70,59,30; --accent-dark:#2f2713; --accent-2:#96957E; --accent-2-rgb:150,149,126; --ink:#241e10; --muted:#6b6453; --card:rgba(255,255,255,.9); }
     body { font-family:'Space Grotesk','Segoe UI',sans-serif; background: radial-gradient(circle at 10% 20%, rgba(var(--accent-2-rgb),.22), transparent 38%), radial-gradient(circle at 90% 10%, rgba(var(--accent-rgb),.12), transparent 40%), linear-gradient(120deg,#fbfaf6,#E7E3D5); color:var(--ink); min-height:100vh; }
     .navbar-glass { background:rgba(255,255,255,.9); backdrop-filter:blur(12px); border:1px solid rgba(15,23,42,.06); box-shadow:0 10px 40px rgba(15,23,42,.08); }
+    .navbar-glass .container { padding-left: calc(.75rem + env(safe-area-inset-left)); padding-right: calc(.75rem + env(safe-area-inset-right)); }
     .page-shell { padding:2.5rem 0; }
     .card-lift { background:var(--card); border:1px solid rgba(15,23,42,.06); box-shadow:0 18px 50px rgba(15,23,42,.07); border-radius:18px; }
     .muted-label { color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.04em; font-size:.8rem; }
@@ -135,24 +136,141 @@ $label = function (string $status): string {
     .table thead th { background:rgba(var(--accent-rgb),.08); border-bottom:none; font-weight:600; color:var(--ink); }
     .table td, .table th { border-color:rgba(148,163,184,.35); }
     @media (max-width:768px){ .page-shell{padding:1.5rem .75rem; padding-left:calc(.75rem + env(safe-area-inset-left)); padding-right:calc(.75rem + env(safe-area-inset-right));} .card-lift{border-radius:14px} }
+
+    .navbar-logo { height:34px; width:auto; display:inline-block; }
+    .nav-toggle-btn { border-radius:12px; font-weight:600; }
+    .offcanvas-nav .list-group-item { border:1px solid rgba(15,23,42,.06); border-radius:14px; margin-bottom:.6rem; background:rgba(255,255,255,.85); box-shadow:0 10px 30px rgba(15,23,42,.06); }
+    .offcanvas-nav .list-group-item:active { transform: translateY(1px); }
+
+    .nav-shell {
+      display: inline-flex;
+      align-items: center;
+      gap: .25rem;
+      padding: .25rem;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, .04);
+      border: 1px solid rgba(15, 23, 42, .08);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .65);
+    }
+
+    .nav-link-pill {
+      appearance: none;
+      -webkit-appearance: none;
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      padding: .45rem .85rem;
+      border-radius: 999px;
+      font-weight: 650;
+      font-size: .92rem;
+      line-height: 1;
+      text-decoration: none;
+      white-space: nowrap;
+      cursor: pointer;
+      color: rgba(15, 23, 42, .78);
+      background: transparent;
+      border: 1px solid transparent;
+      transition: background .15s ease, box-shadow .15s ease, color .15s ease, transform .05s ease;
+    }
+
+    .nav-link-pill:hover,
+    .nav-link-pill:focus {
+      background: rgba(15, 23, 42, .06);
+      color: var(--ink);
+    }
+
+    .nav-link-pill.is-active,
+    .nav-link-pill[aria-current="page"] {
+      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+      color: #fff;
+      box-shadow: 0 12px 30px rgba(var(--accent-rgb), .28);
+    }
+
+    .nav-link-pill:active { transform: translateY(1px); }
+
+    .nav-link-pill--danger {
+      color: #b91c1c;
+      background: rgba(220, 38, 38, .08);
+      border-color: rgba(220, 38, 38, .18);
+    }
+
+    .nav-link-pill--danger:hover,
+    .nav-link-pill--danger:focus {
+      background: rgba(220, 38, 38, .12);
+      color: #991b1b;
+    }
   </style>
 </head>
 <body>
 <nav class="navbar navbar-expand-lg navbar-glass sticky-top">
   <div class="container py-2">
     <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-dark mb-0 h4 text-decoration-none" href="/dashboard" aria-label="<?= e($appName) ?>">
-      <img src="/logo.png" alt="Logo" style="height:34px;width:auto;">
+      <img src="/logo.png" alt="Logo" class="navbar-logo">
     </a>
-    <div class="ms-auto d-flex align-items-center gap-2">
-      <span class="pill">Admin</span>
-      <a class="btn btn-outline-primary btn-sm action-btn" href="/dashboard">Volver</a>
-      <form method="post" action="/logout.php" class="d-flex">
-        <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
-        <button type="submit" class="btn btn-outline-danger btn-sm action-btn">Salir</button>
-      </form>
+    <div class="ms-auto d-flex align-items-center gap-2 justify-content-end">
+      <span class="pill d-none d-lg-inline-flex">Admin</span>
+
+      <button class="btn btn-outline-primary btn-sm d-inline-flex align-items-center d-lg-none nav-toggle-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#appNavOffcanvas" aria-controls="appNavOffcanvas">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="me-1" aria-hidden="true">
+          <path d="M2.5 4h11" />
+          <path d="M2.5 8h11" />
+          <path d="M2.5 12h11" />
+        </svg>
+        Menú
+      </button>
+
+      <div class="d-none d-lg-flex align-items-center gap-2 justify-content-end">
+        <div class="nav-shell" role="navigation" aria-label="Secciones">
+          <a class="nav-link-pill" href="/dashboard">Dashboard</a>
+          <a class="nav-link-pill" href="/sales">Ventas</a>
+          <a class="nav-link-pill" href="/customers">Clientes</a>
+          <a class="nav-link-pill" href="/products">Productos</a>
+          <a class="nav-link-pill" href="/catalogo">Catálogo</a>
+          <a class="nav-link-pill is-active" href="/pedidos" aria-current="page">Pedidos</a>
+          <a class="nav-link-pill" href="/income">Ingresos</a>
+          <a class="nav-link-pill" href="/expense">Egresos</a>
+          <a class="nav-link-pill" href="/stock">Stock</a>
+        </div>
+
+        <form method="post" action="/logout.php" class="d-flex">
+          <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
+          <button type="submit" class="nav-link-pill nav-link-pill--danger">Salir</button>
+        </form>
+      </div>
     </div>
   </div>
 </nav>
+
+<div class="offcanvas offcanvas-end" tabindex="-1" id="appNavOffcanvas" aria-labelledby="appNavOffcanvasLabel">
+  <div class="offcanvas-header">
+    <div class="d-flex align-items-center gap-2">
+      <img src="/logo.png" alt="Logo" class="navbar-logo">
+      <h5 class="offcanvas-title mb-0 visually-hidden" id="appNavOffcanvasLabel"><?= e($appName) ?></h5>
+      <span class="pill ms-1">Admin</span>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+  </div>
+  <div class="offcanvas-body">
+    <div class="list-group offcanvas-nav">
+      <a class="list-group-item list-group-item-action" href="/dashboard">Dashboard</a>
+      <a class="list-group-item list-group-item-action" href="/sales">Ventas</a>
+      <a class="list-group-item list-group-item-action" href="/customers">Clientes</a>
+      <a class="list-group-item list-group-item-action" href="/products">Productos</a>
+      <a class="list-group-item list-group-item-action" href="/catalogo">Catálogo</a>
+      <a class="list-group-item list-group-item-action" href="/pedidos">Pedidos</a>
+      <a class="list-group-item list-group-item-action" href="/income">Ingresos</a>
+      <a class="list-group-item list-group-item-action" href="/expense">Egresos</a>
+      <a class="list-group-item list-group-item-action" href="/stock">Stock</a>
+    </div>
+
+    <div class="mt-3">
+      <form method="post" action="/logout.php" class="d-flex">
+        <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
+        <button type="submit" class="btn btn-outline-danger w-100">Salir</button>
+      </form>
+    </div>
+  </div>
+</div>
 
 <main class="container page-shell">
   <div class="row justify-content-center">

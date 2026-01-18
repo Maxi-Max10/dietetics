@@ -339,6 +339,7 @@ if (is_array($edit)) {
           <a class="nav-link-pill" href="/customers">Clientes</a>
           <a class="nav-link-pill" href="/products">Productos</a>
           <a class="nav-link-pill is-active" href="/catalogo" aria-current="page">Catálogo</a>
+          <a class="nav-link-pill" href="/pedidos">Pedidos</a>
           <a class="nav-link-pill" href="/income">Ingresos</a>
           <a class="nav-link-pill" href="/expense">Egresos</a>
           <a class="nav-link-pill" href="/stock">Stock</a>
@@ -369,6 +370,7 @@ if (is_array($edit)) {
       <a class="list-group-item list-group-item-action" href="/customers">Clientes</a>
       <a class="list-group-item list-group-item-action" href="/products">Productos</a>
       <a class="list-group-item list-group-item-action" href="/catalogo">Catálogo</a>
+      <a class="list-group-item list-group-item-action" href="/pedidos">Pedidos</a>
       <a class="list-group-item list-group-item-action" href="/income">Ingresos</a>
       <a class="list-group-item list-group-item-action" href="/expense">Egresos</a>
       <a class="list-group-item list-group-item-action" href="/stock">Stock</a>
