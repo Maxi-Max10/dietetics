@@ -440,16 +440,29 @@ $csrf = csrf_token();
 <!-- Modal de confirmación de pedido -->
 <div class="modal fade" id="orderConfirmModal" tabindex="-1" aria-labelledby="orderConfirmTitle" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content" style="border-radius:18px;">
-      <div class="modal-body p-4">
-        <div class="d-flex align-items-start gap-3">
-          <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:48px;height:48px;background:rgba(var(--accent-rgb),.12);color:var(--accent);">
+    <div class="modal-content" style="border-radius:22px; overflow:hidden;">
+      <div class="p-4" style="background:linear-gradient(135deg, rgba(var(--accent-rgb),.08), rgba(255,255,255,1)); position:relative;">
+        <img src="/img/fondo.png" alt="" aria-hidden="true" style="position:absolute; right:-22px; top:-18px; width:140px; opacity:.18; transform:rotate(10deg);">
+        <div class="d-flex align-items-center gap-3">
+          <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:56px;height:56px;background:rgba(var(--accent-rgb),.14);color:var(--accent); font-weight:700; font-size:1.2rem;">
             ✓
           </div>
           <div>
-            <h3 class="h5 mb-1" id="orderConfirmTitle">¡Pedido enviado!</h3>
-            <p class="mb-2" id="orderConfirmText">Tu pedido fue enviado correctamente. Podés pasar a retirarlo.</p>
-            <div class="small-help" id="orderConfirmTotal"></div>
+            <div class="pill">Confirmado</div>
+            <h3 class="h5 mt-2 mb-1" id="orderConfirmTitle">¡Pedido enviado!</h3>
+            <p class="mb-0" id="orderConfirmText">Tu pedido fue enviado correctamente. Podés pasar a retirarlo.</p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-body p-4">
+        <div class="d-flex flex-column gap-3">
+          <div class="d-flex align-items-center justify-content-between">
+            <div class="text-muted">Total</div>
+            <div class="fw-bold" id="orderConfirmTotal"></div>
+          </div>
+          <div class="p-3" style="background:rgba(var(--accent-rgb),.06); border-radius:14px; border:1px solid rgba(var(--accent-rgb),.16);">
+            <div class="fw-semibold mb-1">Horarios de retiro</div>
+            <div class="small-help">Lunes a sábado 10:30-13:45 · 18:00-21:30</div>
           </div>
         </div>
       </div>
