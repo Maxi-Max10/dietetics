@@ -29,7 +29,7 @@ $csrf = csrf_token();
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    :root { --accent:#463B1E; --accent-rgb:70,59,30; --accent-dark:#2f2713; --accent-2:#96957E; --accent-2-rgb:150,149,126; --ink:#241e10; --muted:#6b6453; --card:rgba(255,255,255,.9); }
+    :root { --accent:#463B1E; --accent-rgb:70,59,30; --accent-dark:#2f2713; --accent-2:#96957E; --accent-2-rgb:150,149,126; --ink:#241e10; --muted:#6b6453; --card:rgba(255,255,255,.92); --glow:rgba(255,255,255,.6); }
     body { position: relative; font-family:'Space Grotesk','Segoe UI',sans-serif; background: radial-gradient(circle at 10% 20%, rgba(var(--accent-2-rgb),.22), transparent 38%), radial-gradient(circle at 90% 10%, rgba(var(--accent-rgb),.12), transparent 40%), linear-gradient(120deg,#fbfaf6,#E7E3D5); color:var(--ink); min-height:100vh; }
 
     /* Hojas de fondo (distintos tamaños y orientaciones) */
@@ -60,12 +60,12 @@ $csrf = csrf_token();
 
     /* Asegura que el contenido quede por encima del fondo */
     nav.navbar, main, .mobile-cartbar { position: relative; z-index: 1; }
-    .navbar-glass { background:rgba(255,255,255,.9); backdrop-filter:blur(12px); border:1px solid rgba(15,23,42,.06); box-shadow:0 10px 40px rgba(15,23,42,.08); }
-    .page-shell { padding:2rem 0; }
-    .card-lift { background:var(--card); border:1px solid rgba(15,23,42,.06); box-shadow:0 18px 50px rgba(15,23,42,.07); border-radius:18px; }
+    .navbar-glass { background:rgba(255,255,255,.92); backdrop-filter:blur(14px); border:1px solid rgba(15,23,42,.06); box-shadow:0 12px 45px rgba(15,23,42,.1); }
+    .page-shell { padding:2.5rem 0 2rem; }
+    .card-lift { background:var(--card); border:1px solid rgba(15,23,42,.06); box-shadow:0 22px 60px rgba(15,23,42,.08); border-radius:22px; }
     .muted-label { color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.04em; font-size:.8rem; }
     .pill { display:inline-flex; align-items:center; gap:.4rem; padding:.35rem .75rem; border-radius:999px; background:rgba(var(--accent-rgb),.1); color:var(--accent); font-weight:600; font-size:.9rem; }
-    .btn-primary, .btn-primary:hover, .btn-primary:focus { background:linear-gradient(135deg,var(--accent),var(--accent-dark)); border:none; box-shadow:0 10px 30px rgba(var(--accent-rgb),.25); }
+    .btn-primary, .btn-primary:hover, .btn-primary:focus { background:linear-gradient(135deg,var(--accent),var(--accent-dark)); border:none; box-shadow:0 12px 32px rgba(var(--accent-rgb),.28); }
     .action-btn { border-radius:12px; font-weight:600; }
     .table thead th { background:rgba(var(--accent-rgb),.08); border-bottom:none; font-weight:600; color:var(--ink); }
     .table td, .table th { border-color:rgba(148,163,184,.35); }
@@ -73,6 +73,54 @@ $csrf = csrf_token();
     .qty-input { width: 86px; }
     .small-help { color: var(--muted); font-size: .9rem; }
     @media (max-width: 992px) { .cart-sticky { position: static; } }
+
+    .hero-card {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(135deg, rgba(var(--accent-rgb),.08), rgba(255,255,255,.95));
+      border: 1px solid rgba(15,23,42,.06);
+      box-shadow: 0 20px 60px rgba(15,23,42,.08);
+      border-radius: 26px;
+    }
+    .hero-glow {
+      position: absolute;
+      width: 320px;
+      height: 320px;
+      background: radial-gradient(circle, rgba(var(--accent-rgb),.18), transparent 60%);
+      top: -160px;
+      right: -120px;
+      filter: blur(2px);
+    }
+    .hero-badges .badge {
+      border-radius: 999px;
+      font-weight: 600;
+      padding: .45rem .75rem;
+      background: rgba(var(--accent-rgb),.12);
+      color: var(--accent);
+      border: 1px solid rgba(var(--accent-rgb),.2);
+    }
+    .search-wrap {
+      background: rgba(255,255,255,.9);
+      border-radius: 16px;
+      border: 1px solid rgba(148,163,184,.35);
+      padding: .65rem .8rem;
+      box-shadow: 0 12px 30px rgba(15,23,42,.06);
+    }
+    .search-wrap input { border: none; box-shadow: none; }
+    .section-divider { height: 1px; background: linear-gradient(90deg, transparent, rgba(148,163,184,.5), transparent); margin: 1.25rem 0; }
+    .info-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      border-radius: 999px;
+      padding: .35rem .7rem;
+      background: rgba(var(--accent-rgb),.08);
+      color: var(--accent-dark);
+      font-weight: 600;
+      font-size: .85rem;
+    }
+    .table tbody tr { transition: transform .15s ease, box-shadow .15s ease; }
+    .table tbody tr:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(15,23,42,.08); }
 
     /* Mobile cart bar + offcanvas */
     .mobile-cartbar {
@@ -100,6 +148,7 @@ $csrf = csrf_token();
       .navbar .container { padding-top: .5rem !important; padding-bottom: .5rem !important; }
       .card-body.p-4 { padding: 1rem !important; }
       .qty-input { width: 104px; }
+      .hero-card { border-radius: 20px; }
 
       /* Table -> stacked cards */
       .table-mobile thead { display: none; }
@@ -172,19 +221,45 @@ $csrf = csrf_token();
 <main class="container page-shell">
   <div class="row g-3">
     <div class="col-12 col-lg-8">
-      <div class="card card-lift">
+      <div class="card hero-card mb-3">
+        <div class="hero-glow" aria-hidden="true"></div>
         <div class="card-body p-4">
-          <div class="d-flex flex-column flex-md-row align-items-md-end justify-content-between gap-3">
+          <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
             <div>
-              <p class="muted-label mb-1">Cliente</p>
-              <h1 class="h4 mb-1">Encargá para retirar</h1>
-              <div class="small-help">Seleccioná productos, armá tu pedido y lo confirmamos por teléfono/WhatsApp.</div>
+              <p class="muted-label mb-1">Bienvenida</p>
+              <h1 class="h3 mb-1">Elegí, agregá y encargá en minutos</h1>
+              <div class="small-help">Armá tu pedido con productos frescos y precios claros.</div>
+              <div class="mt-3 d-flex flex-wrap gap-2 hero-badges">
+                <span class="badge">Entrega rápida</span>
+                <span class="badge">Pago al retirar</span>
+                <span class="badge">Confirmación por WhatsApp</span>
+              </div>
             </div>
-            <div class="w-100 w-md-auto" style="max-width: 360px;">
-              <label class="form-label mb-1" for="searchInput">Buscar</label>
-              <input class="form-control" id="searchInput" placeholder="Ej: yerba, azúcar, fideos..." autocomplete="off">
+            <div class="w-100 w-md-auto" style="max-width: 380px;">
+              <label class="form-label mb-2 fw-semibold" for="searchInput">Buscar producto</label>
+              <div class="search-wrap">
+                <input class="form-control" id="searchInput" placeholder="Ej: granola, almendras, té" autocomplete="off">
+              </div>
+              <div class="mt-2 d-flex flex-wrap gap-2">
+                <span class="info-chip">Sin mínimos de compra</span>
+                <span class="info-chip">Precios actualizados</span>
+              </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div class="card card-lift">
+        <div class="card-body p-4">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div>
+              <p class="muted-label mb-1">Catálogo</p>
+              <h2 class="h5 mb-0">Productos disponibles</h2>
+            </div>
+            <div class="small-help">Sumá los productos al carrito y completá tus datos.</div>
+          </div>
+
+          <div class="section-divider"></div>
 
           <div class="mt-3" id="loadError" style="display:none;">
             <div class="alert alert-danger mb-0" id="loadErrorText"></div>
