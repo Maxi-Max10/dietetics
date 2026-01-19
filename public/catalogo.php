@@ -556,7 +556,8 @@ if (is_array($edit)) {
 
 <script>
 (() => {
-  const endpoint = '/catalogo?ajax=1';
+  const basePath = window.location.pathname || '/catalogo';
+  const endpoint = `${basePath}?ajax=1`;
 
   const clientSuccess = document.getElementById('catalogClientSuccess');
   const clientError = document.getElementById('catalogClientError');
@@ -951,6 +952,11 @@ if (is_array($edit)) {
   if (searchForm) {
     searchForm.addEventListener('submit', (e) => {
       e.preventDefault();
+      clearMsgs();
+      refresh().catch((err) => {
+        showMsg(clientError, err.message || String(err));
+        try { searchForm.submit(); } catch (_) {}
+      });
     });
   }
 

@@ -348,7 +348,7 @@ $csrf = csrf_token();
 
         <div class="mt-3 small-help">
           <div class="fw-semibold">Importante</div>
-          <div>Los precios pueden cambiar sin aviso. El pedido queda “a confirmar”.</div>
+          <div>Los precios pueden cambiar sin aviso.</div>
         </div>
       </div>
     </div>
@@ -432,7 +432,7 @@ $csrf = csrf_token();
 
     <div class="mt-3 small-help">
       <div class="fw-semibold">Importante</div>
-      <div>Los precios pueden cambiar sin aviso. El pedido queda “a confirmar”.</div>
+      <div>Los precios pueden cambiar sin aviso.</div>
     </div>
   </div>
 </div>

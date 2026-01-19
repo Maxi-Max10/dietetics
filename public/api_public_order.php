@@ -65,7 +65,7 @@ try {
         'total_cents' => (int)($res['total_cents'] ?? 0),
         'currency' => (string)($res['currency'] ?? 'ARS'),
         'total_formatted' => money_format_cents((int)($res['total_cents'] ?? 0), (string)($res['currency'] ?? 'ARS')),
-        'message' => 'Pedido enviado. Te contactamos para confirmar.',
+        'message' => 'Pedido enviado.',
     ], JSON_UNESCAPED_UNICODE);
     exit;
 } catch (Throwable $e) {
