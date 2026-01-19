@@ -90,12 +90,11 @@ $csrf = csrf_token();
       position: absolute;
       inset: -25vh;
       background: url('/fondo.png') repeat;
-      opacity: .10;
+      opacity: .07;
       filter: drop-shadow(0 12px 28px rgba(15,23,42,.10));
     }
-    .login-leaves .layer-1 { background-size: 320px 320px; transform: rotate(-6deg); }
-    .login-leaves .layer-2 { background-size: 220px 220px; transform: rotate(14deg); opacity: .07; }
-    .login-leaves .layer-3 { background-size: 160px 160px; transform: rotate(-22deg); opacity: .05; }
+    .login-leaves .layer-1 { background-size: 420px 420px; transform: rotate(-4deg); }
+    .login-leaves .layer-2 { background-size: 300px 300px; transform: rotate(10deg); opacity: .05; }
 
     .auth-shell { min-height: 100svh; overflow-x: hidden; }
     .auth-container.auth-shell { padding-top: 0 !important; padding-bottom: 0 !important; }
@@ -214,7 +213,6 @@ $csrf = csrf_token();
 <div class="bg-leaves login-leaves" aria-hidden="true">
   <div class="bg-layer layer-1"></div>
   <div class="bg-layer layer-2"></div>
-  <div class="bg-layer layer-3"></div>
 </div>
   <div class="auth-container auth-shell d-flex align-items-center justify-content-center py-4">
     <div class="row justify-content-center w-100">
