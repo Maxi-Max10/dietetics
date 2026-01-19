@@ -437,6 +437,29 @@ $csrf = csrf_token();
   </div>
 </div>
 
+<!-- Modal de confirmación de pedido -->
+<div class="modal fade" id="orderConfirmModal" tabindex="-1" aria-labelledby="orderConfirmTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:18px;">
+      <div class="modal-body p-4">
+        <div class="d-flex align-items-start gap-3">
+          <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:48px;height:48px;background:rgba(var(--accent-rgb),.12);color:var(--accent);">
+            ✓
+          </div>
+          <div>
+            <h3 class="h5 mb-1" id="orderConfirmTitle">¡Pedido enviado!</h3>
+            <p class="mb-2" id="orderConfirmText">Tu pedido fue enviado correctamente. Podés pasar a retirarlo.</p>
+            <div class="small-help" id="orderConfirmTotal"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer border-0 pt-0 px-4 pb-4">
+        <button type="button" class="btn btn-primary action-btn" data-bs-dismiss="modal">Entendido</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 (() => {
   const itemsTbody = document.getElementById('itemsTbody');
@@ -778,6 +801,17 @@ $csrf = csrf_token();
         if (ocEl && window.bootstrap && window.bootstrap.Offcanvas) {
           const oc = window.bootstrap.Offcanvas.getInstance(ocEl) || window.bootstrap.Offcanvas.getOrCreateInstance(ocEl);
           oc.hide();
+        }
+
+        // Mostrar modal de confirmación
+        const modalEl = document.getElementById('orderConfirmModal');
+        const confirmText = document.getElementById('orderConfirmText');
+        const confirmTotal = document.getElementById('orderConfirmTotal');
+        if (confirmText) confirmText.textContent = 'Tu pedido fue enviado correctamente. Podés pasar a retirarlo.';
+        if (confirmTotal) confirmTotal.textContent = (data.total_formatted ? ('Total: ' + data.total_formatted) : '');
+        if (modalEl && window.bootstrap && window.bootstrap.Modal) {
+          const modal = window.bootstrap.Modal.getInstance(modalEl) || new window.bootstrap.Modal(modalEl);
+          modal.show();
         }
 
       } catch (e) {
