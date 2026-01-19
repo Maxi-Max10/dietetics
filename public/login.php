@@ -77,9 +77,35 @@ $csrf = csrf_token();
   <style>
     html, body { overflow-x: hidden; width: 100%; }
     body.has-leaves-bg {
-      background: url('/fondo.png') center / cover no-repeat fixed !important;
+      background-color: #f2f0e7;
     }
-    body.has-leaves-bg .bg-leaves { display: none; }
+    body.has-leaves-bg .bg-leaves { display: block; }
+
+    .login-leaves .bg-leaf { opacity: .12; }
+    .login-leaves .leaf-1  { width: 220px; height: 220px; left: -70px; top: 40px; transform: rotate(-18deg); opacity: .10; }
+    .login-leaves .leaf-2  { width: 320px; height: 320px; right: -150px; top: -120px; transform: rotate(24deg) scaleX(-1); opacity: .11; }
+    .login-leaves .leaf-3  { width: 200px; height: 200px; right: -70px; top: 30%; transform: rotate(140deg); opacity: .08; }
+    .login-leaves .leaf-4  { width: 260px; height: 260px; left: -130px; top: 55%; transform: rotate(92deg) scaleX(-1); opacity: .07; }
+    .login-leaves .leaf-5  { width: 180px; height: 180px; left: 12%; top: -60px; transform: rotate(-35deg); opacity: .06; }
+    .login-leaves .leaf-6  { width: 210px; height: 210px; left: 58%; top: 14%; transform: rotate(26deg); opacity: .07; }
+    .login-leaves .leaf-7  { width: 160px; height: 160px; right: 12%; top: 58%; transform: rotate(-118deg) scaleX(-1); opacity: .06; }
+    .login-leaves .leaf-8  { width: 260px; height: 260px; right: -110px; bottom: 70px; transform: rotate(32deg); opacity: .07; }
+    .login-leaves .leaf-9  { width: 190px; height: 190px; left: 8%; bottom: 130px; transform: rotate(150deg); opacity: .06; }
+    .login-leaves .leaf-10 { width: 320px; height: 320px; left: -150px; bottom: -130px; transform: rotate(70deg); opacity: .07; }
+    .login-leaves .leaf-11 { width: 180px; height: 180px; left: 46%; bottom: -90px; transform: rotate(-8deg) scaleX(-1); opacity: .05; }
+    .login-leaves .leaf-12 { width: 230px; height: 230px; right: 30%; bottom: 18%; transform: rotate(108deg); opacity: .05; }
+    .login-leaves .leaf-13 { width: 140px; height: 140px; left: 28%; top: 28%; transform: rotate(-55deg); opacity: .05; }
+    .login-leaves .leaf-14 { width: 170px; height: 170px; right: 20%; top: 12%; transform: rotate(160deg); opacity: .06; }
+    .login-leaves .leaf-15 { width: 120px; height: 120px; left: 6%; top: 70%; transform: rotate(22deg) scaleX(-1); opacity: .05; }
+    .login-leaves .leaf-16 { width: 200px; height: 200px; right: 40%; top: 48%; transform: rotate(-135deg); opacity: .06; }
+    .login-leaves .leaf-17 { width: 150px; height: 150px; left: 70%; bottom: 8%; transform: rotate(12deg); opacity: .05; }
+    .login-leaves .leaf-18 { width: 110px; height: 110px; left: 40%; top: -30px; transform: rotate(95deg); opacity: .05; }
+    .login-leaves .leaf-19 { width: 240px; height: 240px; right: -120px; top: 35%; transform: rotate(-28deg) scaleX(-1); opacity: .07; }
+    .login-leaves .leaf-20 { width: 130px; height: 130px; right: 6%; bottom: 30%; transform: rotate(210deg); opacity: .05; }
+    .login-leaves .leaf-21 { width: 210px; height: 210px; left: 18%; bottom: -90px; transform: rotate(-12deg); opacity: .06; }
+    .login-leaves .leaf-22 { width: 160px; height: 160px; right: 55%; top: 6%; transform: rotate(72deg); opacity: .05; }
+    .login-leaves .leaf-23 { width: 100px; height: 100px; left: 52%; top: 70%; transform: rotate(-92deg); opacity: .05; }
+    .login-leaves .leaf-24 { width: 180px; height: 180px; right: 32%; bottom: 2%; transform: rotate(36deg) scaleX(-1); opacity: .06; }
 
     .auth-shell { min-height: 100vh; overflow-x: hidden; }
     .brand-hero {
@@ -194,7 +220,7 @@ $csrf = csrf_token();
   </style>
 </head>
 <body class="has-leaves-bg">
-<div class="bg-leaves" aria-hidden="true">
+<div class="bg-leaves login-leaves" aria-hidden="true">
   <div class="bg-leaf leaf-1"></div>
   <div class="bg-leaf leaf-2"></div>
   <div class="bg-leaf leaf-3"></div>
@@ -207,6 +233,18 @@ $csrf = csrf_token();
   <div class="bg-leaf leaf-10"></div>
   <div class="bg-leaf leaf-11"></div>
   <div class="bg-leaf leaf-12"></div>
+  <div class="bg-leaf leaf-13"></div>
+  <div class="bg-leaf leaf-14"></div>
+  <div class="bg-leaf leaf-15"></div>
+  <div class="bg-leaf leaf-16"></div>
+  <div class="bg-leaf leaf-17"></div>
+  <div class="bg-leaf leaf-18"></div>
+  <div class="bg-leaf leaf-19"></div>
+  <div class="bg-leaf leaf-20"></div>
+  <div class="bg-leaf leaf-21"></div>
+  <div class="bg-leaf leaf-22"></div>
+  <div class="bg-leaf leaf-23"></div>
+  <div class="bg-leaf leaf-24"></div>
 </div>
   <div class="auth-container auth-shell d-flex align-items-center justify-content-center py-4">
     <div class="row justify-content-center w-100">
