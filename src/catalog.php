@@ -205,21 +205,49 @@ function catalog_list(PDO $pdo, int $createdBy, string $search = '', int $limit 
     $where = 'created_by = :created_by';
     $params = ['created_by' => $createdBy];
 
+    $rows = null;
+    $lastError = null;
+
     if ($search !== '') {
-        $where .= ' AND (CONVERT(name USING utf8mb4) LIKE :q OR CONVERT(description USING utf8mb4) LIKE :q)';
         $params['q'] = '%' . $search . '%';
+
+        $searchVariants = [
+            ' AND (CONVERT(name USING utf8mb4) LIKE CONVERT(:q USING utf8mb4) OR CONVERT(description USING utf8mb4) LIKE CONVERT(:q USING utf8mb4))',
+            ' AND (CONVERT(name USING utf8) LIKE CONVERT(:q USING utf8) OR CONVERT(description USING utf8) LIKE CONVERT(:q USING utf8))',
+            ' AND (name LIKE :q OR description LIKE :q)',
+        ];
+
+        foreach ($searchVariants as $searchWhere) {
+            try {
+                $stmt = $pdo->prepare(
+                    'SELECT id, name, description, COALESCE(unit, "") AS unit, price_cents, currency, updated_at, created_at
+                     FROM catalog_products
+                     WHERE ' . $where . $searchWhere . '
+                     ORDER BY name ASC, id ASC
+                     LIMIT ' . $limit
+                );
+                $stmt->execute($params);
+                $rows = $stmt->fetchAll();
+                break;
+            } catch (Throwable $e) {
+                $lastError = $e;
+            }
+        }
+    } else {
+        $stmt = $pdo->prepare(
+            'SELECT id, name, description, COALESCE(unit, "") AS unit, price_cents, currency, updated_at, created_at
+             FROM catalog_products
+             WHERE ' . $where . '
+             ORDER BY name ASC, id ASC
+             LIMIT ' . $limit
+        );
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll();
     }
 
-    $stmt = $pdo->prepare(
-        'SELECT id, name, description, COALESCE(unit, "") AS unit, price_cents, currency, updated_at, created_at
-         FROM catalog_products
-         WHERE ' . $where . '
-         ORDER BY name ASC, id ASC
-         LIMIT ' . $limit
-    );
-    $stmt->execute($params);
-
-    $rows = $stmt->fetchAll();
+    if ($rows === null) {
+        throw $lastError ?? new RuntimeException('No se pudo cargar el catálogo.');
+    }
     $out = [];
     foreach ($rows as $r) {
         $out[] = [
