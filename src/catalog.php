@@ -206,7 +206,7 @@ function catalog_list(PDO $pdo, int $createdBy, string $search = '', int $limit 
     $params = ['created_by' => $createdBy];
 
     if ($search !== '') {
-        $where .= ' AND (name LIKE :q OR description LIKE :q)';
+        $where .= ' AND (CONVERT(name USING utf8mb4) LIKE :q OR CONVERT(description USING utf8mb4) LIKE :q)';
         $params['q'] = '%' . $search . '%';
     }
 
