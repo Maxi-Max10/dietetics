@@ -76,12 +76,10 @@ $csrf = csrf_token();
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <style>
     html, body { overflow-x: hidden; width: 100%; }
-    body {
-      background:
-        radial-gradient(circle at 10% 15%, rgba(150, 149, 126, .28), transparent 45%),
-        radial-gradient(circle at 85% 10%, rgba(70, 59, 30, .16), transparent 42%),
-        linear-gradient(120deg, #fbfaf6, #E7E3D5);
+    body.has-leaves-bg {
+      background: url('/fondo.png') center / cover no-repeat fixed !important;
     }
+    body.has-leaves-bg .bg-leaves { display: none; }
 
     .auth-shell { min-height: 100vh; overflow-x: hidden; }
     .brand-hero {

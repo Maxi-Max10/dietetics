@@ -259,7 +259,7 @@ $csrf = csrf_token();
 
               <div>
                 <label class="form-label mb-1" for="notes">Notas (opcional)</label>
-                <textarea class="form-control" id="notes" name="notes" rows="2" placeholder="Ej: sin sal, cortar fiambre, etc."></textarea>
+                <textarea class="form-control" id="notes" name="notes" rows="2" placeholder=""></textarea>
               </div>
 
               <div class="d-grid mt-2">
@@ -345,7 +345,7 @@ $csrf = csrf_token();
 
       <div>
         <label class="form-label mb-1" for="notesMobile">Notas (opcional)</label>
-        <textarea class="form-control" id="notesMobile" name="notes" rows="2" placeholder="Ej: sin sal, cortar fiambre, etc."></textarea>
+        <textarea class="form-control" id="notesMobile" name="notes" rows="2" placeholder=""></textarea>
       </div>
 
       <div class="d-grid mt-2">
