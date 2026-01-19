@@ -90,12 +90,12 @@ $csrf = csrf_token();
       position: absolute;
       inset: -25vh;
       background: url('/fondo.png') repeat;
-      opacity: .14;
+      opacity: .10;
       filter: drop-shadow(0 12px 28px rgba(15,23,42,.10));
     }
-    .login-leaves .layer-1 { background-size: 240px 240px; transform: rotate(-8deg); }
-    .login-leaves .layer-2 { background-size: 160px 160px; transform: rotate(18deg); opacity: .10; }
-    .login-leaves .layer-3 { background-size: 110px 110px; transform: rotate(-28deg); opacity: .08; }
+    .login-leaves .layer-1 { background-size: 320px 320px; transform: rotate(-6deg); }
+    .login-leaves .layer-2 { background-size: 220px 220px; transform: rotate(14deg); opacity: .07; }
+    .login-leaves .layer-3 { background-size: 160px 160px; transform: rotate(-22deg); opacity: .05; }
 
     .auth-shell { min-height: 100svh; overflow-x: hidden; }
     .auth-container.auth-shell { padding-top: 0 !important; padding-bottom: 0 !important; }
