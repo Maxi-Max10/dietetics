@@ -725,6 +725,16 @@ $csrf = csrf_token();
   };
 
   let abort = null;
+  let catalogCache = [];
+  const filterLocal = (items, q) => {
+    const term = String(q || '').trim().toLowerCase();
+    if (term === '') return items;
+    return items.filter(it =>
+      String(it.name || '').toLowerCase().includes(term) ||
+      String(it.description || '').toLowerCase().includes(term)
+    );
+  };
+
   const load = async (q) => {
     if (abort) abort.abort();
     abort = new AbortController();
@@ -732,10 +742,23 @@ $csrf = csrf_token();
     loadError.style.display = 'none';
 
     const url = '/api_public_catalog.php' + (q ? ('?q=' + encodeURIComponent(q)) : '');
-    const res = await fetch(url, { headers: { 'Accept': 'application/json' }, signal: abort.signal });
-    const data = await res.json().catch(() => null);
+    let res;
+    let data;
+    try {
+      res = await fetch(url, { headers: { 'Accept': 'application/json' }, signal: abort.signal });
+      data = await res.json().catch(() => null);
+    } catch (err) {
+      if (err && err.name === 'AbortError') {
+        return;
+      }
+    }
 
-    if (!res.ok || !data || data.ok !== true) {
+    if (!res || !res.ok || !data || data.ok !== true) {
+      if (q && Array.isArray(catalogCache) && catalogCache.length > 0) {
+        renderItems(filterLocal(catalogCache, q));
+        return;
+      }
+
       const msg = (data && data.error) ? data.error : 'No se pudo cargar la lista.';
       loadErrorText.textContent = msg;
       loadError.style.display = '';
@@ -743,7 +766,11 @@ $csrf = csrf_token();
       return;
     }
 
-    renderItems(data.items || []);
+    const items = data.items || [];
+    if (!q) {
+      catalogCache = items;
+    }
+    renderItems(items);
   };
 
   let t = null;
