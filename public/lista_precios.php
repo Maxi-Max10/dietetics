@@ -223,7 +223,7 @@ $csrf = csrf_token();
       }
       .table-mobile tbody td[data-label="Producto"]::before { display: none; }
 
-      .table-mobile .product-thumb { width: 52px; height: 52px; border-radius: 12px; }
+      .table-mobile .product-thumb { width: 72px; height: 72px; border-radius: 16px; }
 
       .table-mobile .price-cell {
         justify-content: flex-start !important;
