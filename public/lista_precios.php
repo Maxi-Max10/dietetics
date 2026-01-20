@@ -165,41 +165,56 @@ $csrf = csrf_token();
       position: relative;
       z-index: 1;
       margin-top: 2.5rem;
-      padding: 1.5rem 0 2.5rem;
-      color: var(--muted);
-      font-size: .95rem;
+      padding: 1.25rem 0 2rem;
+      color: rgba(255,255,255,.72);
+      font-size: .9rem;
+      background: #433923;
+      border-top: 1px solid rgba(255,255,255,.08);
     }
-    .footer-card {
+    .footer-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .footer-col {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      white-space: nowrap;
+    }
+    .footer-social {
       display: inline-flex;
       align-items: center;
-      gap: .5rem;
-      padding: .7rem 1.1rem;
-      border-radius: 999px;
-      background: rgba(255,255,255,.8);
-      border: 1px solid rgba(148,163,184,.35);
-      box-shadow: 0 12px 30px rgba(15,23,42,.08);
-      backdrop-filter: blur(10px);
+      gap: .6rem;
     }
-    .footer-pill {
+    .footer-social a {
+      width: 32px;
+      height: 32px;
       display: inline-flex;
       align-items: center;
-      gap: .35rem;
-      padding: .35rem .7rem;
+      justify-content: center;
       border-radius: 999px;
-      font-weight: 700;
-      color: var(--accent);
-      background: rgba(var(--accent-rgb), .1);
-      border: 1px solid rgba(var(--accent-rgb), .22);
-      font-size: .85rem;
-      text-transform: uppercase;
-      letter-spacing: .04em;
-    }
-    .site-footer a {
-      color: var(--accent);
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.18);
+      color: #fff;
       text-decoration: none;
-      font-weight: 700;
+      transition: transform .15s ease, background .15s ease;
     }
-    .site-footer a:hover { text-decoration: underline; }
+    .footer-social a:hover {
+      background: rgba(255,255,255,.22);
+      transform: translateY(-1px);
+    }
+    .footer-link {
+      color: #fff;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .footer-link:hover { text-decoration: underline; }
+    @media (max-width: 768px) {
+      .footer-bar { flex-direction: column; text-align: center; }
+      .footer-col { justify-content: center; }
+    }
 
     /* Mobile cart bar + offcanvas */
     .mobile-cartbar {
@@ -592,12 +607,24 @@ $csrf = csrf_token();
 </div>
 
 <footer class="site-footer">
-  <div class="container text-center">
-    <div class="footer-card">
-      <span class="footer-pill">Desarrollado por</span>
-      <strong>Polo Positivo</strong>
-      <span aria-hidden="true">·</span>
-      <a href="https://polopositivoar.com" target="_blank" rel="noopener">polopositivoar.com</a>
+  <div class="container">
+    <div class="footer-bar">
+      <div class="footer-col">Desarrollado por Polo Positivo</div>
+      <div class="footer-col footer-social" aria-label="Redes">
+        <a href="https://www.facebook.com/" target="_blank" rel="noopener" aria-label="Facebook">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M13 9h3V6h-3c-2.2 0-4 1.8-4 4v3H7v3h2v6h3v-6h3l1-3h-4v-3c0-.6.4-1 1-1z" />
+          </svg>
+        </a>
+        <a href="https://www.instagram.com/" target="_blank" rel="noopener" aria-label="Instagram">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4zm10 2H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm-5 3.5A3.5 3.5 0 1 1 8.5 12 3.5 3.5 0 0 1 12 8.5zm0 2A1.5 1.5 0 1 0 13.5 12 1.5 1.5 0 0 0 12 10.5zm5.2-3.7a.8.8 0 1 1-.8.8.8.8 0 0 1 .8-.8z" />
+          </svg>
+        </a>
+      </div>
+      <div class="footer-col">
+        <a class="footer-link" href="https://polopositivoar.com" target="_blank" rel="noopener">polopositivoar.com</a>
+      </div>
     </div>
   </div>
 </footer>
