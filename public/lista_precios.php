@@ -161,6 +161,21 @@ $csrf = csrf_token();
       border: 1px dashed rgba(var(--accent-rgb), .28);
     }
 
+    .site-footer {
+      position: relative;
+      z-index: 1;
+      margin-top: 2rem;
+      padding: 1.25rem 0 2.25rem;
+      color: var(--muted);
+      font-size: .92rem;
+    }
+    .site-footer a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 700;
+    }
+    .site-footer a:hover { text-decoration: underline; }
+
     /* Mobile cart bar + offcanvas */
     .mobile-cartbar {
       position: fixed;
@@ -550,6 +565,12 @@ $csrf = csrf_token();
     </div>
   </div>
 </div>
+
+<footer class="site-footer">
+  <div class="container text-center">
+    Desarrollado por Polo Positivo · <a href="https://polopositivoar.com" target="_blank" rel="noopener">polopositivoar.com</a>
+  </div>
+</footer>
 
 <script>
 (() => {
