@@ -298,7 +298,18 @@ try {
             </div>
             <div class="col-12 col-md-2">
               <label class="form-label" for="unit">Unidad</label>
-              <input class="form-control" id="unit" name="unit" placeholder="u / g / kg / ml / l" maxlength="24">
+              <select class="form-select" id="unit" name="unit">
+                <?php foreach ([
+                  '' => '— (sin unidad)',
+                  'un' => 'Por unidad (un)',
+                  'kg' => 'Por kilo (kg)',
+                  'g' => 'Por gramo (g)',
+                  'l' => 'Por litro (l)',
+                  'ml' => 'Por mililitro (ml)',
+                ] as $k => $label): ?>
+                  <option value="<?= e($k) ?>"><?= e($label) ?></option>
+                <?php endforeach; ?>
+              </select>
             </div>
             <div class="col-12 col-md-2">
               <label class="form-label" for="quantity">Cantidad</label>
