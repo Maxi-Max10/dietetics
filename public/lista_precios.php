@@ -342,9 +342,8 @@ $csrf = csrf_token();
 </div>
 <nav class="navbar navbar-expand-lg navbar-glass sticky-top">
   <div class="container py-2">
-    <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-dark mb-0 h5 text-decoration-none" href="/" aria-label="<?= e($appName) ?>">
+    <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-dark mb-0 h5 text-decoration-none" >
       <img src="/logo.png" alt="Logo" style="height:34px;width:auto;">
-      <span class="d-none d-sm-inline"><?= e($appName) ?></span>
     </a>
     <div class="ms-auto d-flex align-items-center gap-2">
       <span class="pill">Lista de precios</span>
