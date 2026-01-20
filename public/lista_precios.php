@@ -360,7 +360,7 @@ $csrf = csrf_token();
         <div class="card-body p-4">
           <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
             <div>
-              <p class="muted-label mb-1">Bienvenida</p>
+              <p class="muted-label mb-1">Bienvenido/a</p>
               <h1 class="h3 mb-1">Elegí, agregá y encargá en minutos</h1>
               <div class="small-help">Armá tu pedido con productos frescos y precios claros.</div>
               <div class="mt-3 d-flex flex-wrap gap-2 hero-badges">
