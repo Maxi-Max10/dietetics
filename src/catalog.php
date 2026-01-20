@@ -98,6 +98,7 @@ function catalog_try_create_table(PDO $pdo): void
             created_by INT UNSIGNED NOT NULL,
             name VARCHAR(190) NOT NULL,
             description VARCHAR(255) NULL,
+            image_path VARCHAR(255) NULL,
             unit VARCHAR(24) NULL,
             price_cents INT UNSIGNED NOT NULL DEFAULT 0,
             currency CHAR(3) NOT NULL DEFAULT 'ARS',
@@ -222,6 +223,134 @@ function catalog_ensure_unit_column(PDO $pdo): void
     $done = true;
 }
 
+function catalog_ensure_image_column(PDO $pdo): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+
+    if (!catalog_supports_table($pdo)) {
+        throw new RuntimeException('No se encontró la tabla del catálogo.');
+    }
+
+    $stmt = $pdo->prepare(
+        "SELECT 1
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = :t
+           AND COLUMN_NAME = :c
+         LIMIT 1"
+    );
+    $stmt->execute(['t' => 'catalog_products', 'c' => 'image_path']);
+    $has = (bool)$stmt->fetchColumn();
+    if ($has) {
+        $done = true;
+        return;
+    }
+
+    try {
+        $pdo->exec('ALTER TABLE catalog_products ADD COLUMN image_path VARCHAR(255) NULL AFTER description');
+    } catch (Throwable $e) {
+        throw new RuntimeException(
+            'Falta la columna image_path en catalog_products. Ejecutá: ALTER TABLE catalog_products ADD COLUMN image_path VARCHAR(255) NULL AFTER description;',
+            0,
+            $e
+        );
+    }
+
+    $done = true;
+}
+
+function catalog_image_storage_dir(): string
+{
+    return dirname(__DIR__) . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'catalog';
+}
+
+function catalog_sanitize_image_path(string $path): string
+{
+    $path = trim($path);
+    if ($path === '') {
+        return '';
+    }
+
+    $base = basename(str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $path));
+    $base = preg_replace('/[^a-zA-Z0-9._-]/', '', (string)$base);
+    return is_string($base) ? $base : '';
+}
+
+function catalog_image_url(string $imagePath): string
+{
+    $safe = catalog_sanitize_image_path($imagePath);
+    if ($safe === '') {
+        return '';
+    }
+    return '/uploads/catalog/' . rawurlencode($safe);
+}
+
+function catalog_store_uploaded_image(array $file): string
+{
+    $error = isset($file['error']) ? (int)$file['error'] : UPLOAD_ERR_NO_FILE;
+    if ($error === UPLOAD_ERR_NO_FILE) {
+        return '';
+    }
+    if ($error !== UPLOAD_ERR_OK) {
+        throw new RuntimeException('No se pudo subir la imagen.');
+    }
+
+    $tmp = $file['tmp_name'] ?? '';
+    if (!is_string($tmp) || $tmp === '' || !is_uploaded_file($tmp)) {
+        throw new RuntimeException('Archivo de imagen inválido.');
+    }
+
+    $size = isset($file['size']) ? (int)$file['size'] : 0;
+    if ($size <= 0) {
+        throw new RuntimeException('La imagen está vacía.');
+    }
+    if ($size > (4 * 1024 * 1024)) {
+        throw new RuntimeException('La imagen supera 4 MB.');
+    }
+
+    $info = @getimagesize($tmp);
+    $mime = is_array($info) && isset($info['mime']) ? (string)$info['mime'] : '';
+    $extMap = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+    ];
+    if ($mime === '' || !isset($extMap[$mime])) {
+        throw new RuntimeException('Formato de imagen no soportado. Usá JPG, PNG o WebP.');
+    }
+
+    $dir = catalog_image_storage_dir();
+    if (!is_dir($dir)) {
+        if (!mkdir($dir, 0755, true) && !is_dir($dir)) {
+            throw new RuntimeException('No se pudo crear la carpeta de imágenes.');
+        }
+    }
+
+    $filename = bin2hex(random_bytes(16)) . '.' . $extMap[$mime];
+    $target = $dir . DIRECTORY_SEPARATOR . $filename;
+
+    if (!move_uploaded_file($tmp, $target)) {
+        throw new RuntimeException('No se pudo guardar la imagen.');
+    }
+
+    return $filename;
+}
+
+function catalog_delete_image_file(string $imagePath): void
+{
+    $safe = catalog_sanitize_image_path($imagePath);
+    if ($safe === '') {
+        return;
+    }
+    $path = catalog_image_storage_dir() . DIRECTORY_SEPARATOR . $safe;
+    if (is_file($path)) {
+        @unlink($path);
+    }
+}
+
 /**
  * @return array<int, array{id:int,name:string,description:string,price_cents:int,currency:string,updated_at:string,created_at:string}>
  */
@@ -229,6 +358,7 @@ function catalog_list(PDO $pdo, int $createdBy, string $search = '', int $limit 
 {
     catalog_ensure_description_column($pdo);
     catalog_ensure_unit_column($pdo);
+    catalog_ensure_image_column($pdo);
 
     $limit = max(1, min(500, (int)$limit));
     $search = trim($search);
@@ -251,7 +381,7 @@ function catalog_list(PDO $pdo, int $createdBy, string $search = '', int $limit 
         foreach ($searchVariants as $searchWhere) {
             try {
                 $stmt = $pdo->prepare(
-                    'SELECT id, name, description, COALESCE(unit, "") AS unit, price_cents, currency, updated_at, created_at
+                    'SELECT id, name, description, COALESCE(image_path, "") AS image_path, COALESCE(unit, "") AS unit, price_cents, currency, updated_at, created_at
                      FROM catalog_products
                      WHERE ' . $where . $searchWhere . '
                      ORDER BY name ASC, id ASC
@@ -266,7 +396,7 @@ function catalog_list(PDO $pdo, int $createdBy, string $search = '', int $limit 
         }
     } else {
         $stmt = $pdo->prepare(
-            'SELECT id, name, description, COALESCE(unit, "") AS unit, price_cents, currency, updated_at, created_at
+            'SELECT id, name, description, COALESCE(image_path, "") AS image_path, COALESCE(unit, "") AS unit, price_cents, currency, updated_at, created_at
              FROM catalog_products
              WHERE ' . $where . '
              ORDER BY name ASC, id ASC
@@ -285,6 +415,7 @@ function catalog_list(PDO $pdo, int $createdBy, string $search = '', int $limit 
             'id' => (int)($r['id'] ?? 0),
             'name' => (string)($r['name'] ?? ''),
             'description' => (string)($r['description'] ?? ''),
+            'image_path' => (string)($r['image_path'] ?? ''),
             'unit' => (string)($r['unit'] ?? ''),
             'price_cents' => (int)($r['price_cents'] ?? 0),
             'currency' => (string)($r['currency'] ?? 'ARS'),
@@ -300,6 +431,7 @@ function catalog_get(PDO $pdo, int $createdBy, int $id): array
 {
     catalog_ensure_description_column($pdo);
     catalog_ensure_unit_column($pdo);
+    catalog_ensure_image_column($pdo);
 
     $id = (int)$id;
     if ($id <= 0) {
@@ -307,7 +439,7 @@ function catalog_get(PDO $pdo, int $createdBy, int $id): array
     }
 
     $stmt = $pdo->prepare(
-        'SELECT id, name, description, COALESCE(unit, "") AS unit, price_cents, currency, updated_at, created_at
+        'SELECT id, name, description, COALESCE(image_path, "") AS image_path, COALESCE(unit, "") AS unit, price_cents, currency, updated_at, created_at
          FROM catalog_products
          WHERE id = :id AND created_by = :created_by
          LIMIT 1'
@@ -322,6 +454,7 @@ function catalog_get(PDO $pdo, int $createdBy, int $id): array
         'id' => (int)($r['id'] ?? 0),
         'name' => (string)($r['name'] ?? ''),
         'description' => (string)($r['description'] ?? ''),
+        'image_path' => (string)($r['image_path'] ?? ''),
         'unit' => (string)($r['unit'] ?? ''),
         'price_cents' => (int)($r['price_cents'] ?? 0),
         'currency' => (string)($r['currency'] ?? 'ARS'),
@@ -330,10 +463,11 @@ function catalog_get(PDO $pdo, int $createdBy, int $id): array
     ];
 }
 
-function catalog_create(PDO $pdo, int $createdBy, string $name, string|float|int $price, string $currency = 'ARS', string $description = '', string $unit = ''): int
+function catalog_create(PDO $pdo, int $createdBy, string $name, string|float|int $price, string $currency = 'ARS', string $description = '', string $unit = '', string $imagePath = ''): int
 {
     catalog_ensure_description_column($pdo);
     catalog_ensure_unit_column($pdo);
+    catalog_ensure_image_column($pdo);
 
     $name = trim($name);
     if ($name === '') {
@@ -367,14 +501,21 @@ function catalog_create(PDO $pdo, int $createdBy, string $name, string|float|int
         throw new InvalidArgumentException('Unidad demasiado larga.');
     }
 
+    $imagePath = catalog_sanitize_image_path($imagePath);
+    $imgLen = function_exists('mb_strlen') ? (int)mb_strlen($imagePath, 'UTF-8') : strlen($imagePath);
+    if ($imgLen > 255) {
+        throw new InvalidArgumentException('Ruta de imagen demasiado larga.');
+    }
+
     $stmt = $pdo->prepare(
-        'INSERT INTO catalog_products (created_by, name, description, unit, price_cents, currency)
-         VALUES (:created_by, :name, :description, :unit, :price_cents, :currency)'
+        'INSERT INTO catalog_products (created_by, name, description, image_path, unit, price_cents, currency)
+         VALUES (:created_by, :name, :description, :image_path, :unit, :price_cents, :currency)'
     );
     $stmt->execute([
         'created_by' => $createdBy,
         'name' => $name,
         'description' => ($description === '' ? null : $description),
+        'image_path' => ($imagePath === '' ? null : $imagePath),
         'unit' => ($unitNorm === '' ? null : $unitNorm),
         'price_cents' => $priceCents,
         'currency' => $currency,
@@ -383,10 +524,11 @@ function catalog_create(PDO $pdo, int $createdBy, string $name, string|float|int
     return (int)$pdo->lastInsertId();
 }
 
-function catalog_update(PDO $pdo, int $createdBy, int $id, string $name, string|float|int $price, string $currency = 'ARS', string $description = '', string $unit = ''): void
+function catalog_update(PDO $pdo, int $createdBy, int $id, string $name, string|float|int $price, string $currency = 'ARS', string $description = '', string $unit = '', ?string $imagePath = null, bool $removeImage = false): void
 {
     catalog_ensure_description_column($pdo);
     catalog_ensure_unit_column($pdo);
+    catalog_ensure_image_column($pdo);
 
     $id = (int)$id;
     if ($id <= 0) {
@@ -425,12 +567,31 @@ function catalog_update(PDO $pdo, int $createdBy, int $id, string $name, string|
         throw new InvalidArgumentException('Unidad demasiado larga.');
     }
 
-    $stmt = $pdo->prepare(
-        'UPDATE catalog_products
-         SET name = :name, description = :description, unit = :unit, price_cents = :price_cents, currency = :currency
-         WHERE id = :id AND created_by = :created_by'
-    );
-    $stmt->execute([
+    $setImage = false;
+    $imageDbValue = null;
+    $currentImage = '';
+
+    if ($imagePath !== null) {
+        $imagePath = catalog_sanitize_image_path($imagePath);
+        $imgLen = function_exists('mb_strlen') ? (int)mb_strlen($imagePath, 'UTF-8') : strlen($imagePath);
+        if ($imgLen > 255) {
+            throw new InvalidArgumentException('Ruta de imagen demasiado larga.');
+        }
+        $setImage = true;
+        $imageDbValue = ($imagePath === '' ? null : $imagePath);
+    } elseif ($removeImage) {
+        $setImage = true;
+        $imageDbValue = null;
+    }
+
+    if ($setImage) {
+        $current = catalog_get($pdo, $createdBy, $id);
+        $currentImage = (string)($current['image_path'] ?? '');
+    }
+
+    $sql = 'UPDATE catalog_products
+         SET name = :name, description = :description, unit = :unit, price_cents = :price_cents, currency = :currency';
+    $params = [
         'id' => $id,
         'created_by' => $createdBy,
         'name' => $name,
@@ -438,11 +599,25 @@ function catalog_update(PDO $pdo, int $createdBy, int $id, string $name, string|
         'unit' => ($unitNorm === '' ? null : $unitNorm),
         'price_cents' => $priceCents,
         'currency' => $currency,
-    ]);
+    ];
+
+    if ($setImage) {
+        $sql .= ', image_path = :image_path';
+        $params['image_path'] = $imageDbValue;
+    }
+
+    $sql .= ' WHERE id = :id AND created_by = :created_by';
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
 
     if ($stmt->rowCount() === 0) {
         // Puede ser que no exista o que no haya cambios; validamos existencia.
         catalog_get($pdo, $createdBy, $id);
+    }
+
+    if ($setImage && $currentImage !== '' && $currentImage !== (string)$imageDbValue) {
+        catalog_delete_image_file($currentImage);
     }
 }
 
@@ -453,6 +628,13 @@ function catalog_delete(PDO $pdo, int $createdBy, int $id): void
         throw new InvalidArgumentException('Producto inválido.');
     }
 
+    $current = catalog_get($pdo, $createdBy, $id);
+    $currentImage = (string)($current['image_path'] ?? '');
+
     $stmt = $pdo->prepare('DELETE FROM catalog_products WHERE id = :id AND created_by = :created_by');
     $stmt->execute(['id' => $id, 'created_by' => $createdBy]);
+
+    if ($stmt->rowCount() > 0 && $currentImage !== '') {
+        catalog_delete_image_file($currentImage);
+    }
 }

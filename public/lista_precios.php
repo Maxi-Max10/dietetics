@@ -136,6 +136,31 @@ $csrf = csrf_token();
     .table tbody tr { transition: transform .15s ease, box-shadow .15s ease; }
     .table tbody tr:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(15,23,42,.08); }
 
+    .product-row {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+    }
+    .product-thumb {
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
+      object-fit: cover;
+      border: 1px solid rgba(15,23,42,.08);
+      background: #fff;
+      flex: 0 0 auto;
+    }
+    .product-thumb--empty {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .72rem;
+      font-weight: 700;
+      color: var(--accent);
+      background: rgba(var(--accent-rgb), .08);
+      border: 1px dashed rgba(var(--accent-rgb), .28);
+    }
+
     /* Mobile cart bar + offcanvas */
     .mobile-cartbar {
       position: fixed;
@@ -197,6 +222,8 @@ $csrf = csrf_token();
         padding-bottom: .55rem;
       }
       .table-mobile tbody td[data-label="Producto"]::before { display: none; }
+
+      .table-mobile .product-thumb { width: 52px; height: 52px; border-radius: 12px; }
 
       .table-mobile .price-cell {
         justify-content: flex-start !important;
@@ -680,6 +707,8 @@ $csrf = csrf_token();
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;');
 
+  const escapeAttr = escapeHtml;
+
   const renderItems = (items) => {
     if (!Array.isArray(items) || items.length === 0) {
       itemsTbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No hay productos para mostrar.</td></tr>';
@@ -692,6 +721,7 @@ $csrf = csrf_token();
       const name = it.name || '';
       const desc = it.description || '';
       const unit = String(it.unit || '').trim();
+      const imageUrl = String(it.image_url || '').trim();
       const priceBase = it.price_formatted || fmtMoney(it.price_cents || 0, it.currency || 'ARS');
       const price = it.price_label || (priceBase + (unit ? (' / ' + unit) : ''));
 
@@ -706,10 +736,19 @@ $csrf = csrf_token();
            </select>`
         : `<span class="text-muted" style="font-size:.9rem;">${escapeHtml(def.unit || unit || '')}</span>`;
 
+      const thumbHtml = imageUrl
+        ? `<img class="product-thumb" src="${escapeAttr(imageUrl)}" alt="">`
+        : `<span class="product-thumb product-thumb--empty">IMG</span>`;
+
       tr.innerHTML = `
         <td data-label="Producto" class="product-cell">
-          <div class="fw-semibold">${escapeHtml(name)}</div>
-          ${desc ? `<div class="text-muted" style="font-size:.9rem;">${escapeHtml(desc)}</div>` : ''}
+          <div class="product-row">
+            ${thumbHtml}
+            <div>
+              <div class="fw-semibold">${escapeHtml(name)}</div>
+              ${desc ? `<div class="text-muted" style="font-size:.9rem;">${escapeHtml(desc)}</div>` : ''}
+            </div>
+          </div>
         </td>
         <td class="text-end fw-semibold price-cell" data-label="Precio"><span class="price-chip">${escapeHtml(price)}</span></td>
         <td data-label="Cantidad" class="qty-cell">

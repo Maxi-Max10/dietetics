@@ -132,6 +132,7 @@ CREATE TABLE IF NOT EXISTS catalog_products (
   created_by INT UNSIGNED NOT NULL,
   name VARCHAR(190) NOT NULL,
   description VARCHAR(255) NULL,
+  image_path VARCHAR(255) NULL,
   unit VARCHAR(24) NULL,
   price_cents INT UNSIGNED NOT NULL DEFAULT 0,
   currency CHAR(3) NOT NULL DEFAULT 'ARS',
@@ -147,4 +148,5 @@ CREATE TABLE IF NOT EXISTS catalog_products (
 
 -- Si ya tenías la tabla creada, podés agregar la columna con:
 -- ALTER TABLE catalog_products ADD COLUMN description VARCHAR(255) NULL AFTER name;
+-- ALTER TABLE catalog_products ADD COLUMN image_path VARCHAR(255) NULL AFTER description;
 -- ALTER TABLE catalog_products ADD COLUMN unit VARCHAR(24) NULL AFTER description;

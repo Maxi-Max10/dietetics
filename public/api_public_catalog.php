@@ -26,11 +26,14 @@ try {
     $out = [];
     foreach ($items as $r) {
         $unit = trim((string)($r['unit'] ?? ''));
+        $imagePath = trim((string)($r['image_path'] ?? ''));
         $priceFormatted = money_format_cents((int)($r['price_cents'] ?? 0), (string)($r['currency'] ?? 'ARS'));
         $out[] = [
             'id' => (int)($r['id'] ?? 0),
             'name' => (string)($r['name'] ?? ''),
             'description' => (string)($r['description'] ?? ''),
+            'image_path' => $imagePath,
+            'image_url' => $imagePath !== '' ? catalog_image_url($imagePath) : '',
             'unit' => $unit,
             'price_cents' => (int)($r['price_cents'] ?? 0),
             'currency' => (string)($r['currency'] ?? 'ARS'),

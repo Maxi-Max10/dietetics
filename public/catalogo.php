@@ -59,11 +59,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && $wantsJson) {
     $out = [];
     foreach ($items as $r) {
       $unit = trim((string)($r['unit'] ?? ''));
+      $imagePath = trim((string)($r['image_path'] ?? ''));
       $priceFormatted = money_format_cents((int)($r['price_cents'] ?? 0), (string)($r['currency'] ?? 'ARS'));
       $out[] = [
         'id' => (int)($r['id'] ?? 0),
         'name' => (string)($r['name'] ?? ''),
         'description' => (string)($r['description'] ?? ''),
+        'image_path' => $imagePath,
+        'image_url' => $imagePath !== '' ? catalog_image_url($imagePath) : '',
         'unit' => $unit,
         'price_cents' => (int)($r['price_cents'] ?? 0),
         'currency' => (string)($r['currency'] ?? 'ARS'),
@@ -80,6 +83,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && $wantsJson) {
     $rawMsg = $e->getMessage();
     if (stripos($rawMsg, 'Falta la columna description') !== false) {
       $msg = 'Falta actualizar la base de datos del catálogo. Ejecutá: ALTER TABLE catalog_products ADD COLUMN description VARCHAR(255) NULL AFTER name;';
+    } elseif (stripos($rawMsg, 'Falta la columna image_path') !== false) {
+      $msg = 'Falta actualizar la base de datos del catálogo. Ejecutá: ALTER TABLE catalog_products ADD COLUMN image_path VARCHAR(255) NULL AFTER description;';
     } else {
       $msg = ($config['app']['env'] ?? 'production') === 'production'
         ? 'No se pudo cargar el catálogo.'
@@ -111,6 +116,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $pdo = db($config);
 
+        $uploadedImagePath = '';
+        $uploadedImageProvided = false;
+        if (isset($_FILES['image']) && is_array($_FILES['image'])) {
+          $fileError = (int)($_FILES['image']['error'] ?? UPLOAD_ERR_NO_FILE);
+          if ($fileError !== UPLOAD_ERR_NO_FILE) {
+            $uploadedImagePath = catalog_store_uploaded_image($_FILES['image']);
+            $uploadedImageProvided = $uploadedImagePath !== '';
+          }
+        }
+
             if (!catalog_supports_table($pdo)) {
                 throw new RuntimeException('No se encontró la tabla del catálogo. ¿Ejecutaste el schema.sql?');
             }
@@ -122,7 +137,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               $price = (string)($data['price'] ?? '0');
               $currency = trim((string)($data['currency'] ?? 'ARS'));
 
-                catalog_create($pdo, $userId, $name, $price, $currency, $description, $unit);
+                catalog_create(
+                  $pdo,
+                  $userId,
+                  $name,
+                  $price,
+                  $currency,
+                  $description,
+                  $unit,
+                  $uploadedImageProvided ? $uploadedImagePath : ''
+                );
               if ($wantsJson) {
                 header('Content-Type: application/json; charset=utf-8');
                 echo json_encode(['ok' => true, 'message' => 'Producto agregado al catálogo.'], JSON_UNESCAPED_UNICODE);
@@ -141,8 +165,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               $unit = trim((string)($data['unit'] ?? ''));
               $price = (string)($data['price'] ?? '0');
               $currency = trim((string)($data['currency'] ?? 'ARS'));
+              $removeImage = ((string)($data['image_remove'] ?? '')) === '1';
 
-                catalog_update($pdo, $userId, $id, $name, $price, $currency, $description, $unit);
+                catalog_update(
+                  $pdo,
+                  $userId,
+                  $id,
+                  $name,
+                  $price,
+                  $currency,
+                  $description,
+                  $unit,
+                  $uploadedImageProvided ? $uploadedImagePath : null,
+                  $removeImage
+                );
               if ($wantsJson) {
                 header('Content-Type: application/json; charset=utf-8');
                 echo json_encode(['ok' => true, 'message' => 'Producto actualizado.'], JSON_UNESCAPED_UNICODE);
@@ -171,9 +207,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new InvalidArgumentException('Acción inválida.');
         } catch (Throwable $e) {
             error_log('catalogo.php error: ' . $e->getMessage());
+            if (!empty($uploadedImageProvided) && !empty($uploadedImagePath)) {
+              catalog_delete_image_file($uploadedImagePath);
+            }
             $rawMsg = $e->getMessage();
             if (stripos($rawMsg, 'Falta la columna description') !== false) {
               $error = 'Falta actualizar la base de datos del catálogo. Ejecutá: ALTER TABLE catalog_products ADD COLUMN description VARCHAR(255) NULL AFTER name;';
+            } elseif (stripos($rawMsg, 'Falta la columna image_path') !== false) {
+              $error = 'Falta actualizar la base de datos del catálogo. Ejecutá: ALTER TABLE catalog_products ADD COLUMN image_path VARCHAR(255) NULL AFTER description;';
             } else {
               $error = ($config['app']['env'] ?? 'production') === 'production'
                   ? 'No se pudo procesar el catálogo.'
@@ -210,16 +251,21 @@ try {
       $rawMsg = $e->getMessage();
       $error = stripos($rawMsg, 'Falta la columna description') !== false
         ? 'Falta actualizar la base de datos del catálogo. Ejecutá: ALTER TABLE catalog_products ADD COLUMN description VARCHAR(255) NULL AFTER name;'
-        : (
-          ($config['app']['env'] ?? 'production') === 'production'
-            ? 'No se pudo cargar el catálogo. ¿Ejecutaste el schema.sql?'
-            : ('Error: ' . $rawMsg)
+        : (stripos($rawMsg, 'Falta la columna image_path') !== false
+          ? 'Falta actualizar la base de datos del catálogo. Ejecutá: ALTER TABLE catalog_products ADD COLUMN image_path VARCHAR(255) NULL AFTER description;'
+          : (
+            ($config['app']['env'] ?? 'production') === 'production'
+              ? 'No se pudo cargar el catálogo. ¿Ejecutaste el schema.sql?'
+              : ('Error: ' . $rawMsg)
+          )
         );
     }
 }
 
 $defaultName = is_array($edit) ? (string)($edit['name'] ?? '') : '';
 $defaultDescription = is_array($edit) ? (string)($edit['description'] ?? '') : '';
+$defaultImagePath = is_array($edit) ? (string)($edit['image_path'] ?? '') : '';
+$defaultImageUrl = $defaultImagePath !== '' ? catalog_image_url($defaultImagePath) : '';
 $defaultUnit = is_array($edit) ? (string)($edit['unit'] ?? '') : '';
 $defaultCurrency = is_array($edit) ? (string)($edit['currency'] ?? 'ARS') : 'ARS';
 $defaultPrice = '';
@@ -434,7 +480,7 @@ if (is_array($edit)) {
           <h2 class="h5 mb-0" id="catalogFormModeTitle"><?= $edit ? 'Modificar producto' : 'Agregar producto' ?></h2>
         </div>
         <div class="card-body px-4 py-4">
-          <form method="post" action="/catalogo" class="row g-3" id="catalogForm">
+          <form method="post" action="/catalogo" class="row g-3" id="catalogForm" enctype="multipart/form-data">
             <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
             <input type="hidden" name="q" id="catalogFormQ" value="<?= e($q) ?>">
             <input type="hidden" name="action" id="catalogAction" value="<?= $edit ? 'update' : 'create' ?>">
@@ -478,6 +524,19 @@ if (is_array($edit)) {
               </select>
             </div>
 
+            <div class="col-12 col-md-6">
+              <label class="form-label" for="image">Imagen del producto <span class="text-muted">(opcional)</span></label>
+              <input class="form-control" id="image" name="image" type="file" accept="image/jpeg,image/png,image/webp">
+              <div class="form-text">Formatos: JPG, PNG o WebP. Máx. 4 MB.</div>
+              <div class="mt-2 d-flex align-items-center gap-3" id="imagePreviewWrap" style="<?= $defaultImageUrl !== '' ? '' : 'display:none;' ?>">
+                <img id="imagePreview" src="<?= e($defaultImageUrl) ?>" data-current-url="<?= e($defaultImageUrl) ?>" alt="Imagen" style="width:64px;height:64px;object-fit:cover;border-radius:12px;border:1px solid rgba(15,23,42,.08);">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="imageRemove" name="image_remove" value="1">
+                  <label class="form-check-label" for="imageRemove">Quitar imagen</label>
+                </div>
+              </div>
+            </div>
+
             <div class="col-12">
               <label class="form-label" for="description">Descripción <span class="text-muted">(opcional)</span></label>
               <textarea class="form-control" id="description" name="description" rows="2" maxlength="255" placeholder="Ej: integral, sin TACC, sabor vainilla…"><?= e($defaultDescription) ?></textarea>
@@ -509,6 +568,7 @@ if (is_array($edit)) {
               <thead>
                 <tr>
                   <th>Producto</th>
+                  <th style="width:90px">Imagen</th>
                   <th>Descripción</th>
                   <th style="width:180px" class="text-end">Precio</th>
                   <th style="width:220px"></th>
@@ -516,12 +576,21 @@ if (is_array($edit)) {
               </thead>
               <tbody id="catalogTbody">
               <?php if (count($rows) === 0): ?>
-                <tr><td colspan="4" class="text-muted">Sin resultados.</td></tr>
+                <tr><td colspan="5" class="text-muted">Sin resultados.</td></tr>
               <?php else: ?>
                 <?php foreach ($rows as $r): ?>
                   <?php $unit = trim((string)($r['unit'] ?? '')); ?>
+                  <?php $imagePath = trim((string)($r['image_path'] ?? '')); ?>
+                  <?php $imageUrl = $imagePath !== '' ? catalog_image_url($imagePath) : ''; ?>
                   <tr>
                     <td><?= e((string)$r['name']) ?></td>
+                    <td>
+                      <?php if ($imageUrl !== ''): ?>
+                        <img src="<?= e($imageUrl) ?>" alt="" style="width:52px;height:52px;object-fit:cover;border-radius:12px;border:1px solid rgba(15,23,42,.08);">
+                      <?php else: ?>
+                        <span class="text-muted">—</span>
+                      <?php endif; ?>
+                    </td>
                     <td class="text-muted"><?= e(trim((string)($r['description'] ?? '')) !== '' ? (string)$r['description'] : '—') ?></td>
                     <td class="text-end"><?= e(money_format_cents((int)$r['price_cents'], (string)$r['currency']) . ($unit !== '' ? (' / ' . $unit) : '')) ?></td>
                     <td class="text-end">
@@ -532,6 +601,7 @@ if (is_array($edit)) {
                           data-id="<?= e((string)$r['id']) ?>"
                           data-name="<?= e((string)$r['name']) ?>"
                           data-description="<?= e((string)($r['description'] ?? '')) ?>"
+                          data-image-url="<?= e($imageUrl) ?>"
                           data-unit="<?= e((string)($r['unit'] ?? '')) ?>"
                           data-price="<?= e(number_format(((int)$r['price_cents']) / 100, 2, '.', '')) ?>"
                           data-currency="<?= e((string)$r['currency']) ?>"
@@ -573,6 +643,10 @@ if (is_array($edit)) {
   const priceInput = document.getElementById('price');
   const unitInput = document.getElementById('unit');
   const currencyInput = document.getElementById('currency');
+  const imageInput = document.getElementById('image');
+  const imagePreviewWrap = document.getElementById('imagePreviewWrap');
+  const imagePreview = document.getElementById('imagePreview');
+  const imageRemove = document.getElementById('imageRemove');
   const cancelLink = document.getElementById('catalogCancel');
   const modeLabel = document.getElementById('catalogFormModeLabel');
   const modeTitle = document.getElementById('catalogFormModeTitle');
@@ -585,6 +659,27 @@ if (is_array($edit)) {
   const showMsg = (el, msg) => { if (!el) return; el.textContent = msg; el.classList.remove('d-none'); };
   const clearMsgs = () => { hideMsg(clientSuccess); hideMsg(clientError); };
 
+  let imageObjectUrl = '';
+  const clearImageObjectUrl = () => {
+    if (imageObjectUrl) {
+      try { URL.revokeObjectURL(imageObjectUrl); } catch (_) {}
+    }
+    imageObjectUrl = '';
+  };
+
+  const setImagePreview = (url) => {
+    if (!imagePreviewWrap || !imagePreview) return;
+    const cleanUrl = String(url || '').trim();
+    imagePreview.dataset.currentUrl = cleanUrl;
+    if (!cleanUrl) {
+      imagePreviewWrap.style.display = 'none';
+      imagePreview.removeAttribute('src');
+      return;
+    }
+    imagePreview.src = cleanUrl;
+    imagePreviewWrap.style.display = 'flex';
+  };
+
   const setCreateMode = () => {
     actionInput.value = 'create';
     idInput.value = '';
@@ -596,6 +691,10 @@ if (is_array($edit)) {
     priceInput.value = '';
     if (unitInput) unitInput.value = '';
     currencyInput.value = 'ARS';
+    if (imageInput) imageInput.value = '';
+    if (imageRemove) imageRemove.checked = false;
+    clearImageObjectUrl();
+    setImagePreview('');
   };
 
   const setEditMode = (item) => {
@@ -609,6 +708,10 @@ if (is_array($edit)) {
     priceInput.value = item.price || '';
     if (unitInput) unitInput.value = item.unit || '';
     currencyInput.value = item.currency || 'ARS';
+    if (imageInput) imageInput.value = '';
+    if (imageRemove) imageRemove.checked = false;
+    clearImageObjectUrl();
+    setImagePreview(item.image_url || '');
     nameInput.focus();
   };
 
@@ -621,7 +724,7 @@ if (is_array($edit)) {
     tbody.innerHTML = '';
     if (!items || items.length === 0) {
       const tr = document.createElement('tr');
-      tr.innerHTML = '<td colspan="4" class="text-muted">Sin resultados.</td>';
+      tr.innerHTML = '<td colspan="5" class="text-muted">Sin resultados.</td>';
       tbody.appendChild(tr);
       return;
     }
@@ -636,8 +739,13 @@ if (is_array($edit)) {
       const descHtml = descValue ? escapeHtml(descValue) : '<span class="text-muted">—</span>';
       const unit = String(it.unit || '').trim();
       const priceLabel = it.price_label || ((it.price_formatted || '') + (unit ? (' / ' + unit) : ''));
+      const imageUrl = String(it.image_url || '').trim();
+      const imageHtml = imageUrl
+        ? `<img src="${escapeAttr(imageUrl)}" alt="" style="width:52px;height:52px;object-fit:cover;border-radius:12px;border:1px solid rgba(15,23,42,.08);">`
+        : '<span class="text-muted">—</span>';
       tr.innerHTML = `
         <td>${escapeHtml(it.name || '')}</td>
+        <td>${imageHtml}</td>
         <td class="text-muted">${descHtml}</td>
         <td class="text-end">${escapeHtml(priceLabel || '')}</td>
         <td class="text-end">
@@ -648,6 +756,7 @@ if (is_array($edit)) {
               data-id="${escapeAttr(String(it.id))}"
               data-name="${escapeAttr(it.name || '')}"
               data-description="${escapeAttr(it.description || '')}"
+              data-image-url="${escapeAttr(imageUrl)}"
               data-unit="${escapeAttr(unit)}"
               data-price="${escapeAttr(priceRaw)}"
               data-currency="${escapeAttr(it.currency || 'ARS')}"
@@ -682,6 +791,19 @@ if (is_array($edit)) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!data || data.ok !== true) {
+      throw new Error((data && data.error) ? data.error : 'No se pudo procesar el catálogo.');
+    }
+    return data;
+  };
+
+  const postFormAction = async (formData) => {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Accept': 'application/json' },
+      body: formData,
     });
     const data = await res.json();
     if (!data || data.ok !== true) {
@@ -976,25 +1098,49 @@ if (is_array($edit)) {
       e.preventDefault();
       clearMsgs();
 
-      const payload = {
-        csrf_token: csrfToken(),
-        action: actionInput.value,
-        id: idInput.value,
-        name: nameInput.value,
-        description: descriptionInput ? descriptionInput.value : '',
-        unit: unitInput ? unitInput.value : '',
-        price: priceInput.value,
-        currency: currencyInput.value,
-        q: searchInput.value || '',
-      };
+      formQ.value = searchInput.value || '';
+      const fd = new FormData(form);
+      fd.set('ajax', '1');
+      fd.set('csrf_token', csrfToken());
 
-      postAction(payload)
+      postFormAction(fd)
         .then((resp) => {
           showMsg(clientSuccess, resp.message || 'OK');
           setCreateMode();
           return refresh();
         })
         .catch((err) => showMsg(clientError, err.message || String(err)));
+    });
+  }
+
+  if (imageInput) {
+    imageInput.addEventListener('change', () => {
+      const file = imageInput.files && imageInput.files[0] ? imageInput.files[0] : null;
+      clearImageObjectUrl();
+      if (!file) {
+        if (imageRemove && imageRemove.checked) {
+          setImagePreview('');
+        } else {
+          const current = imagePreview ? (imagePreview.dataset.currentUrl || '') : '';
+          setImagePreview(current);
+        }
+        return;
+      }
+
+      imageObjectUrl = URL.createObjectURL(file);
+      if (imageRemove) imageRemove.checked = false;
+      setImagePreview(imageObjectUrl);
+    });
+  }
+
+  if (imageRemove) {
+    imageRemove.addEventListener('change', () => {
+      if (imageRemove.checked) {
+        setImagePreview('');
+        return;
+      }
+      const current = imagePreview ? (imagePreview.dataset.currentUrl || '') : '';
+      setImagePreview(current);
     });
   }
 
@@ -1008,6 +1154,7 @@ if (is_array($edit)) {
         id: edit.getAttribute('data-id') || '',
         name: edit.getAttribute('data-name') || '',
         description: edit.getAttribute('data-description') || '',
+        image_url: edit.getAttribute('data-image-url') || '',
         unit: edit.getAttribute('data-unit') || '',
         price: edit.getAttribute('data-price') || '',
         currency: edit.getAttribute('data-currency') || 'ARS',
