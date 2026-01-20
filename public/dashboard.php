@@ -167,53 +167,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($error === '' && $invoiceId > 0) {
-      $download = null;
-      try {
-        $data = invoices_get($pdo, $invoiceId, $userId);
-        $download = invoice_build_download($data);
+      if ($action === 'download' || $action === 'email') {
+        $download = null;
+        try {
+          $data = invoices_get($pdo, $invoiceId, $userId);
+          $download = invoice_build_download($data);
 
-        if (!is_array($download) || (string)($download['mime'] ?? '') !== 'application/pdf') {
-          $errorId = bin2hex(random_bytes(4));
-          error_log('[invoice_pdf_error ' . $errorId . '] Download mime inesperado: ' . (string)($download['mime'] ?? '')); 
-          $error = 'La factura se guardó (ID ' . $invoiceId . ') pero no se pudo generar el PDF. (código ' . $errorId . ')';
-          $download = null;
-        }
-      } catch (Throwable $e) {
-        $errorId = bin2hex(random_bytes(4));
-        error_log('[invoice_pdf_error ' . $errorId . '] ' . get_class($e) . ': ' . $e->getMessage());
-        $error = ($config['app']['env'] ?? 'production') === 'production'
-          ? ('La factura se guardó (ID ' . $invoiceId . ') pero no se pudo generar el PDF. (código ' . $errorId . ')')
-          : ('Error: ' . $e->getMessage());
-      }
-
-      if ($error === '' && $download !== null) {
-        if ($action === 'download') {
-          header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-          header('Pragma: no-cache');
-          header('Expires: 0');
-          invoice_send_download($download);
-          exit;
-        }
-
-        if ($action === 'email') {
-          try {
-            $tzAr = new DateTimeZone('America/Argentina/Buenos_Aires');
-            $hourAr = (int)(new DateTimeImmutable('now', $tzAr))->format('H');
-            $greeting = ($hourAr < 12) ? 'Buenos días' : (($hourAr < 20) ? 'Buenas tardes' : 'Buenas noches');
-            $subject = 'Factura #' . $invoiceId . ' - ' . $appName;
-            $body = '<p>' . $greeting . ' ' . e($customerName) . ',</p><p>Adjuntamos tu factura.</p><p>Gracias por tu compra.</p>';
-            mail_send_with_attachment($config, $customerEmail, $customerName, $subject, $body, $download['bytes'], $download['filename'], $download['mime']);
-            $flash = 'Factura enviada por email y guardada (ID ' . $invoiceId . ').';
-          } catch (Throwable $e) {
+          if (!is_array($download) || (string)($download['mime'] ?? '') !== 'application/pdf') {
             $errorId = bin2hex(random_bytes(4));
-            error_log('[invoice_mail_error ' . $errorId . '] ' . get_class($e) . ': ' . $e->getMessage());
-            $error = ($config['app']['env'] ?? 'production') === 'production'
-              ? ('La factura se guardó (ID ' . $invoiceId . ') pero no se pudo enviar el email. (código ' . $errorId . ')')
-              : ('Error: ' . $e->getMessage());
+            error_log('[invoice_pdf_error ' . $errorId . '] Download mime inesperado: ' . (string)($download['mime'] ?? '')); 
+            $error = 'La factura se guardó (ID ' . $invoiceId . ') pero no se pudo generar el PDF. (código ' . $errorId . ')';
+            $download = null;
           }
-        } else {
-          $flash = 'Factura guardada (ID ' . $invoiceId . ').';
+        } catch (Throwable $e) {
+          $errorId = bin2hex(random_bytes(4));
+          error_log('[invoice_pdf_error ' . $errorId . '] ' . get_class($e) . ': ' . $e->getMessage());
+          $error = ($config['app']['env'] ?? 'production') === 'production'
+            ? ('La factura se guardó (ID ' . $invoiceId . ') pero no se pudo generar el PDF. (código ' . $errorId . ')')
+            : ('Error: ' . $e->getMessage());
         }
+
+        if ($error === '' && $download !== null) {
+          if ($action === 'download') {
+            header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+            header('Pragma: no-cache');
+            header('Expires: 0');
+            invoice_send_download($download);
+            exit;
+          }
+
+          if ($action === 'email') {
+            try {
+              $tzAr = new DateTimeZone('America/Argentina/Buenos_Aires');
+              $hourAr = (int)(new DateTimeImmutable('now', $tzAr))->format('H');
+              $greeting = ($hourAr < 12) ? 'Buenos días' : (($hourAr < 20) ? 'Buenas tardes' : 'Buenas noches');
+              $subject = 'Factura #' . $invoiceId . ' - ' . $appName;
+              $body = '<p>' . $greeting . ' ' . e($customerName) . ',</p><p>Adjuntamos tu factura.</p><p>Gracias por tu compra.</p>';
+              mail_send_with_attachment($config, $customerEmail, $customerName, $subject, $body, $download['bytes'], $download['filename'], $download['mime']);
+              $flash = 'Factura enviada por email y guardada (ID ' . $invoiceId . ').';
+            } catch (Throwable $e) {
+              $errorId = bin2hex(random_bytes(4));
+              error_log('[invoice_mail_error ' . $errorId . '] ' . get_class($e) . ': ' . $e->getMessage());
+              $error = ($config['app']['env'] ?? 'production') === 'production'
+                ? ('La factura se guardó (ID ' . $invoiceId . ') pero no se pudo enviar el email. (código ' . $errorId . ')')
+                : ('Error: ' . $e->getMessage());
+            }
+          }
+        }
+      } else {
+        $flash = 'Factura guardada (ID ' . $invoiceId . ').';
       }
     }
   }
@@ -879,6 +881,7 @@ if ($error !== '') {
 
             <div class="d-flex flex-wrap gap-2 justify-content-end mt-3">
               <button class="btn btn-primary action-btn" type="submit" name="action" value="download">Guardar y descargar</button>
+              <button class="btn btn-outline-primary action-btn" type="submit" name="action" value="save">Guardar</button>
               <!--<button class="btn btn-outline-primary action-btn" type="submit" name="action" value="email">Guardar y enviar por email</button>-->
             </div>
           </form>
