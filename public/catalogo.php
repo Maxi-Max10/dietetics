@@ -367,6 +367,48 @@ if (is_array($edit)) {
       background: rgba(220, 38, 38, .12);
       color: #991b1b;
     }
+
+    .image-upload {
+      display: grid;
+      grid-template-columns: 86px 1fr;
+      gap: 1rem;
+      padding: .85rem;
+      border-radius: 16px;
+      background: rgba(255,255,255,.75);
+      border: 1px dashed rgba(148,163,184,.5);
+    }
+    .image-preview {
+      width: 86px;
+      height: 86px;
+      border-radius: 16px;
+      border: 1px solid rgba(15,23,42,.1);
+      background: rgba(15,23,42,.04);
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+    .image-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .image-placeholder {
+      font-size: .8rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: .04em;
+    }
+    .image-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    @media (max-width: 576px) {
+      .image-upload { grid-template-columns: 70px 1fr; }
+      .image-preview { width: 70px; height: 70px; border-radius: 14px; }
+    }
   </style>
 </head>
 <body class="has-leaves-bg">
@@ -526,13 +568,20 @@ if (is_array($edit)) {
 
             <div class="col-12 col-md-6">
               <label class="form-label" for="image">Imagen del producto <span class="text-muted">(opcional)</span></label>
-              <input class="form-control" id="image" name="image" type="file" accept="image/jpeg,image/png,image/webp">
-              <div class="form-text">Formatos: JPG, PNG o WebP. Máx. 4 MB.</div>
-              <div class="mt-2 d-flex align-items-center gap-3" id="imagePreviewWrap" style="<?= $defaultImageUrl !== '' ? '' : 'display:none;' ?>">
-                <img id="imagePreview" src="<?= e($defaultImageUrl) ?>" data-current-url="<?= e($defaultImageUrl) ?>" alt="Imagen" style="width:64px;height:64px;object-fit:cover;border-radius:12px;border:1px solid rgba(15,23,42,.08);">
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" id="imageRemove" name="image_remove" value="1">
-                  <label class="form-check-label" for="imageRemove">Quitar imagen</label>
+              <div class="image-upload mt-2">
+                <div class="image-preview" id="imagePreviewWrap">
+                  <img id="imagePreview" src="<?= e($defaultImageUrl) ?>" data-current-url="<?= e($defaultImageUrl) ?>" alt="Imagen" style="<?= $defaultImageUrl !== '' ? '' : 'display:none;' ?>">
+                  <span id="imagePlaceholder" class="image-placeholder" style="<?= $defaultImageUrl !== '' ? 'display:none;' : '' ?>">SIN FOTO</span>
+                </div>
+                <div>
+                  <input class="form-control" id="image" name="image" type="file" accept="image/jpeg,image/png,image/webp">
+                  <div class="form-text">Formatos: JPG, PNG o WebP. Máx. 4 MB.</div>
+                  <div class="image-actions mt-2">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="imageRemove" name="image_remove" value="1">
+                      <label class="form-check-label" for="imageRemove">Quitar imagen</label>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -646,6 +695,7 @@ if (is_array($edit)) {
   const imageInput = document.getElementById('image');
   const imagePreviewWrap = document.getElementById('imagePreviewWrap');
   const imagePreview = document.getElementById('imagePreview');
+  const imagePlaceholder = document.getElementById('imagePlaceholder');
   const imageRemove = document.getElementById('imageRemove');
   const cancelLink = document.getElementById('catalogCancel');
   const modeLabel = document.getElementById('catalogFormModeLabel');
@@ -672,12 +722,14 @@ if (is_array($edit)) {
     const cleanUrl = String(url || '').trim();
     imagePreview.dataset.currentUrl = cleanUrl;
     if (!cleanUrl) {
-      imagePreviewWrap.style.display = 'none';
       imagePreview.removeAttribute('src');
+      imagePreview.style.display = 'none';
+      if (imagePlaceholder) imagePlaceholder.style.display = '';
       return;
     }
     imagePreview.src = cleanUrl;
-    imagePreviewWrap.style.display = 'flex';
+    imagePreview.style.display = '';
+    if (imagePlaceholder) imagePlaceholder.style.display = 'none';
   };
 
   const setCreateMode = () => {
@@ -1194,6 +1246,36 @@ if (is_array($edit)) {
     });
   }
 
+  if (imageInput) {
+    imageInput.addEventListener('change', () => {
+      if (!imageInput.files || imageInput.files.length === 0) {
+        clearImageObjectUrl();
+        const current = imagePreview ? (imagePreview.dataset.currentUrl || '') : '';
+        setImagePreview(current);
+        return;
+      }
+
+      const file = imageInput.files[0];
+      clearImageObjectUrl();
+      imageObjectUrl = URL.createObjectURL(file);
+      if (imageRemove) imageRemove.checked = false;
+      setImagePreview(imageObjectUrl);
+    });
+  }
+
+  if (imageRemove) {
+    imageRemove.addEventListener('change', () => {
+      if (!imageRemove.checked) {
+        const current = imagePreview ? (imagePreview.dataset.currentUrl || '') : '';
+        setImagePreview(current);
+        return;
+      }
+      if (imageInput) imageInput.value = '';
+      clearImageObjectUrl();
+      setImagePreview('');
+    });
+  }
+
   // Primer carga dinámica (mantiene HTML como fallback)
   refresh().catch(() => {
     // Si falla, queda el render server-side.
@@ -1229,6 +1311,12 @@ if (is_array($edit)) {
       transcribeAudioFile(f)
         .then((text) => applyTranscriptToForm(text))
         .catch((err) => showMsg(clientError, err && err.message ? err.message : String(err)));
+    });
+  }
+
+  if (imagePreview) {
+    imagePreview.addEventListener('error', () => {
+      setImagePreview('');
     });
   }
 })();

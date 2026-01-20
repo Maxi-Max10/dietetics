@@ -737,7 +737,7 @@ $csrf = csrf_token();
         : `<span class="text-muted" style="font-size:.9rem;">${escapeHtml(def.unit || unit || '')}</span>`;
 
       const thumbHtml = imageUrl
-        ? `<img class="product-thumb" src="${escapeAttr(imageUrl)}" alt="">`
+        ? `<span class="product-thumb product-thumb--empty" style="display:none;">IMG</span><img class="product-thumb" src="${escapeAttr(imageUrl)}" alt="">`
         : `<span class="product-thumb product-thumb--empty">IMG</span>`;
 
       tr.innerHTML = `
@@ -765,6 +765,14 @@ $csrf = csrf_token();
       const qtyInput = tr.querySelector('input');
       const unitSelect = tr.querySelector('select');
       const btn = tr.querySelector('button');
+      const img = tr.querySelector('img.product-thumb');
+      if (img) {
+        img.addEventListener('error', () => {
+          const placeholder = tr.querySelector('.product-thumb--empty');
+          if (placeholder) placeholder.style.display = 'inline-flex';
+          img.remove();
+        });
+      }
 
       if (unitSelect) {
         unitSelect.addEventListener('change', () => {
