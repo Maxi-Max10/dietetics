@@ -164,10 +164,35 @@ $csrf = csrf_token();
     .site-footer {
       position: relative;
       z-index: 1;
-      margin-top: 2rem;
-      padding: 1.25rem 0 2.25rem;
+      margin-top: 2.5rem;
+      padding: 1.5rem 0 2.5rem;
       color: var(--muted);
-      font-size: .92rem;
+      font-size: .95rem;
+    }
+    .footer-card {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .7rem 1.1rem;
+      border-radius: 999px;
+      background: rgba(255,255,255,.8);
+      border: 1px solid rgba(148,163,184,.35);
+      box-shadow: 0 12px 30px rgba(15,23,42,.08);
+      backdrop-filter: blur(10px);
+    }
+    .footer-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      padding: .35rem .7rem;
+      border-radius: 999px;
+      font-weight: 700;
+      color: var(--accent);
+      background: rgba(var(--accent-rgb), .1);
+      border: 1px solid rgba(var(--accent-rgb), .22);
+      font-size: .85rem;
+      text-transform: uppercase;
+      letter-spacing: .04em;
     }
     .site-footer a {
       color: var(--accent);
@@ -568,7 +593,12 @@ $csrf = csrf_token();
 
 <footer class="site-footer">
   <div class="container text-center">
-    Desarrollado por Polo Positivo · <a href="https://polopositivoar.com" target="_blank" rel="noopener">polopositivoar.com</a>
+    <div class="footer-card">
+      <span class="footer-pill">Desarrollado por</span>
+      <strong>Polo Positivo</strong>
+      <span aria-hidden="true">·</span>
+      <a href="https://polopositivoar.com" target="_blank" rel="noopener">polopositivoar.com</a>
+    </div>
   </div>
 </footer>
 
