@@ -611,12 +611,7 @@ $csrf = csrf_token();
     <div class="footer-bar">
       <div class="footer-col">Desarrollado por Polo Positivo</div>
       <div class="footer-col footer-social" aria-label="Redes">
-        <a href="https://www.facebook.com/" target="_blank" rel="noopener" aria-label="Facebook">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M13 9h3V6h-3c-2.2 0-4 1.8-4 4v3H7v3h2v6h3v-6h3l1-3h-4v-3c0-.6.4-1 1-1z" />
-          </svg>
-        </a>
-        <a href="https://www.instagram.com/" target="_blank" rel="noopener" aria-label="Instagram">
+        <a href="https://www.instagram.com/polopositivoar?igsh=dnl3Yno1eDFidWcy" target="_blank" rel="noopener" aria-label="Instagram">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path d="M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4zm10 2H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm-5 3.5A3.5 3.5 0 1 1 8.5 12 3.5 3.5 0 0 1 12 8.5zm0 2A1.5 1.5 0 1 0 13.5 12 1.5 1.5 0 0 0 12 10.5zm5.2-3.7a.8.8 0 1 1-.8.8.8.8 0 0 1 .8-.8z" />
           </svg>
