@@ -264,7 +264,12 @@ function catalog_ensure_image_column(PDO $pdo): void
 
 function catalog_image_storage_dir(): string
 {
-    return dirname(__DIR__) . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'catalog';
+    $docRoot = $_SERVER['DOCUMENT_ROOT'] ?? '';
+    if (is_string($docRoot) && $docRoot !== '' && is_dir($docRoot)) {
+        return rtrim($docRoot, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'catalog';
+    }
+
+    return dirname(__DIR__) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'catalog';
 }
 
 function catalog_sanitize_image_path(string $path): string
