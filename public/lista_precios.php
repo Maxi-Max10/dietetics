@@ -74,6 +74,20 @@ $csrf = csrf_token();
     .small-help { color: var(--muted); font-size: .9rem; }
     @media (max-width: 992px) { .cart-sticky { position: static; } }
 
+    .price-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      padding: .3rem .6rem;
+      border-radius: 999px;
+      background: rgba(var(--accent-rgb), .12);
+      border: 1px solid rgba(var(--accent-rgb), .22);
+      color: var(--accent-dark);
+      font-weight: 700;
+      font-size: .95rem;
+      white-space: nowrap;
+    }
+
     .hero-card {
       position: relative;
       overflow: hidden;
@@ -147,7 +161,7 @@ $csrf = csrf_token();
       .page-shell { padding: 1rem 0; }
       .navbar .container { padding-top: .5rem !important; padding-bottom: .5rem !important; }
       .card-body.p-4 { padding: 1rem !important; }
-      .qty-input { width: 104px; }
+      .qty-input { width: 116px; }
       .hero-card { border-radius: 20px; }
 
       /* Table -> stacked cards */
@@ -157,7 +171,7 @@ $csrf = csrf_token();
         background: rgba(255,255,255,.7);
         border: 1px solid rgba(148,163,184,.35);
         border-radius: 16px;
-        padding: .85rem;
+        padding: .95rem;
         margin-bottom: .75rem;
         box-shadow: 0 10px 30px rgba(15,23,42,.06);
       }
@@ -165,7 +179,7 @@ $csrf = csrf_token();
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: .75rem;
+        gap: .85rem;
         border: none !important;
         padding: .35rem 0;
       }
@@ -174,7 +188,7 @@ $csrf = csrf_token();
         flex: 0 0 auto;
         color: var(--muted);
         font-weight: 700;
-        font-size: .82rem;
+        font-size: .78rem;
         text-transform: uppercase;
         letter-spacing: .04em;
       }
@@ -184,10 +198,48 @@ $csrf = csrf_token();
       }
       .table-mobile tbody td[data-label="Producto"]::before { display: none; }
 
-      .table-mobile .qty-wrap { justify-content: flex-end !important; }
-      .table-mobile .qty-wrap select { max-width: 96px !important; }
+      .table-mobile .price-cell {
+        justify-content: flex-start !important;
+      }
+      .table-mobile .price-chip {
+        font-size: .9rem;
+      }
+
+      .table-mobile .qty-cell {
+        align-items: center;
+      }
+      .table-mobile .qty-wrap {
+        justify-content: flex-end !important;
+        padding: .35rem .4rem;
+        background: rgba(255,255,255,.8);
+        border-radius: 12px;
+        border: 1px solid rgba(148,163,184,.3);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.6);
+      }
+      .table-mobile .qty-wrap select { max-width: 110px !important; }
+      .table-mobile .qty-input { text-align: right; }
+
+      .table-mobile .action-cell {
+        padding-top: .6rem;
+      }
       .table-mobile .action-btn { width: 100%; }
-      .table-mobile .btn-sm { padding: .55rem .9rem; font-size: 1rem; }
+      .table-mobile .btn-sm {
+        padding: .65rem 1rem;
+        font-size: 1rem;
+        border-radius: 14px;
+      }
+
+      .table-mobile .product-cell .fw-semibold {
+        font-size: 1.02rem;
+      }
+      .table-mobile .product-cell .text-muted {
+        font-size: .92rem;
+      }
+
+      .table-mobile tbody td.product-cell { order: 1; }
+      .table-mobile tbody td.price-cell { order: 2; }
+      .table-mobile tbody td.qty-cell { order: 3; }
+      .table-mobile tbody td.action-cell { order: 4; }
     }
   </style>
 </head>
@@ -232,7 +284,6 @@ $csrf = csrf_token();
               <div class="mt-3 d-flex flex-wrap gap-2 hero-badges">
                 <span class="badge">Entrega rápida</span>
                 <span class="badge">Pago al retirar</span>
-                <span class="badge">Confirmación por WhatsApp</span>
               </div>
             </div>
             <div class="w-100 w-md-auto" style="max-width: 380px;">
@@ -656,18 +707,18 @@ $csrf = csrf_token();
         : `<span class="text-muted" style="font-size:.9rem;">${escapeHtml(def.unit || unit || '')}</span>`;
 
       tr.innerHTML = `
-        <td data-label="Producto">
+        <td data-label="Producto" class="product-cell">
           <div class="fw-semibold">${escapeHtml(name)}</div>
           ${desc ? `<div class="text-muted" style="font-size:.9rem;">${escapeHtml(desc)}</div>` : ''}
         </td>
-        <td class="text-end fw-semibold" data-label="Precio">${escapeHtml(price)}</td>
-        <td data-label="Cantidad">
+        <td class="text-end fw-semibold price-cell" data-label="Precio"><span class="price-chip">${escapeHtml(price)}</span></td>
+        <td data-label="Cantidad" class="qty-cell">
           <div class="d-flex align-items-center gap-2 justify-content-end qty-wrap">
             <input type="number" class="form-control qty-input" value="${escapeHtml(def.value)}" min="${escapeHtml(qtyConfig.min)}" step="${escapeHtml(qtyConfig.step)}">
             ${unitSelectHtml}
           </div>
         </td>
-        <td class="text-end" data-label="">
+        <td class="text-end action-cell" data-label="">
           <button type="button" class="btn btn-outline-primary btn-sm action-btn">Agregar</button>
         </td>
       `;
