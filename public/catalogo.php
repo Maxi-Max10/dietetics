@@ -368,6 +368,29 @@ if (is_array($edit)) {
       color: #991b1b;
     }
 
+    .catalog-thumb {
+      width: 52px;
+      height: 52px;
+      border-radius: 12px;
+      object-fit: cover;
+      border: 1px solid rgba(15,23,42,.08);
+      display: block;
+      background: #fff;
+    }
+    .catalog-thumb-fallback {
+      width: 52px;
+      height: 52px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .72rem;
+      font-weight: 700;
+      color: var(--accent);
+      background: rgba(var(--accent-rgb), .08);
+      border: 1px dashed rgba(var(--accent-rgb), .28);
+    }
+
     .image-upload {
       display: grid;
       grid-template-columns: 86px 1fr;
@@ -635,9 +658,10 @@ if (is_array($edit)) {
                     <td><?= e((string)$r['name']) ?></td>
                     <td>
                       <?php if ($imageUrl !== ''): ?>
-                        <img src="<?= e($imageUrl) ?>" alt="" style="width:52px;height:52px;object-fit:cover;border-radius:12px;border:1px solid rgba(15,23,42,.08);">
+                        <span class="catalog-thumb-fallback" style="display:none;">IMG</span>
+                        <img class="catalog-thumb" src="<?= e($imageUrl) ?>" alt="" onerror="this.style.display='none'; this.previousElementSibling.style.display='inline-flex';">
                       <?php else: ?>
-                        <span class="text-muted">—</span>
+                        <span class="catalog-thumb-fallback">IMG</span>
                       <?php endif; ?>
                     </td>
                     <td class="text-muted"><?= e(trim((string)($r['description'] ?? '')) !== '' ? (string)$r['description'] : '—') ?></td>
@@ -793,8 +817,8 @@ if (is_array($edit)) {
       const priceLabel = it.price_label || ((it.price_formatted || '') + (unit ? (' / ' + unit) : ''));
       const imageUrl = String(it.image_url || '').trim();
       const imageHtml = imageUrl
-        ? `<img src="${escapeAttr(imageUrl)}" alt="" style="width:52px;height:52px;object-fit:cover;border-radius:12px;border:1px solid rgba(15,23,42,.08);">`
-        : '<span class="text-muted">—</span>';
+        ? `<span class="catalog-thumb-fallback" style="display:none;">IMG</span><img class="catalog-thumb" src="${escapeAttr(imageUrl)}" alt="" onerror="this.style.display='none'; this.previousElementSibling.style.display='inline-flex';">`
+        : '<span class="catalog-thumb-fallback">IMG</span>';
       tr.innerHTML = `
         <td>${escapeHtml(it.name || '')}</td>
         <td>${imageHtml}</td>
@@ -851,6 +875,19 @@ if (is_array($edit)) {
     return data;
   };
 
+  const postActionForm = async (formData) => {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Accept': 'application/json' },
+      body: formData,
+    });
+    const data = await res.json();
+    if (!data || data.ok !== true) {
+      throw new Error((data && data.error) ? data.error : 'No se pudo procesar el catálogo.');
+    }
+    return data;
+  };
+
   const postFormAction = async (formData) => {
     const res = await fetch(endpoint, {
       method: 'POST',
@@ -896,20 +933,13 @@ if (is_array($edit)) {
           // 13,000.50
           s = s.replaceAll(',', '');
         }
-      } else if (/^\d{1,3}([\.,]\d{3})+$/.test(s)) {
-        // 13.000 o 13,000
-        s = s.replace(/[\.,]/g, '');
-      } else {
-        // Decimal simple: 13,50 -> 13.50
-        s = s.replace(',', '.');
-      }
 
-      const n = parseFloat(s);
-      return Number.isFinite(n) ? n : null;
-    };
+            if (formQ) formQ.value = searchInput.value || '';
+            const fd = new FormData(form);
+            fd.set('ajax', '1');
+            fd.set('csrf_token', csrfToken());
 
-    const parseSpokenPrice = (lowerText) => {
-      const s = String(lowerText || '').toLowerCase();
+            postActionForm(fd)
       const numRe = '([0-9]{1,3}(?:[\\.,\\s][0-9]{3})+(?:[\\.,][0-9]{1,2})?|[0-9]+(?:[\\.,][0-9]{1,2})?)';
 
       let m = s.match(new RegExp('precios?\\s*[:\\-]?\\s*\\$?\\s*' + numRe + '(?:\\s*(mil|miles|k))?\\b', 'i'));
