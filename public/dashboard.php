@@ -1291,6 +1291,11 @@ if ($error !== '') {
     const table = document.getElementById('itemsTable');
     if (!table) return;
 
+    const moneyFormatter = new Intl.NumberFormat('es-AR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+
     function calculateTotal(row) {
       const qtyInput = row.querySelector('input[name="item_quantity[]"]');
       const unitSelect = row.querySelector('select[name="item_unit[]"]');
@@ -1330,7 +1335,7 @@ if ($error !== '') {
           total = qty * basePrice;
       }
 
-      totalInput.value = '$' + total.toFixed(2);
+      totalInput.value = '$' + moneyFormatter.format(total);
     }
 
     function recalculateRow(row) {
