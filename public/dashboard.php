@@ -851,7 +851,8 @@ if ($error !== '') {
                   <tr>
                     <th>Producto</th>
                     <th style="width:220px">Cantidad</th>
-                    <th style="width:160px">Precio</th>
+                    <th style="width:130px">Precio base</th>
+                    <th style="width:130px">Total</th>
                     <th style="width:60px"></th>
                   </tr>
                 </thead>
@@ -862,7 +863,7 @@ if ($error !== '') {
                       <div class="d-flex gap-2">
                         <input class="form-control" name="item_quantity[]" value="1" inputmode="decimal" required style="max-width: 110px">
                         <select class="form-select" name="item_unit[]" required style="max-width: 110px">
-                          
+                          <option value="u">u</option>
                           <option value="g">g</option>
                           <option value="kg">kg</option>
                           <option value="ml">ml</option>
@@ -871,6 +872,7 @@ if ($error !== '') {
                       </div>
                     </td>
                     <td><input class="form-control" name="item_unit_price[]" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="Precio base (u/kg/l)" required></td>
+                    <td><input class="form-control" type="text" readonly placeholder="$0.00" data-total></td>
                     <td><button type="button" class="btn btn-outline-danger btn-sm" data-remove>×</button></td>
                   </tr>
                 </tbody>
@@ -1089,7 +1091,7 @@ if ($error !== '') {
           <div class="d-flex gap-2">
             <input class="form-control" name="item_quantity[]" value="1" inputmode="decimal" required style="max-width: 110px">
             <select class="form-select" name="item_unit[]" required style="max-width: 110px">
-            
+              <option value="u">u</option>
               <option value="g">g</option>
               <option value="kg">kg</option>
               <option value="ml">ml</option>
@@ -1098,6 +1100,7 @@ if ($error !== '') {
           </div>
         </td>
         <td><input class="form-control" name="item_unit_price[]" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="Precio base (u/kg/l)" required></td>
+        <td><input class="form-control" type="text" readonly placeholder="$0.00" data-total></td>
         <td><button type="button" class="btn btn-outline-danger btn-sm" data-remove>×</button></td>
       `;
       tbody.appendChild(tr);
@@ -1216,6 +1219,82 @@ if ($error !== '') {
       if (el.name !== 'item_description[]') return;
       maybeFillPriceForRow(el);
     });
+  })();
+</script>
+<script>
+  // Calcular automáticamente el precio total según cantidad, unidad y precio base
+  (function () {
+    const table = document.getElementById('itemsTable');
+    if (!table) return;
+
+    function calculateTotal(row) {
+      const qtyInput = row.querySelector('input[name="item_quantity[]"]');
+      const unitSelect = row.querySelector('select[name="item_unit[]"]');
+      const priceInput = row.querySelector('input[name="item_unit_price[]"]');
+      const totalInput = row.querySelector('input[data-total]');
+
+      if (!qtyInput || !unitSelect || !priceInput || !totalInput) return;
+
+      const qty = parseFloat(qtyInput.value) || 0;
+      const unit = unitSelect.value;
+      const basePrice = parseFloat(priceInput.value) || 0;
+
+      if (qty <= 0 || basePrice <= 0) {
+        totalInput.value = '';
+        return;
+      }
+
+      let total = 0;
+
+      // Asumimos que el precio base es por kg/litro/unidad
+      switch (unit) {
+        case 'kg':
+        case 'l':
+        case 'u':
+          // Precio directo
+          total = qty * basePrice;
+          break;
+        case 'g':
+          // Convertir gramos a kg
+          total = (qty / 1000) * basePrice;
+          break;
+        case 'ml':
+          // Convertir ml a litros
+          total = (qty / 1000) * basePrice;
+          break;
+        default:
+          total = qty * basePrice;
+      }
+
+      totalInput.value = '$' + total.toFixed(2);
+    }
+
+    function recalculateRow(row) {
+      if (!row) return;
+      calculateTotal(row);
+    }
+
+    // Escuchar cambios en cantidad, unidad y precio
+    table.addEventListener('input', function (e) {
+      const el = e.target;
+      if (!(el instanceof HTMLInputElement)) return;
+      if (el.name !== 'item_quantity[]' && el.name !== 'item_unit_price[]') return;
+      
+      const row = el.closest('tr');
+      recalculateRow(row);
+    });
+
+    table.addEventListener('change', function (e) {
+      const el = e.target;
+      if (el instanceof HTMLSelectElement && el.name === 'item_unit[]') {
+        const row = el.closest('tr');
+        recalculateRow(row);
+      }
+    });
+
+    // Calcular totales iniciales
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach(recalculateRow);
   })();
 </script>
 <script>
