@@ -87,10 +87,14 @@ function invoice_compute_line_from_base_price(string $unit, float $quantity, flo
         throw new InvalidArgumentException('Precio inválido.');
     }
 
-    // Ahora el precio ingresado SIEMPRE es el total para esa cantidad
-    $lineTotalCents = (int)round($priceBase * 100);
-    // El precio unitario es el total dividido la cantidad
-    $unitPriceCents = (int)round($lineTotalCents / $quantity);
+    // Precio base por u/kg/l. Convertir a precio por unidad seleccionada.
+    $unitPrice = $priceBase;
+    if ($unitKey === 'g' || $unitKey === 'ml') {
+        $unitPrice = $priceBase / 1000.0;
+    }
+
+    $unitPriceCents = (int)round($unitPrice * 100);
+    $lineTotalCents = (int)round($unitPrice * $quantity * 100);
 
     return [
         'unit_price_cents' => $unitPriceCents,
