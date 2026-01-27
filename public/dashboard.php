@@ -488,6 +488,33 @@ if ($error !== '') {
       }
     }
 
+    @media (max-width: 576px) {
+      #itemsTable th:nth-child(2),
+      #itemsTable td:nth-child(2),
+      #itemsTable th:nth-child(3),
+      #itemsTable td:nth-child(3),
+      #itemsTable th:nth-child(4),
+      #itemsTable td:nth-child(4) {
+        width: auto !important;
+      }
+
+      #itemsTable .qty-unit-group {
+        flex-direction: column;
+        gap: .5rem !important;
+      }
+
+      #itemsTable .qty-unit-group .form-control,
+      #itemsTable .qty-unit-group .form-select,
+      #itemsTable .input-group {
+        width: 100%;
+      }
+
+      #itemsTable .input-group-text {
+        min-width: 44px;
+        justify-content: center;
+      }
+    }
+
     .navbar-logo {
       height: 34px;
       width: auto;
@@ -886,7 +913,7 @@ if ($error !== '') {
                       <input class="form-control" name="item_description[]" autocomplete="off" placeholder="Buscar producto" required>
                     </td>
                     <td>
-                      <div class="d-flex gap-2">
+                      <div class="d-flex gap-2 qty-unit-group">
                         <input class="form-control" name="item_quantity[]" value="1" inputmode="decimal" required style="max-width: 110px">
                         <select class="form-select" name="item_unit[]" required style="max-width: 110px">
                           <option value="u">u</option>
@@ -1119,7 +1146,7 @@ if ($error !== '') {
           <input class="form-control" name="item_description[]" autocomplete="off" placeholder="Buscar producto" required>
         </td>
         <td>
-          <div class="d-flex gap-2">
+          <div class="d-flex gap-2 qty-unit-group">
             <input class="form-control" name="item_quantity[]" value="1" inputmode="decimal" required style="max-width: 110px">
             <select class="form-select" name="item_unit[]" required style="max-width: 110px">
               <option value="u">u</option>
