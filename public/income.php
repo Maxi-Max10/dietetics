@@ -96,7 +96,7 @@ try {
   // LIMIT con entero validado: evitamos placeholders por compatibilidad MySQL/PDO.
   $stmt = $pdo->prepare(
     'SELECT inv.id AS invoice_id, inv.customer_name, inv.customer_email, inv.currency, inv.created_at,
-        ii.description, ii.quantity, ' . $lineTotalSql . ' AS line_total_cents
+        ii.description, ii.quantity, COALESCE(ii.unit, "") AS unit, ' . $lineTotalSql . ' AS line_total_cents
      FROM invoice_items ii
      INNER JOIN invoices inv ON inv.id = ii.invoice_id
      WHERE ' . $where . '
@@ -382,7 +382,37 @@ try {
                     <td><?= e((string)($r['created_at'] ?? '')) ?></td>
                     <td><?= e((string)($r['invoice_id'] ?? '')) ?></td>
                     <td><?= e((string)($r['description'] ?? '')) ?> <span class="text-muted">(<?= e((string)($r['currency'] ?? 'ARS')) ?>)</span></td>
-                    <td class="text-end"><?= e((string)($r['quantity'] ?? '')) ?></td>
+                    <?php
+                      $qtyText = (string)($r['quantity'] ?? '');
+                      $qtyNorm = str_replace(',', '.', $qtyText);
+                      $qtyValue = is_numeric($qtyNorm) ? (float)$qtyNorm : null;
+                      $fmtQty = static function (float $v): string {
+                        $s = number_format($v, 3, '.', '');
+                        return rtrim(rtrim($s, '0'), '.');
+                      };
+                      $unitRaw = trim((string)($r['unit'] ?? ''));
+                      if ($unitRaw !== '') {
+                        $unitKey = invoice_normalize_unit($unitRaw);
+                        $unitLabel = match ($unitKey) {
+                          'g' => 'g',
+                          'kg' => 'kg',
+                          'ml' => 'ml',
+                          'l' => 'l',
+                          default => 'u',
+                        };
+                        if ($qtyValue !== null && $qtyValue < 1) {
+                          if ($unitKey === 'kg') {
+                            $qtyText = $fmtQty($qtyValue * 1000);
+                            $unitLabel = 'g';
+                          } elseif ($unitKey === 'l') {
+                            $qtyText = $fmtQty($qtyValue * 1000);
+                            $unitLabel = 'ml';
+                          }
+                        }
+                        $qtyText = trim($qtyText) !== '' ? ($qtyText . ' ' . $unitLabel) : $qtyText;
+                      }
+                    ?>
+                    <td class="text-end"><?= e($qtyText) ?></td>
                     <td class="text-end"><?= e(money_format_cents((int)($r['line_total_cents'] ?? 0), (string)($r['currency'] ?? 'ARS'))) ?></td>
                   </tr>
                 <?php endforeach; ?>
