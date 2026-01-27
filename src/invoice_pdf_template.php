@@ -249,8 +249,21 @@ function invoice_build_pdf_from_template(array $data): array
         };
     };
 
+    $capitalizeFirst = static function (string $value): string {
+        $value = trim($value);
+        if ($value === '') {
+            return '';
+        }
+        if (function_exists('mb_substr') && function_exists('mb_strtoupper')) {
+            $first = mb_substr($value, 0, 1, 'UTF-8');
+            $rest = mb_substr($value, 1, null, 'UTF-8');
+            return mb_strtoupper($first, 'UTF-8') . $rest;
+        }
+        return strtoupper(substr($value, 0, 1)) . substr($value, 1);
+    };
+
     foreach ($items as $item) {
-        $desc = (string)($item['description'] ?? '');
+        $desc = $capitalizeFirst((string)($item['description'] ?? ''));
         $qtyRaw = (string)($item['quantity'] ?? '1.00');
         $unitRaw = (string)($item['unit'] ?? '');
         $qty = $formatQty($qtyRaw);
