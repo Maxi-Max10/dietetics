@@ -555,11 +555,25 @@ function orders_get(PDO $pdo, int $createdBy, int $orderId): array
     }
 
     if (orders_supports_item_customer_fields($pdo)) {
-        $itemStmt = $pdo->prepare('SELECT product_id, description, customer_email, customer_dni, quantity, unit_price_cents, line_total_cents FROM customer_order_items WHERE order_id = :order_id ORDER BY id ASC');
+        $itemStmt = $pdo->prepare(
+            'SELECT it.product_id, it.description, it.customer_email, it.customer_dni, it.quantity, it.unit_price_cents, it.line_total_cents,
+                    COALESCE(cp.unit, "") AS unit
+             FROM customer_order_items it
+             LEFT JOIN catalog_products cp ON cp.id = it.product_id AND cp.created_by = :created_by
+             WHERE it.order_id = :order_id
+             ORDER BY it.id ASC'
+        );
     } else {
-        $itemStmt = $pdo->prepare('SELECT product_id, description, quantity, unit_price_cents, line_total_cents FROM customer_order_items WHERE order_id = :order_id ORDER BY id ASC');
+        $itemStmt = $pdo->prepare(
+            'SELECT it.product_id, it.description, it.quantity, it.unit_price_cents, it.line_total_cents,
+                    COALESCE(cp.unit, "") AS unit
+             FROM customer_order_items it
+             LEFT JOIN catalog_products cp ON cp.id = it.product_id AND cp.created_by = :created_by
+             WHERE it.order_id = :order_id
+             ORDER BY it.id ASC'
+        );
     }
-    $itemStmt->execute(['order_id' => (int)$orderId]);
+    $itemStmt->execute(['order_id' => (int)$orderId, 'created_by' => (int)$createdBy]);
     $items = $itemStmt->fetchAll();
 
     return ['order' => $order, 'items' => $items];

@@ -388,7 +388,22 @@ $label = function (string $status): string {
                 <?php foreach ($viewItems as $it): ?>
                   <tr>
                     <td><?= e((string)($it['description'] ?? '')) ?></td>
-                    <td class="text-end"><?= e((string)($it['quantity'] ?? '')) ?></td>
+                    <?php
+                      $qtyText = (string)($it['quantity'] ?? '');
+                      $unitRaw = trim((string)($it['unit'] ?? ''));
+                      if ($unitRaw !== '') {
+                        $unitKey = invoice_normalize_unit($unitRaw);
+                        $unitLabel = match ($unitKey) {
+                          'g' => 'g',
+                          'kg' => 'kg',
+                          'ml' => 'ml',
+                          'l' => 'l',
+                          default => 'u',
+                        };
+                        $qtyText = trim($qtyText) !== '' ? ($qtyText . ' ' . $unitLabel) : $qtyText;
+                      }
+                    ?>
+                    <td class="text-end"><?= e($qtyText) ?></td>
                     <td class="text-end"><?= e(money_format_cents((int)($it['unit_price_cents'] ?? 0), (string)($view['currency'] ?? 'ARS'))) ?></td>
                     <td class="text-end fw-semibold"><?= e(money_format_cents((int)($it['line_total_cents'] ?? 0), (string)($view['currency'] ?? 'ARS'))) ?></td>
                   </tr>
