@@ -321,6 +321,12 @@ $label = function (string $status): string {
                     <td><?= e((string)($it['description'] ?? '')) ?></td>
                     <?php
                       $qtyText = (string)($it['quantity'] ?? '');
+                      $qtyNorm = str_replace(',', '.', $qtyText);
+                      $qtyValue = is_numeric($qtyNorm) ? (float)$qtyNorm : null;
+                      $fmtQty = static function (float $v): string {
+                        $s = number_format($v, 3, '.', '');
+                        return rtrim(rtrim($s, '0'), '.');
+                      };
                       $unitRaw = trim((string)($it['unit'] ?? ''));
                       if ($unitRaw !== '') {
                         $unitKey = invoice_normalize_unit($unitRaw);
@@ -331,6 +337,15 @@ $label = function (string $status): string {
                           'l' => 'l',
                           default => 'u',
                         };
+                        if ($qtyValue !== null && $qtyValue < 1) {
+                          if ($unitKey === 'kg') {
+                            $qtyText = $fmtQty($qtyValue * 1000);
+                            $unitLabel = 'g';
+                          } elseif ($unitKey === 'l') {
+                            $qtyText = $fmtQty($qtyValue * 1000);
+                            $unitLabel = 'ml';
+                          }
+                        }
                         $qtyText = trim($qtyText) !== '' ? ($qtyText . ' ' . $unitLabel) : $qtyText;
                       }
                     ?>
