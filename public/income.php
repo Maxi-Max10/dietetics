@@ -60,6 +60,8 @@ function income_active(string $current, string $key): string
 $totals = [];
 $rows = [];
 $p = sales_period($period);
+$legacyCutoff = invoices_legacy_cutoff_string();
+$lineTotalSql = invoices_legacy_line_total_sql('inv', 'ii');
 
 try {
   $pdo = db($config);
@@ -69,6 +71,7 @@ try {
     'user_id' => $userId,
     'start' => $p['start']->format('Y-m-d H:i:s'),
     'end' => $p['end']->format('Y-m-d H:i:s'),
+    'legacy_cutoff' => $legacyCutoff,
   ];
 
   if ($q !== '') {
@@ -77,7 +80,7 @@ try {
   }
 
   $stmtTotals = $pdo->prepare(
-    'SELECT inv.currency, COALESCE(SUM(ii.line_total_cents), 0) AS total_cents
+    'SELECT inv.currency, COALESCE(SUM(' . $lineTotalSql . '), 0) AS total_cents
      FROM invoice_items ii
      INNER JOIN invoices inv ON inv.id = ii.invoice_id
      WHERE ' . $where . '
@@ -93,7 +96,7 @@ try {
   // LIMIT con entero validado: evitamos placeholders por compatibilidad MySQL/PDO.
   $stmt = $pdo->prepare(
     'SELECT inv.id AS invoice_id, inv.customer_name, inv.customer_email, inv.currency, inv.created_at,
-        ii.description, ii.quantity, ii.line_total_cents
+        ii.description, ii.quantity, ' . $lineTotalSql . ' AS line_total_cents
      FROM invoice_items ii
      INNER JOIN invoices inv ON inv.id = ii.invoice_id
      WHERE ' . $where . '

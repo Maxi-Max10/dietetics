@@ -52,16 +52,19 @@ function sales_summary(PDO $pdo, int $userId, DateTimeImmutable $start, DateTime
 function sales_summary_filtered(PDO $pdo, int $userId, DateTimeImmutable $start, DateTimeImmutable $end, string $search, bool $hasDni): array
 {
     $search = trim($search);
+    $legacyCutoff = invoices_legacy_cutoff_string();
+    $lineTotalSql = invoices_legacy_line_total_sql('inv', 'ii');
 
-    $where = 'created_by = :user_id AND created_at >= :start AND created_at < :end';
+    $where = 'inv.created_by = :user_id AND inv.created_at >= :start AND inv.created_at < :end';
     $params = [
         'user_id' => $userId,
         'start' => $start->format('Y-m-d H:i:s'),
         'end' => $end->format('Y-m-d H:i:s'),
+        'legacy_cutoff' => $legacyCutoff,
     ];
 
     if ($search !== '') {
-        $where .= ' AND (customer_name LIKE :q_name OR customer_email LIKE :q_email' . ($hasDni ? ' OR customer_dni LIKE :q_dni' : '') . ')';
+        $where .= ' AND (inv.customer_name LIKE :q_name OR inv.customer_email LIKE :q_email' . ($hasDni ? ' OR inv.customer_dni LIKE :q_dni' : '') . ')';
         $like = '%' . $search . '%';
         $params['q_name'] = $like;
         $params['q_email'] = $like;
@@ -71,11 +74,12 @@ function sales_summary_filtered(PDO $pdo, int $userId, DateTimeImmutable $start,
     }
 
     $stmt = $pdo->prepare(
-        'SELECT currency, COUNT(*) AS cnt, COALESCE(SUM(total_cents), 0) AS total_cents
-         FROM invoices
+        'SELECT inv.currency, COUNT(DISTINCT inv.id) AS cnt, COALESCE(SUM(' . $lineTotalSql . '), 0) AS total_cents
+         FROM invoices inv
+         INNER JOIN invoice_items ii ON ii.invoice_id = inv.id
          WHERE ' . $where . '
-         GROUP BY currency
-         ORDER BY currency ASC'
+         GROUP BY inv.currency
+         ORDER BY inv.currency ASC'
     );
 
     $stmt->execute($params);
@@ -108,21 +112,24 @@ function sales_list_filtered(PDO $pdo, int $userId, DateTimeImmutable $start, Da
 {
     $search = trim($search);
     $limit = max(1, (int)$limit);
+    $legacyCutoff = invoices_legacy_cutoff_string();
+    $lineTotalSql = invoices_legacy_line_total_sql('inv', 'ii');
 
-    $select = 'id, customer_name, customer_email, total_cents, currency, created_at';
+    $select = 'inv.id, inv.customer_name, inv.customer_email, inv.currency, inv.created_at, COALESCE(SUM(' . $lineTotalSql . '), 0) AS total_cents';
     if ($hasDni) {
-        $select .= ', customer_dni';
+        $select .= ', inv.customer_dni';
     }
 
-    $where = 'created_by = :user_id AND created_at >= :start AND created_at < :end';
+    $where = 'inv.created_by = :user_id AND inv.created_at >= :start AND inv.created_at < :end';
     $params = [
         'user_id' => $userId,
         'start' => $start->format('Y-m-d H:i:s'),
         'end' => $end->format('Y-m-d H:i:s'),
+        'legacy_cutoff' => $legacyCutoff,
     ];
 
     if ($search !== '') {
-        $where .= ' AND (customer_name LIKE :q_name OR customer_email LIKE :q_email' . ($hasDni ? ' OR customer_dni LIKE :q_dni' : '') . ')';
+        $where .= ' AND (inv.customer_name LIKE :q_name OR inv.customer_email LIKE :q_email' . ($hasDni ? ' OR inv.customer_dni LIKE :q_dni' : '') . ')';
         $like = '%' . $search . '%';
         $params['q_name'] = $like;
         $params['q_email'] = $like;
@@ -134,9 +141,11 @@ function sales_list_filtered(PDO $pdo, int $userId, DateTimeImmutable $start, Da
     // LIMIT con entero validado: evitamos placeholders por compatibilidad MySQL/PDO.
     $stmt = $pdo->prepare(
         'SELECT ' . $select . '
-         FROM invoices
+         FROM invoices inv
+         LEFT JOIN invoice_items ii ON ii.invoice_id = inv.id
          WHERE ' . $where . '
-         ORDER BY created_at DESC, id DESC
+         GROUP BY inv.id
+         ORDER BY inv.created_at DESC, inv.id DESC
          LIMIT ' . $limit
     );
 

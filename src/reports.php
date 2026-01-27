@@ -24,16 +24,19 @@ function reports_customers_list(PDO $pdo, int $userId, DateTimeImmutable $start,
     $hasAddress = reports_supports_customer_address($pdo);
     $search = trim($search);
     $limit = max(1, (int)$limit);
+    $legacyCutoff = invoices_legacy_cutoff_string();
+    $lineTotalSql = invoices_legacy_line_total_sql('inv', 'ii');
 
-    $where = 'created_by = :user_id AND created_at >= :start AND created_at < :end';
+    $where = 'inv.created_by = :user_id AND inv.created_at >= :start AND inv.created_at < :end';
     $params = [
         'user_id' => $userId,
         'start' => $start->format('Y-m-d H:i:s'),
         'end' => $end->format('Y-m-d H:i:s'),
+        'legacy_cutoff' => $legacyCutoff,
     ];
 
     if ($search !== '') {
-        $where .= ' AND (customer_name LIKE :q_name OR customer_email LIKE :q_email' . ($hasDni ? ' OR customer_dni LIKE :q_dni' : '') . ')';
+        $where .= ' AND (inv.customer_name LIKE :q_name OR inv.customer_email LIKE :q_email' . ($hasDni ? ' OR inv.customer_dni LIKE :q_dni' : '') . ')';
         $like = '%' . $search . '%';
         $params['q_name'] = $like;
         $params['q_email'] = $like;
@@ -42,16 +45,17 @@ function reports_customers_list(PDO $pdo, int $userId, DateTimeImmutable $start,
         }
     }
 
-    $selectDni = $hasDni ? 'customer_dni' : "''";
-    $selectAddress = $hasAddress ? 'MAX(COALESCE(customer_address, ""))' : "''";
-    $groupBy = 'customer_name, customer_email, currency' . ($hasDni ? ', customer_dni' : '');
+    $selectDni = $hasDni ? 'inv.customer_dni' : "''";
+    $selectAddress = $hasAddress ? 'MAX(COALESCE(inv.customer_address, ""))' : "''";
+    $groupBy = 'inv.customer_name, inv.customer_email, inv.currency' . ($hasDni ? ', inv.customer_dni' : '');
 
     // LIMIT con entero validado: evitamos placeholders por compatibilidad MySQL/PDO.
     $stmt = $pdo->prepare(
-        'SELECT customer_name, customer_email, ' . $selectDni . ' AS customer_dni, currency,
+        'SELECT inv.customer_name, inv.customer_email, ' . $selectDni . ' AS customer_dni, inv.currency,
             ' . $selectAddress . ' AS customer_address,
-                COUNT(*) AS invoices_count, COALESCE(SUM(total_cents), 0) AS total_cents, MAX(created_at) AS last_purchase
-         FROM invoices
+                COUNT(DISTINCT inv.id) AS invoices_count, COALESCE(SUM(' . $lineTotalSql . '), 0) AS total_cents, MAX(inv.created_at) AS last_purchase
+         FROM invoices inv
+         INNER JOIN invoice_items ii ON ii.invoice_id = inv.id
          WHERE ' . $where . '
          GROUP BY ' . $groupBy . '
          ORDER BY total_cents DESC, invoices_count DESC
@@ -87,12 +91,15 @@ function reports_products_list(PDO $pdo, int $userId, DateTimeImmutable $start, 
     $limit = max(1, (int)$limit);
     $page = max(1, (int)$page);
     $offset = ($page - 1) * $limit;
+    $legacyCutoff = invoices_legacy_cutoff_string();
+    $lineTotalSql = invoices_legacy_line_total_sql('inv', 'ii');
 
     $where = 'inv.created_by = :user_id AND inv.created_at >= :start AND inv.created_at < :end';
     $params = [
         'user_id' => $userId,
         'start' => $start->format('Y-m-d H:i:s'),
         'end' => $end->format('Y-m-d H:i:s'),
+        'legacy_cutoff' => $legacyCutoff,
     ];
 
     if ($search !== '') {
@@ -105,7 +112,7 @@ function reports_products_list(PDO $pdo, int $userId, DateTimeImmutable $start, 
         'SELECT ii.description, ii.unit, inv.currency,
                 COALESCE(SUM(ii.quantity), 0) AS quantity_sum,
                 COUNT(DISTINCT inv.id) AS invoices_count,
-                COALESCE(SUM(ii.line_total_cents), 0) AS total_cents
+                COALESCE(SUM(' . $lineTotalSql . '), 0) AS total_cents
          FROM invoice_items ii
          INNER JOIN invoices inv ON inv.id = ii.invoice_id
          WHERE ' . $where . '

@@ -6,6 +6,22 @@ declare(strict_types=1);
  * Normaliza la unidad ingresada a una clave estándar.
  * u | g | kg | ml | l
  */
+function invoices_legacy_cutoff_string(): string
+{
+    $cfg = function_exists('app_config') ? app_config() : [];
+    $raw = (string)($cfg['invoices']['legacy_cutoff'] ?? '2026-01-26 00:00:00');
+    return $raw !== '' ? $raw : '2026-01-26 00:00:00';
+}
+
+function invoices_legacy_line_total_sql(string $invoiceAlias = 'inv', string $itemAlias = 'ii'): string
+{
+    return "CASE WHEN {$invoiceAlias}.created_at < :legacy_cutoff THEN "
+        . "CASE WHEN {$itemAlias}.unit IN ('g','ml') "
+        . "THEN ROUND({$itemAlias}.line_total_cents * {$itemAlias}.quantity / 1000) "
+        . "ELSE ROUND({$itemAlias}.line_total_cents * {$itemAlias}.quantity) END "
+        . "ELSE {$itemAlias}.line_total_cents END";
+}
+
 function invoice_normalize_unit(string $unit): string
 {
     $u = strtolower(trim($unit));
