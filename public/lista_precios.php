@@ -744,10 +744,11 @@ $csrf = csrf_token();
         const qtyText = (it.qty_display_unit && it.qty_display_unit !== '')
           ? (String(it.qty_display) + ' ' + String(it.qty_display_unit))
           : String(it.qty_display);
+        const displayName = capitalizeFirst(it.name || '');
 
         row.innerHTML = `
           <div class="me-2" style="min-width: 0;">
-            <div class="fw-semibold text-truncate">${escapeHtml(it.name || '')}</div>
+            <div class="fw-semibold text-truncate">${escapeHtml(displayName)}</div>
             <div class="text-muted" style="font-size:.9rem;">${escapeHtml(qtyText)} × ${escapeHtml(fmtMoney(it.price_cents, it.currency || currency) + unitLabel)}</div>
           </div>
           <button class="btn btn-sm btn-outline-danger" type="button" aria-label="Quitar">Quitar</button>
@@ -781,6 +782,12 @@ $csrf = csrf_token();
 
   const escapeAttr = escapeHtml;
 
+  const capitalizeFirst = (value) => {
+    const s = String(value || '').trim();
+    if (!s) return '';
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  };
+
   const renderItems = (items) => {
     if (!Array.isArray(items) || items.length === 0) {
       itemsTbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No hay productos para mostrar.</td></tr>';
@@ -792,6 +799,8 @@ $csrf = csrf_token();
       const tr = document.createElement('tr');
       const name = it.name || '';
       const desc = it.description || '';
+      const displayName = capitalizeFirst(name);
+      const displayDesc = desc ? capitalizeFirst(desc) : '';
       const unit = String(it.unit || '').trim();
       const imageUrl = String(it.image_url || '').trim();
       const priceBase = it.price_formatted || fmtMoney(it.price_cents || 0, it.currency || 'ARS');
@@ -817,8 +826,8 @@ $csrf = csrf_token();
           <div class="product-row">
             ${thumbHtml}
             <div>
-              <div class="fw-semibold">${escapeHtml(name)}</div>
-              ${desc ? `<div class="text-muted" style="font-size:.9rem;">${escapeHtml(desc)}</div>` : ''}
+              <div class="fw-semibold">${escapeHtml(displayName)}</div>
+              ${displayDesc ? `<div class="text-muted" style="font-size:.9rem;">${escapeHtml(displayDesc)}</div>` : ''}
             </div>
           </div>
         </td>
