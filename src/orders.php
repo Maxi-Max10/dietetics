@@ -668,6 +668,7 @@ function orders_update_status(PDO $pdo, int $createdBy, int $orderId, string $st
                 $desc = trim((string)($it['description'] ?? ''));
                 $qty = (string)($it['quantity'] ?? '1');
                 $lineTotalCents = (int)($it['line_total_cents'] ?? 0);
+                $unitPriceCents = (int)($it['unit_price_cents'] ?? 0);
                 $pid = (int)($it['product_id'] ?? 0);
                 if ($desc === '') {
                     continue;
@@ -676,18 +677,18 @@ function orders_update_status(PDO $pdo, int $createdBy, int $orderId, string $st
                     throw new InvalidArgumentException('No se puede generar venta: hay items con precio 0.');
                 }
 
-                // invoices_create interpreta unit_price como el TOTAL de ese ítem (en moneda), no en centavos.
-                $lineTotal = number_format($lineTotalCents / 100, 2, '.', '');
+                // invoices_create interpreta unit_price como PRECIO BASE (u/kg/l) en moneda.
+                $priceBase = number_format($unitPriceCents / 100, 2, '.', '');
                 $unit = 'u';
                 if ($pid > 0 && isset($unitByProductId[$pid]) && trim((string)$unitByProductId[$pid]) !== '') {
-                    $unit = (string)$unitByProductId[$pid];
+                    $unit = invoice_normalize_unit((string)$unitByProductId[$pid]);
                 }
 
                 $invItems[] = [
                     'description' => $desc,
                     'quantity' => $qty,
                     'unit' => $unit,
-                    'unit_price' => $lineTotal,
+                    'unit_price' => $priceBase,
                 ];
             }
 
