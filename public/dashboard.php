@@ -1155,6 +1155,8 @@ if ($error !== '') {
     let lastQuery = '';
     let activeInput = null;
     const maxSuggestions = 12;
+    let allItems = [];
+    let loadedAll = false;
     const unitLabels = {
       u: 'u',
       g: 'g',
@@ -1220,7 +1222,14 @@ if ($error !== '') {
         list.push({ name });
       }
 
+      allItems = list;
       renderSuggestions(list);
+    }
+
+    function filterLocal(query) {
+      const q = normalizeName(query);
+      if (!q) return allItems;
+      return allItems.filter(it => normalizeName(it.name).includes(q));
     }
 
     function positionSuggestBox(input) {
@@ -1300,10 +1309,32 @@ if ($error !== '') {
         });
     }
 
+    function loadAllCatalog() {
+      if (loadedAll) return Promise.resolve();
+      const url = `/api_catalog_suggest.php?q=&limit=5000`;
+      return fetch(url, { headers: { 'Accept': 'application/json' } })
+        .then(res => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.json();
+        })
+        .then(payload => {
+          const items = payload && Array.isArray(payload.items) ? payload.items : [];
+          buildOptions(items);
+          loadedAll = true;
+        })
+        .catch(err => {
+          console.warn('No se pudieron cargar productos del catálogo', err);
+        });
+    }
+
     function scheduleFetch(query) {
       window.clearTimeout(debounceTimer);
       debounceTimer = window.setTimeout(() => {
-        fetchSuggestions(query);
+        if (loadedAll) {
+          renderSuggestions(filterLocal(query));
+        } else {
+          fetchSuggestions(query);
+        }
       }, 180);
     }
 
@@ -1345,7 +1376,13 @@ if ($error !== '') {
       if (el.name !== 'item_description[]') return;
       activeInput = el;
       positionSuggestBox(el);
-      scheduleFetch(el.value);
+      if (!loadedAll) {
+        loadAllCatalog().finally(() => {
+          renderSuggestions(filterLocal(el.value));
+        });
+      } else {
+        renderSuggestions(filterLocal(el.value));
+      }
     });
 
     table.addEventListener('input', function (e) {
@@ -1354,7 +1391,11 @@ if ($error !== '') {
       if (el.name !== 'item_description[]') return;
       activeInput = el;
       positionSuggestBox(el);
-      scheduleFetch(el.value);
+      if (loadedAll) {
+        renderSuggestions(filterLocal(el.value));
+      } else {
+        scheduleFetch(el.value);
+      }
     });
 
     table.addEventListener('change', function (e) {
