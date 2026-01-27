@@ -370,7 +370,24 @@ try {
                 <?php foreach ($rows as $r): ?>
                   <tr>
                     <td><?= e((string)$r['description']) ?> <span class="text-muted">(<?= e((string)$r['currency']) ?>)</span></td>
-                    <td class="text-end"><?= e(number_format((float)$r['quantity_sum'], 2, ',', '.')) ?> <span class="text-muted"><?= e((string)($r['unit'] ?? '')) ?></span></td>
+                    <?php
+                      $qtyValue = (float)($r['quantity_sum'] ?? 0);
+                      $unitRaw = trim((string)($r['unit'] ?? ''));
+                      $unitKey = $unitRaw !== '' ? invoice_normalize_unit($unitRaw) : '';
+                      $unitLabel = $unitKey !== '' ? $unitKey : '';
+                      if ($qtyValue > 0 && $qtyValue < 1) {
+                        if ($unitKey === 'kg') {
+                          $qtyValue = $qtyValue * 1000;
+                          $unitLabel = 'g';
+                        } elseif ($unitKey === 'l') {
+                          $qtyValue = $qtyValue * 1000;
+                          $unitLabel = 'ml';
+                        }
+                      }
+                      $qtyText = number_format($qtyValue, 2, ',', '.');
+                      $qtyText = rtrim(rtrim($qtyText, '0'), ',');
+                    ?>
+                    <td class="text-end"><?= e($qtyText) ?><?php if ($unitLabel !== ''): ?> <span class="text-muted"><?= e($unitLabel) ?></span><?php endif; ?></td>
                     
                     <td class="text-end"><?= e(money_format_cents((int)$r['total_cents'], (string)$r['currency'])) ?></td>
                   </tr>
