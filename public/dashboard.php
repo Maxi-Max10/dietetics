@@ -519,6 +519,30 @@ if ($error !== '') {
       animation: preload-spin 7s cubic-bezier(.45, 0, .55, 1) infinite;
     }
 
+    .catalog-suggest-box {
+      position: absolute;
+      z-index: 2000;
+      background: #fff;
+      border: 1px solid rgba(15, 23, 42, 0.12);
+      border-radius: 12px;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+      max-height: 260px;
+      overflow-y: auto;
+      padding: 6px;
+      display: none;
+    }
+
+    .catalog-suggest-box .list-group-item {
+      border: 0;
+      border-radius: 8px;
+      padding: .5rem .65rem;
+    }
+
+    .catalog-suggest-box .list-group-item:hover,
+    .catalog-suggest-box .list-group-item:focus {
+      background: rgba(15, 23, 42, 0.06);
+    }
+
     @keyframes preload-spin {
       0% { transform: rotate(0deg); }
       40% { transform: rotate(360deg); }
@@ -859,7 +883,7 @@ if ($error !== '') {
                 <tbody>
                   <tr>
                     <td>
-                      <input class="form-control" name="item_description[]" list="catalogProductSuggestions" autocomplete="off" placeholder="Buscar producto" required>
+                      <input class="form-control" name="item_description[]" autocomplete="off" placeholder="Buscar producto" required>
                     </td>
                     <td>
                       <div class="d-flex gap-2">
@@ -880,8 +904,6 @@ if ($error !== '') {
                 </tbody>
               </table>
             </div>
-
-            <datalist id="catalogProductSuggestions"></datalist>
 
             <div class="d-flex flex-wrap gap-2 justify-content-end mt-3">
               <button class="btn btn-primary action-btn" type="submit" name="action" value="download">Guardar y descargar</button>
@@ -1089,7 +1111,7 @@ if ($error !== '') {
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>
-          <input class="form-control" name="item_description[]" list="catalogProductSuggestions" autocomplete="off" placeholder="Buscar producto" required>
+          <input class="form-control" name="item_description[]" autocomplete="off" placeholder="Buscar producto" required>
         </td>
         <td>
           <div class="d-flex gap-2">
@@ -1125,13 +1147,14 @@ if ($error !== '') {
 <script>
   (function () {
     const table = document.getElementById('itemsTable');
-    const datalist = document.getElementById('catalogProductSuggestions');
-    if (!table || !datalist) return;
+    if (!table) return;
 
     const itemByName = new Map();
     let debounceTimer = 0;
     let inflight = null;
     let lastQuery = '';
+    let activeInput = null;
+    const maxSuggestions = 12;
     const unitLabels = {
       u: 'u',
       g: 'g',
@@ -1139,6 +1162,10 @@ if ($error !== '') {
       ml: 'ml',
       l: 'l'
     };
+
+    const suggestBox = document.createElement('div');
+    suggestBox.className = 'catalog-suggest-box list-group';
+    document.body.appendChild(suggestBox);
 
     function normalizeName(name) {
       return (name || '').trim().toLowerCase();
@@ -1184,21 +1211,70 @@ if ($error !== '') {
 
     function buildOptions(items) {
       itemByName.clear();
-      const opts = [];
+      const list = [];
 
       for (const it of items || []) {
         const name = String(it.name || '').trim();
         if (!name) continue;
         itemByName.set(normalizeName(name), it);
-        opts.push(`<option value="${escapeHtml(name)}"></option>`);
+        list.push({ name });
       }
 
-      datalist.innerHTML = opts.join('');
+      renderSuggestions(list);
+    }
+
+    function positionSuggestBox(input) {
+      if (!input) return;
+      const rect = input.getBoundingClientRect();
+      const left = rect.left + window.scrollX;
+      const top = rect.bottom + window.scrollY + 6;
+      suggestBox.style.left = `${left}px`;
+      suggestBox.style.top = `${top}px`;
+      suggestBox.style.width = `${rect.width}px`;
+    }
+
+    function hideSuggestions() {
+      suggestBox.style.display = 'none';
+      suggestBox.innerHTML = '';
+    }
+
+    function showSuggestions() {
+      if (!activeInput) return;
+      positionSuggestBox(activeInput);
+      suggestBox.style.display = 'block';
+    }
+
+    function renderSuggestions(list) {
+      if (!activeInput) return;
+      suggestBox.innerHTML = '';
+
+      const items = (list || []).slice(0, maxSuggestions);
+      if (items.length === 0) {
+        hideSuggestions();
+        return;
+      }
+
+      for (const it of items) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'list-group-item list-group-item-action';
+        btn.textContent = it.name;
+        btn.addEventListener('mousedown', function (e) {
+          e.preventDefault();
+          if (!activeInput) return;
+          activeInput.value = it.name;
+          activeInput.dispatchEvent(new Event('change', { bubbles: true }));
+          hideSuggestions();
+        });
+        suggestBox.appendChild(btn);
+      }
+
+      showSuggestions();
     }
 
     function fetchSuggestions(query) {
       const q = String(query || '').trim();
-      if (q === lastQuery && datalist.innerHTML !== '') {
+      if (q === lastQuery && suggestBox.innerHTML !== '') {
         return;
       }
       lastQuery = q;
@@ -1267,6 +1343,8 @@ if ($error !== '') {
       const el = e.target;
       if (!(el instanceof HTMLInputElement)) return;
       if (el.name !== 'item_description[]') return;
+      activeInput = el;
+      positionSuggestBox(el);
       scheduleFetch(el.value);
     });
 
@@ -1274,6 +1352,8 @@ if ($error !== '') {
       const el = e.target;
       if (!(el instanceof HTMLInputElement)) return;
       if (el.name !== 'item_description[]') return;
+      activeInput = el;
+      positionSuggestBox(el);
       scheduleFetch(el.value);
     });
 
@@ -1282,6 +1362,23 @@ if ($error !== '') {
       if (!(el instanceof HTMLInputElement)) return;
       if (el.name !== 'item_description[]') return;
       maybeFillPriceForRow(el);
+      hideSuggestions();
+    });
+
+    document.addEventListener('click', function (e) {
+      if (!activeInput) return;
+      if (e.target === activeInput || suggestBox.contains(e.target)) return;
+      hideSuggestions();
+    });
+
+    window.addEventListener('scroll', function () {
+      if (!activeInput) return;
+      positionSuggestBox(activeInput);
+    }, { passive: true });
+
+    window.addEventListener('resize', function () {
+      if (!activeInput) return;
+      positionSuggestBox(activeInput);
     });
   })();
 </script>
