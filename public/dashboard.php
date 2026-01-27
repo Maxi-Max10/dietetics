@@ -897,7 +897,12 @@ if ($error !== '') {
                         </select>
                       </div>
                     </td>
-                    <td><input class="form-control" name="item_unit_price[]" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="Precio base (u/kg/l)" required></td>
+                    <td>
+                      <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input class="form-control" name="item_unit_price[]" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="Precio base (u/kg/l)" required>
+                      </div>
+                    </td>
                     <td><input class="form-control" type="text" readonly placeholder="$0.00" data-total></td>
                     <td><button type="button" class="btn btn-outline-danger btn-sm" data-remove>×</button></td>
                   </tr>
@@ -1125,7 +1130,12 @@ if ($error !== '') {
             </select>
           </div>
         </td>
-        <td><input class="form-control" name="item_unit_price[]" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="Precio base (u/kg/l)" required></td>
+        <td>
+          <div class="input-group">
+            <span class="input-group-text">$</span>
+            <input class="form-control" name="item_unit_price[]" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="Precio base (u/kg/l)" required>
+          </div>
+        </td>
         <td><input class="form-control" type="text" readonly placeholder="$0.00" data-total></td>
         <td><button type="button" class="btn btn-outline-danger btn-sm" data-remove>×</button></td>
       `;
