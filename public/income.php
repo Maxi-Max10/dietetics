@@ -369,7 +369,7 @@ try {
                   <th style="width:200px">Fecha</th>
                   <th style="width:90px">#</th>
                   <th>Producto</th>
-                  <th style="width:110px" class="text-end">Cant.</th>
+                  <th style="width:110px" class="text-end">Cant</th>
                   <th style="width:180px" class="text-end">Subtotal</th>
                 </tr>
               </thead>

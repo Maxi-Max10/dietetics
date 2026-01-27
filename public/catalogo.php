@@ -273,6 +273,20 @@ if (is_array($edit)) {
     $defaultPrice = number_format(((int)($edit['price_cents'] ?? 0)) / 100, 2, '.', '');
 }
 
+function catalog_capitalize_first(string $value): string
+{
+  $value = trim($value);
+  if ($value === '') {
+    return '';
+  }
+  if (function_exists('mb_substr') && function_exists('mb_strtoupper')) {
+    $first = mb_substr($value, 0, 1, 'UTF-8');
+    $rest = mb_substr($value, 1, null, 'UTF-8');
+    return mb_strtoupper($first, 'UTF-8') . $rest;
+  }
+  return strtoupper(substr($value, 0, 1)) . substr($value, 1);
+}
+
 ?>
 <!doctype html>
 <html lang="es">
@@ -655,7 +669,7 @@ if (is_array($edit)) {
                   <?php $imagePath = trim((string)($r['image_path'] ?? '')); ?>
                   <?php $imageUrl = $imagePath !== '' ? catalog_image_url($imagePath) : ''; ?>
                   <tr>
-                    <td><?= e((string)$r['name']) ?></td>
+                    <td><?= e(catalog_capitalize_first((string)$r['name'])) ?></td>
                     <td>
                       <?php if ($imageUrl !== ''): ?>
                         <span class="catalog-thumb-fallback" style="display:none;">IMG</span>
@@ -819,8 +833,9 @@ if (is_array($edit)) {
       const imageHtml = imageUrl
         ? `<span class="catalog-thumb-fallback" style="display:none;">IMG</span><img class="catalog-thumb" src="${escapeAttr(imageUrl)}" alt="" onerror="this.style.display='none'; this.previousElementSibling.style.display='inline-flex';">`
         : '<span class="catalog-thumb-fallback">IMG</span>';
+      const displayName = capitalizeFirst(it.name || '');
       tr.innerHTML = `
-        <td>${escapeHtml(it.name || '')}</td>
+        <td>${escapeHtml(displayName)}</td>
         <td>${imageHtml}</td>
         <td class="text-muted">${descHtml}</td>
         <td class="text-end">${escapeHtml(priceLabel || '')}</td>
@@ -908,6 +923,12 @@ if (is_array($edit)) {
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;');
   const escapeAttr = escapeHtml;
+
+  const capitalizeFirst = (value) => {
+    const s = String(value || '').trim();
+    if (!s) return '';
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  };
 
   const applyTranscriptToForm = (raw) => {
     const text = String(raw || '').trim();
