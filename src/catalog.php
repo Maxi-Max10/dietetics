@@ -365,7 +365,7 @@ function catalog_list(PDO $pdo, int $createdBy, string $search = '', int $limit 
     catalog_ensure_unit_column($pdo);
     catalog_ensure_image_column($pdo);
 
-    $limit = max(1, min(500, (int)$limit));
+    $limit = max(1, min(5000, (int)$limit));
     $search = trim($search);
 
     $where = 'created_by = :created_by';

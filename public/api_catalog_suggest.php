@@ -32,7 +32,7 @@ if (!catalog_supports_table($pdo)) {
 
 $q = isset($_GET['q']) ? (string)$_GET['q'] : '';
 $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 20;
-$limit = max(1, min(50, $limit));
+$limit = max(1, min(5000, $limit));
 
 try {
     $rows = catalog_list($pdo, $userId, $q, $limit);

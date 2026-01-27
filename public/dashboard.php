@@ -859,9 +859,7 @@ if ($error !== '') {
                 <tbody>
                   <tr>
                     <td>
-                      <select class="form-select" name="item_description[]" required>
-                        <option value="">Seleccionar producto</option>
-                      </select>
+                      <input class="form-control" name="item_description[]" list="catalogProductSuggestions" autocomplete="off" placeholder="Buscar producto" required>
                     </td>
                     <td>
                       <div class="d-flex gap-2">
@@ -882,6 +880,8 @@ if ($error !== '') {
                 </tbody>
               </table>
             </div>
+
+            <datalist id="catalogProductSuggestions"></datalist>
 
             <div class="d-flex flex-wrap gap-2 justify-content-end mt-3">
               <button class="btn btn-primary action-btn" type="submit" name="action" value="download">Guardar y descargar</button>
@@ -1089,9 +1089,7 @@ if ($error !== '') {
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>
-          <select class="form-select" name="item_description[]" required>
-            <option value="">Seleccionar producto</option>
-          </select>
+          <input class="form-control" name="item_description[]" list="catalogProductSuggestions" autocomplete="off" placeholder="Buscar producto" required>
         </td>
         <td>
           <div class="d-flex gap-2">
@@ -1110,10 +1108,6 @@ if ($error !== '') {
         <td><button type="button" class="btn btn-outline-danger btn-sm" data-remove>×</button></td>
       `;
       tbody.appendChild(tr);
-      if (window.applyCatalogOptionsToSelect) {
-        const sel = tr.querySelector('select[name="item_description[]"]');
-        window.applyCatalogOptionsToSelect(sel);
-      }
     }
 
     addBtn.addEventListener('click', addRow);
@@ -1131,10 +1125,13 @@ if ($error !== '') {
 <script>
   (function () {
     const table = document.getElementById('itemsTable');
-    if (!table) return;
+    const datalist = document.getElementById('catalogProductSuggestions');
+    if (!table || !datalist) return;
 
     const itemByName = new Map();
-    let optionsHtml = '<option value="">Seleccionar producto</option>';
+    let debounceTimer = 0;
+    let inflight = null;
+    let lastQuery = '';
     const unitLabels = {
       u: 'u',
       g: 'g',
@@ -1187,28 +1184,32 @@ if ($error !== '') {
 
     function buildOptions(items) {
       itemByName.clear();
-      const opts = ['<option value="">Seleccionar producto</option>'];
+      const opts = [];
 
       for (const it of items || []) {
         const name = String(it.name || '').trim();
         if (!name) continue;
         itemByName.set(normalizeName(name), it);
-        opts.push(`<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`);
+        opts.push(`<option value="${escapeHtml(name)}"></option>`);
       }
 
-      optionsHtml = opts.join('');
+      datalist.innerHTML = opts.join('');
     }
 
-    function applyCatalogOptionsToSelect(select) {
-      if (!select) return;
-      select.innerHTML = optionsHtml;
-    }
+    function fetchSuggestions(query) {
+      const q = String(query || '').trim();
+      if (q === lastQuery && datalist.innerHTML !== '') {
+        return;
+      }
+      lastQuery = q;
 
-    window.applyCatalogOptionsToSelect = applyCatalogOptionsToSelect;
+      if (inflight && typeof inflight.abort === 'function') {
+        inflight.abort();
+      }
+      inflight = new AbortController();
 
-    function loadCatalog() {
-      const url = `/api_catalog_suggest.php?q=&limit=200`;
-      return fetch(url, { headers: { 'Accept': 'application/json' } })
+      const url = `/api_catalog_suggest.php?q=${encodeURIComponent(q)}&limit=5000`;
+      return fetch(url, { headers: { 'Accept': 'application/json' }, signal: inflight.signal })
         .then(res => {
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           return res.json();
@@ -1216,22 +1217,28 @@ if ($error !== '') {
         .then(payload => {
           const items = payload && Array.isArray(payload.items) ? payload.items : [];
           buildOptions(items);
-          const selects = table.querySelectorAll('select[name="item_description[]"]');
-          selects.forEach(applyCatalogOptionsToSelect);
         })
         .catch(err => {
+          if (err && err.name === 'AbortError') return;
           console.warn('No se pudieron cargar productos del catálogo', err);
         });
     }
 
-    function maybeFillPriceForRow(descSelect) {
-      const row = descSelect.closest('tr');
+    function scheduleFetch(query) {
+      window.clearTimeout(debounceTimer);
+      debounceTimer = window.setTimeout(() => {
+        fetchSuggestions(query);
+      }, 180);
+    }
+
+    function maybeFillPriceForRow(descInput) {
+      const row = descInput.closest('tr');
       if (!row) return;
       const priceInput = row.querySelector('input[name="item_unit_price[]"]');
       if (!priceInput) return;
       const unitSelect = row.querySelector('select[name="item_unit[]"]');
 
-      const key = normalizeName(descSelect.value);
+      const key = normalizeName(descInput.value);
       if (!key) {
         renderUnitOptions(unitSelect, '');
         priceInput.value = '';
@@ -1256,14 +1263,26 @@ if ($error !== '') {
       }
     }
 
+    table.addEventListener('focusin', function (e) {
+      const el = e.target;
+      if (!(el instanceof HTMLInputElement)) return;
+      if (el.name !== 'item_description[]') return;
+      scheduleFetch(el.value);
+    });
+
+    table.addEventListener('input', function (e) {
+      const el = e.target;
+      if (!(el instanceof HTMLInputElement)) return;
+      if (el.name !== 'item_description[]') return;
+      scheduleFetch(el.value);
+    });
+
     table.addEventListener('change', function (e) {
       const el = e.target;
-      if (!(el instanceof HTMLSelectElement)) return;
+      if (!(el instanceof HTMLInputElement)) return;
       if (el.name !== 'item_description[]') return;
       maybeFillPriceForRow(el);
     });
-
-    loadCatalog();
   })();
 </script>
 <script>
