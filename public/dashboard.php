@@ -1135,9 +1135,46 @@ if ($error !== '') {
 
     const itemByName = new Map();
     let optionsHtml = '<option value="">Seleccionar producto</option>';
+    const unitLabels = {
+      u: 'u',
+      g: 'g',
+      kg: 'kg',
+      ml: 'ml',
+      l: 'l'
+    };
 
     function normalizeName(name) {
       return (name || '').trim().toLowerCase();
+    }
+
+    function unitOptionsFor(unitKey) {
+      switch (unitKey) {
+        case 'g':
+        case 'kg':
+          return ['g', 'kg'];
+        case 'ml':
+        case 'l':
+          return ['ml', 'l'];
+        case 'u':
+          return ['u'];
+        default:
+          return ['u', 'g', 'kg', 'ml', 'l'];
+      }
+    }
+
+    function renderUnitOptions(select, unitKey) {
+      if (!select) return;
+      const allowed = unitOptionsFor(unitKey);
+      const current = select.value;
+      select.innerHTML = allowed.map(u => `<option value="${u}">${unitLabels[u] || u}</option>`).join('');
+
+      if (allowed.includes(current)) {
+        select.value = current;
+      } else if (unitKey && allowed.includes(unitKey)) {
+        select.value = unitKey;
+      } else if (allowed.length > 0) {
+        select.value = allowed[0];
+      }
     }
 
     function escapeHtml(str) {
@@ -1192,12 +1229,23 @@ if ($error !== '') {
       if (!row) return;
       const priceInput = row.querySelector('input[name="item_unit_price[]"]');
       if (!priceInput) return;
+      const unitSelect = row.querySelector('select[name="item_unit[]"]');
 
       const key = normalizeName(descSelect.value);
-      if (!key) return;
+      if (!key) {
+        renderUnitOptions(unitSelect, '');
+        priceInput.value = '';
+        if (typeof window.recalculateInvoiceRow === 'function') {
+          window.recalculateInvoiceRow(row);
+        }
+        return;
+      }
 
       const item = itemByName.get(key);
       if (!item) return;
+
+      const unitKey = String(item.unit || '').trim();
+      renderUnitOptions(unitSelect, unitKey);
 
       const price = Number(item.price);
       if (!Number.isFinite(price) || price <= 0) return;

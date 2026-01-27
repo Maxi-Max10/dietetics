@@ -39,10 +39,23 @@ try {
     $items = [];
     foreach ($rows as $r) {
         $priceCents = (int)($r['price_cents'] ?? 0);
+        $unitKey = '';
+        $rawUnit = (string)($r['unit'] ?? '');
+        if ($rawUnit !== '') {
+            try {
+                $unitKey = catalog_normalize_unit($rawUnit);
+                if ($unitKey === 'un') {
+                    $unitKey = 'u';
+                }
+            } catch (Throwable $e) {
+                $unitKey = '';
+            }
+        }
         $items[] = [
             'id' => (int)($r['id'] ?? 0),
             'name' => (string)($r['name'] ?? ''),
             'description' => (string)($r['description'] ?? ''),
+            'unit' => $unitKey,
             'price_cents' => $priceCents,
             'price' => $priceCents / 100,
             'currency' => (string)($r['currency'] ?? 'ARS'),
