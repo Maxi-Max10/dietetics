@@ -216,6 +216,30 @@ $mapsEmbedUrl = $mapsApiKey !== ''
       font-weight: 600;
     }
     .footer-link:hover { text-decoration: underline; }
+    .pp-switch {
+      display: inline-flex;
+      align-items: baseline;
+      gap: .35rem;
+    }
+    .pp-word {
+      position: relative;
+      display: inline-block;
+      min-width: 72px;
+      height: 1em;
+    }
+    .pp-word span {
+      position: absolute;
+      left: 0;
+      top: 0;
+      transition: opacity .35s ease;
+    }
+    .pp-word .pp-full { animation: ppSwap 4s infinite; }
+    .pp-word .pp-plus { animation: ppSwap 4s infinite reverse; }
+    @keyframes ppSwap {
+      0%, 45% { opacity: 1; }
+      50%, 95% { opacity: 0; }
+      100% { opacity: 1; }
+    }
     .location-card {
       background: var(--card);
       border: 1px solid rgba(15,23,42,.08);
@@ -671,7 +695,15 @@ $mapsEmbedUrl = $mapsApiKey !== ''
         Seguinos en Instagram
         <a class="footer-link" href="https://www.instagram.com/las.beltra?igsh=b2d4dmwyY2wwNmpl" target="_blank" rel="noopener">@las.beltra</a>
       </div>
-      <div class="footer-col">Desarrollado por Polo Positivo</div>
+      <div class="footer-col">
+        <span class="pp-switch">
+          <span>Desarrollado por Polo</span>
+          <span class="pp-word" aria-label="Positivo">
+            <span class="pp-full">Positivo</span>
+            <span class="pp-plus">+</span>
+          </span>
+        </span>
+      </div>
 
       <div class="footer-col">
         <a class="footer-link" href="https://polopositivoar.com" target="_blank" rel="noopener">polopositivoar.com</a>
