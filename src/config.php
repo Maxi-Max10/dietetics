@@ -33,6 +33,9 @@ return [
         'openai_api_key' => getenv('OPENAI_API_KEY') ?: (defined('OPENAI_API_KEY') ? OPENAI_API_KEY : ''),
         'openai_transcribe_model' => getenv('OPENAI_TRANSCRIBE_MODEL') ?: (defined('OPENAI_TRANSCRIBE_MODEL') ? OPENAI_TRANSCRIBE_MODEL : 'whisper-1'),
     ],
+    'google_maps' => [
+        'api_key' => getenv('GOOGLE_MAPS_API_KEY') ?: (defined('GOOGLE_MAPS_API_KEY') ? GOOGLE_MAPS_API_KEY : ''),
+    ],
     // Lista de precios pública (cliente) + pedidos para retiro.
     // PUBLIC_CATALOG_USER_ID: si tenés un solo usuario admin, podés dejarlo vacío y se toma el primero.
     'public_catalog' => [

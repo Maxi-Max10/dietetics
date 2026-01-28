@@ -13,6 +13,11 @@ if (((string)($config['public_catalog']['enabled'] ?? '1')) === '0') {
 
 $appName = (string)($config['app']['name'] ?? 'Dietetic');
 $csrf = csrf_token();
+$mapsApiKey = (string)($config['google_maps']['api_key'] ?? '');
+$mapsPlaceQuery = 'Las Beltra, Irigoyen H. 2500, M5511 Maipú, Mendoza';
+$mapsEmbedUrl = $mapsApiKey !== ''
+  ? 'https://www.google.com/maps/embed/v1/place?key=' . rawurlencode($mapsApiKey) . '&q=' . rawurlencode($mapsPlaceQuery)
+  : 'https://www.google.com/maps?q=' . rawurlencode($mapsPlaceQuery) . '&output=embed';
 
 ?>
 <!doctype html>
@@ -211,6 +216,32 @@ $csrf = csrf_token();
       font-weight: 600;
     }
     .footer-link:hover { text-decoration: underline; }
+    .location-card {
+      background: var(--card);
+      border: 1px solid rgba(15,23,42,.08);
+      border-radius: 22px;
+      box-shadow: 0 18px 50px rgba(15,23,42,.08);
+      padding: 1.25rem;
+    }
+    .location-map {
+      width: 100%;
+      height: 220px;
+      border: 0;
+      border-radius: 16px;
+      box-shadow: inset 0 0 0 1px rgba(148,163,184,.28);
+    }
+    .location-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .75rem;
+      flex-wrap: wrap;
+      margin-top: .9rem;
+    }
+    .location-actions .btn {
+      border-radius: 12px;
+      font-weight: 700;
+    }
     @media (max-width: 768px) {
       .footer-bar { flex-direction: column; text-align: center; }
       .footer-col { justify-content: center; }
@@ -605,6 +636,34 @@ $csrf = csrf_token();
   </div>
 </div>
 
+<section class="py-4">
+  <div class="container">
+    <div class="location-card">
+      <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
+        <div>
+          <div class="muted-label">Ubicación</div>
+          <h2 class="h5 mb-1">Dónde estamos</h2>
+          <div class="small-help">Irigoyen H. 2500, M5511 Maipú, Mendoza</div>
+        </div>
+        <span class="info-chip">Abierto hoy</span>
+      </div>
+      <div class="mt-3">
+        <iframe
+          class="location-map"
+          title="Mapa de ubicación"
+          loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade"
+          src="<?= e($mapsEmbedUrl) ?>">
+        </iframe>
+      </div>
+      <div class="location-actions">
+        <div class="small-help">Podés abrir el mapa para indicaciones.</div>
+        <a class="btn btn-outline-dark action-btn" href="https://maps.app.goo.gl/8Lwaxov1hZbEeSGRA?g_st=ic" target="_blank" rel="noopener">Ver en Google Maps</a>
+      </div>
+    </div>
+  </div>
+</section>
+
 <footer class="site-footer">
   <div class="container">
     <div class="footer-bar">
@@ -613,13 +672,7 @@ $csrf = csrf_token();
         <a class="footer-link" href="https://www.instagram.com/las.beltra?igsh=b2d4dmwyY2wwNmpl" target="_blank" rel="noopener">@las.beltra</a>
       </div>
       <div class="footer-col">Desarrollado por Polo Positivo</div>
-      <div class="footer-col footer-social" aria-label="Redes">
-        <a href="https://www.instagram.com/polopositivoar?igsh=dnl3Yno1eDFidWcy" target="_blank" rel="noopener" aria-label="Instagram">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4zm10 2H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm-5 3.5A3.5 3.5 0 1 1 8.5 12 3.5 3.5 0 0 1 12 8.5zm0 2A1.5 1.5 0 1 0 13.5 12 1.5 1.5 0 0 0 12 10.5zm5.2-3.7a.8.8 0 1 1-.8.8.8.8 0 0 1 .8-.8z" />
-          </svg>
-        </a>
-      </div>
+
       <div class="footer-col">
         <a class="footer-link" href="https://polopositivoar.com" target="_blank" rel="noopener">polopositivoar.com</a>
       </div>

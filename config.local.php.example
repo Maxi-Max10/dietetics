@@ -28,6 +28,10 @@ define('DB_PASS', 'TU_DB_PASS');
 // Opcional: por defecto whisper-1
 // define('OPENAI_TRANSCRIBE_MODEL', 'whisper-1');
 
+// Google Maps (embed)
+// Creá una API key y habilitá "Maps Embed API".
+// define('GOOGLE_MAPS_API_KEY', 'TU_GOOGLE_MAPS_API_KEY');
+
 // Lista de precios pública + pedidos para retiro
 // Si tenés 1 solo usuario admin, podés NO configurar esto.
 // Si tenés más de un usuario, definí cuál "dueño" del catálogo se muestra públicamente.
