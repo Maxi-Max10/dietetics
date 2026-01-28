@@ -608,6 +608,10 @@ $csrf = csrf_token();
 <footer class="site-footer">
   <div class="container">
     <div class="footer-bar">
+      <div class="footer-col">
+        Seguinos en Instagram
+        <a class="footer-link" href="https://www.instagram.com/las.beltra?igsh=b2d4dmwyY2wwNmpl" target="_blank" rel="noopener">@las.beltra</a>
+      </div>
       <div class="footer-col">Desarrollado por Polo Positivo</div>
       <div class="footer-col footer-social" aria-label="Redes">
         <a href="https://www.instagram.com/polopositivoar?igsh=dnl3Yno1eDFidWcy" target="_blank" rel="noopener" aria-label="Instagram">
