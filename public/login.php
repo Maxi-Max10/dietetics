@@ -367,10 +367,47 @@ $csrf = csrf_token();
       return Math.abs(h);
     }
 
-    var key = getArgentinaDateKey();
-    var idx = quotes.length ? (simpleHash(key) % quotes.length) : 0;
-    quoteEl.classList.add('auth-quote');
-    quoteEl.textContent = quotes[idx] || '';
+    function renderLocalQuote() {
+      var key = getArgentinaDateKey();
+      var idx = quotes.length ? (simpleHash(key) % quotes.length) : 0;
+      quoteEl.classList.add('auth-quote');
+      quoteEl.textContent = quotes[idx] || '';
+    }
+
+    function setQuote(text) {
+      quoteEl.classList.add('auth-quote');
+      quoteEl.textContent = text || '';
+    }
+
+    function fetchApiQuote() {
+      return fetch('https://www.positive-api.online/api/phrase/esp', { cache: 'no-store' })
+        .then(function (res) {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.json();
+        })
+        .then(function (data) {
+          var raw = '';
+          if (typeof data === 'string') {
+            raw = data;
+          } else if (data && typeof data === 'object') {
+            raw = (data.phrase || data.quote || data.text || '').toString();
+          }
+          var clean = raw.trim();
+          if (!clean) throw new Error('Empty quote');
+          if (clean[0] !== '“' && clean[0] !== '"') {
+            clean = '“' + clean;
+          }
+          if (clean[clean.length - 1] !== '”' && clean[clean.length - 1] !== '"') {
+            clean = clean + '”';
+          }
+          setQuote(clean);
+          return true;
+        });
+    }
+
+    fetchApiQuote().catch(function () {
+      renderLocalQuote();
+    });
   })();
 </script>
 </body>
