@@ -553,6 +553,11 @@ function catalog_create(PDO $pdo, int $createdBy, string $name, string|float|int
         throw new InvalidArgumentException('Nombre demasiado largo.');
     }
 
+    $unitNorm = '';
+    if (trim($unit) !== '') {
+        $unitNorm = catalog_normalize_unit($unit);
+    }
+
     $priceCents = catalog_price_cents_from_display($price, $unitNorm);
 
     $currency = strtoupper(trim($currency));
@@ -564,11 +569,6 @@ function catalog_create(PDO $pdo, int $createdBy, string $name, string|float|int
     $descLen = function_exists('mb_strlen') ? (int)mb_strlen($description, 'UTF-8') : strlen($description);
     if ($descLen > 255) {
         throw new InvalidArgumentException('Descripción demasiado larga.');
-    }
-
-    $unitNorm = '';
-    if (trim($unit) !== '') {
-        $unitNorm = catalog_normalize_unit($unit);
     }
 
     $unitLen = function_exists('mb_strlen') ? (int)mb_strlen($unitNorm, 'UTF-8') : strlen($unitNorm);
