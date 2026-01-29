@@ -747,6 +747,20 @@ $mapsEmbedUrl = $mapsApiKey !== ''
     return symbol + amount.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
+  const priceDisplayCents = (baseCents, unit) => {
+    const u = String(unit || '').trim();
+    if (u === 'kg' || u === 'l') return Math.round((baseCents || 0) / 10);
+    if (u === 'g' || u === 'ml') return Math.round((baseCents || 0) * 100);
+    return baseCents || 0;
+  };
+
+  const priceDisplayUnit = (unit) => {
+    const u = String(unit || '').trim();
+    if (u === 'kg' || u === 'g') return '100 g';
+    if (u === 'l' || u === 'ml') return '100 ml';
+    return '';
+  };
+
   const unitOptionsFor = (baseUnit) => {
     const u = String(baseUnit || '').trim();
     if (u === 'kg') return ['g', 'kg'];
@@ -829,16 +843,17 @@ $mapsEmbedUrl = $mapsApiKey !== ''
       for (const it of cart.values()) {
         const row = document.createElement('div');
         row.className = 'list-group-item d-flex align-items-start justify-content-between gap-2';
-        const unitLabel = it.unit ? (' / ' + it.unit) : '';
+        const unitLabel = priceDisplayUnit(it.unit) ? (' / ' + priceDisplayUnit(it.unit)) : '';
         const qtyText = (it.qty_display_unit && it.qty_display_unit !== '')
           ? (String(it.qty_display) + ' ' + String(it.qty_display_unit))
           : String(it.qty_display);
         const displayName = capitalizeFirst(it.name || '');
+        const displayPrice = fmtMoney(priceDisplayCents(it.price_cents || 0, it.unit), it.currency || currency);
 
         row.innerHTML = `
           <div class="me-2" style="min-width: 0;">
             <div class="fw-semibold text-truncate">${escapeHtml(displayName)}</div>
-            <div class="text-muted" style="font-size:.9rem;">${escapeHtml(qtyText)} × ${escapeHtml(fmtMoney(it.price_cents, it.currency || currency) + unitLabel)}</div>
+            <div class="text-muted" style="font-size:.9rem;">${escapeHtml(qtyText)} × ${escapeHtml(displayPrice + unitLabel)}</div>
           </div>
           <button class="btn btn-sm btn-outline-danger" type="button" aria-label="Quitar">Quitar</button>
         `;
@@ -892,8 +907,9 @@ $mapsEmbedUrl = $mapsApiKey !== ''
       const displayDesc = desc ? capitalizeFirst(desc) : '';
       const unit = String(it.unit || '').trim();
       const imageUrl = String(it.image_url || '').trim();
-      const priceBase = it.price_formatted || fmtMoney(it.price_cents || 0, it.currency || 'ARS');
-      const price = it.price_label || (priceBase + (unit ? (' / ' + unit) : ''));
+      const displayUnit = priceDisplayUnit(unit);
+      const priceBase = it.price_formatted || fmtMoney(priceDisplayCents(it.price_cents || 0, unit), it.currency || 'ARS');
+      const price = it.price_label || (priceBase + (displayUnit ? (' / ' + displayUnit) : ''));
 
       const opts = unitOptionsFor(unit);
       const def = defaultQtyFor(unit);

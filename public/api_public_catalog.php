@@ -27,7 +27,9 @@ try {
     foreach ($items as $r) {
         $unit = trim((string)($r['unit'] ?? ''));
         $imagePath = trim((string)($r['image_path'] ?? ''));
-        $priceFormatted = money_format_cents((int)($r['price_cents'] ?? 0), (string)($r['currency'] ?? 'ARS'));
+        $priceBaseCents = (int)($r['price_cents'] ?? 0);
+        $priceDisplayCents = catalog_price_display_cents($priceBaseCents, $unit);
+        $priceFormatted = money_format_cents($priceDisplayCents, (string)($r['currency'] ?? 'ARS'));
         $out[] = [
             'id' => (int)($r['id'] ?? 0),
             'name' => (string)($r['name'] ?? ''),
@@ -35,10 +37,10 @@ try {
             'image_path' => $imagePath,
             'image_url' => $imagePath !== '' ? catalog_image_url($imagePath) : '',
             'unit' => $unit,
-            'price_cents' => (int)($r['price_cents'] ?? 0),
+            'price_cents' => $priceBaseCents,
             'currency' => (string)($r['currency'] ?? 'ARS'),
             'price_formatted' => $priceFormatted,
-            'price_label' => $priceFormatted . ($unit !== '' ? (' / ' . $unit) : ''),
+            'price_label' => catalog_price_display_label($priceBaseCents, (string)($r['currency'] ?? 'ARS'), $unit),
         ];
     }
 

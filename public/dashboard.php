@@ -126,11 +126,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $desc = trim((string)$descs[$i]);
         $qty = (string)$qtys[$i];
         $unit = (string)$units[$i];
-        $price = (string)$prices[$i];
-        if ($desc === '' && trim($qty) === '' && trim($price) === '') {
+        $priceRaw = (string)$prices[$i];
+        if ($desc === '' && trim($qty) === '' && trim($priceRaw) === '') {
           continue;
         }
-        $items[] = ['description' => $desc, 'quantity' => $qty, 'unit' => $unit, 'unit_price' => $price];
+        $unitKey = invoice_normalize_unit($unit);
+        $priceValue = (float)str_replace(',', '.', $priceRaw);
+        if ($unitKey === 'kg' || $unitKey === 'g' || $unitKey === 'l' || $unitKey === 'ml') {
+          $priceValue *= 10;
+        }
+        $price = number_format($priceValue, 2, '.', '');
+        $items[] = ['description' => $desc, 'quantity' => $qty, 'unit' => $unitKey, 'unit_price' => $price];
       }
     }
 
@@ -902,7 +908,7 @@ if ($error !== '') {
                   <tr>
                     <th>Producto</th>
                     <th style="width:220px">Cantidad</th>
-                    <th style="width:130px">Precio base</th>
+                    <th style="width:180px">Precio (por 100 g/ml o unidad)</th>
                     <th style="width:130px">Total</th>
                     <th style="width:60px"></th>
                   </tr>
@@ -927,7 +933,7 @@ if ($error !== '') {
                     <td>
                       <div class="input-group">
                         <span class="input-group-text">$</span>
-                        <input class="form-control" name="item_unit_price[]" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="Precio base (u/kg/l)" required>
+                        <input class="form-control" name="item_unit_price[]" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="Precio por 100 g/ml o unidad" required>
                       </div>
                     </td>
                     <td><input class="form-control" type="text" readonly placeholder="$0.00" data-total></td>
@@ -1160,7 +1166,7 @@ if ($error !== '') {
         <td>
           <div class="input-group">
             <span class="input-group-text">$</span>
-            <input class="form-control" name="item_unit_price[]" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="Precio base (u/kg/l)" required>
+            <input class="form-control" name="item_unit_price[]" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="Precio por 100 g/ml o unidad" required>
           </div>
         </td>
         <td><input class="form-control" type="text" readonly placeholder="$0.00" data-total></td>
@@ -1461,7 +1467,7 @@ if ($error !== '') {
   })();
 </script>
 <script>
-  // Calcular automáticamente el precio total según cantidad, unidad y precio base
+  // Calcular automáticamente el precio total según cantidad, unidad y precio por 100 g/ml
   (function () {
     const table = document.getElementById('itemsTable');
     if (!table) return;
@@ -1490,21 +1496,22 @@ if ($error !== '') {
 
       let total = 0;
 
-      // Asumimos que el precio base es por kg/litro/unidad
+      // Asumimos que el precio ingresado es por 100 g / 100 ml (o por unidad)
       switch (unit) {
         case 'kg':
-        case 'l':
-        case 'u':
-          // Precio directo
-          total = qty * basePrice;
+          total = (qty * 10) * basePrice;
           break;
         case 'g':
-          // Convertir gramos a kg
-          total = (qty / 1000) * basePrice;
+          total = (qty / 100) * basePrice;
+          break;
+        case 'l':
+          total = (qty * 10) * basePrice;
           break;
         case 'ml':
-          // Convertir ml a litros
-          total = (qty / 1000) * basePrice;
+          total = (qty / 100) * basePrice;
+          break;
+        case 'u':
+          total = qty * basePrice;
           break;
         default:
           total = qty * basePrice;
