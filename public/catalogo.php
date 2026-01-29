@@ -582,17 +582,14 @@ function catalog_capitalize_first(string $value): string
               <label class="form-label" for="unit">Unidad</label>
               <select class="form-select" id="unit" name="unit">
                 <?php foreach ([
-                  '' => '— (sin unidad)',
-                  'un' => 'Por unidad (un)',
                   'kg' => 'Por kilo (kg)',
-                  'g' => 'Por gramo (g)',
                   'l' => 'Por litro (l)',
-                  'ml' => 'Por mililitro (ml)',
+                  'un' => 'Por unidad (un)',
                 ] as $k => $label): ?>
                   <option value="<?= e($k) ?>" <?= (string)$defaultUnit === (string)$k ? 'selected' : '' ?>><?= e($label) ?></option>
                 <?php endforeach; ?>
               </select>
-              <div class="form-text">Aclaración: el precio puede ser por <strong>kg / g / l / ml / unidad</strong>.</div>
+              <div class="form-text">Aclaración: el precio es por <strong>1 kg</strong>, <strong>1 litro</strong> o <strong>1 unidad</strong>.</div>
             </div>
             <div class="col-12 col-md-3">
               <label class="form-label" for="currency">Moneda</label>
