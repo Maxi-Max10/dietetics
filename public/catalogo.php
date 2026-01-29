@@ -60,9 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && $wantsJson) {
     foreach ($items as $r) {
       $unit = trim((string)($r['unit'] ?? ''));
       $imagePath = trim((string)($r['image_path'] ?? ''));
-      $priceBaseCents = (int)($r['price_cents'] ?? 0);
-      $priceDisplayCents = catalog_price_display_cents($priceBaseCents, $unit);
-      $priceFormatted = money_format_cents($priceDisplayCents, (string)($r['currency'] ?? 'ARS'));
+      $priceFormatted = money_format_cents((int)($r['price_cents'] ?? 0), (string)($r['currency'] ?? 'ARS'));
       $out[] = [
         'id' => (int)($r['id'] ?? 0),
         'name' => (string)($r['name'] ?? ''),
@@ -70,11 +68,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && $wantsJson) {
         'image_path' => $imagePath,
         'image_url' => $imagePath !== '' ? catalog_image_url($imagePath) : '',
         'unit' => $unit,
-        'price_cents' => $priceBaseCents,
-        'price_display_cents' => $priceDisplayCents,
+        'price_cents' => (int)($r['price_cents'] ?? 0),
         'currency' => (string)($r['currency'] ?? 'ARS'),
         'price_formatted' => $priceFormatted,
-        'price_label' => catalog_price_display_label($priceBaseCents, (string)($r['currency'] ?? 'ARS'), $unit),
+        'price_label' => $priceFormatted . ($unit !== '' ? (' / ' . $unit) : ''),
       ];
     }
 
@@ -273,8 +270,7 @@ $defaultUnit = is_array($edit) ? (string)($edit['unit'] ?? '') : '';
 $defaultCurrency = is_array($edit) ? (string)($edit['currency'] ?? 'ARS') : 'ARS';
 $defaultPrice = '';
 if (is_array($edit)) {
-  $displayCents = catalog_price_display_cents((int)($edit['price_cents'] ?? 0), (string)($edit['unit'] ?? ''));
-  $defaultPrice = number_format($displayCents / 100, 2, '.', '');
+    $defaultPrice = number_format(((int)($edit['price_cents'] ?? 0)) / 100, 2, '.', '');
 }
 
 function catalog_capitalize_first(string $value): string
@@ -579,7 +575,7 @@ function catalog_capitalize_first(string $value): string
               <div class="form-text">Podés decir: “arroz integral, precio 1500 pesos”. Si tu navegador no soporta voz, usá el micrófono del teclado (dictado) con el cursor en el campo.</div>
             </div>
             <div class="col-12 col-md-3">
-              <label class="form-label" for="price">Precio (por 100 g/ml o unidad)</label>
+              <label class="form-label" for="price">Precio</label>
               <input class="form-control" id="price" name="price" inputmode="decimal" placeholder="0.00" value="<?= e($defaultPrice) ?>" required>
             </div>
             <div class="col-12 col-md-3">
@@ -596,7 +592,7 @@ function catalog_capitalize_first(string $value): string
                   <option value="<?= e($k) ?>" <?= (string)$defaultUnit === (string)$k ? 'selected' : '' ?>><?= e($label) ?></option>
                 <?php endforeach; ?>
               </select>
-              <div class="form-text">Aclaración: para <strong>kg/g/l/ml</strong> el precio se interpreta por <strong>100 g o 100 ml</strong>. Para unidad, es por unidad.</div>
+              <div class="form-text">Aclaración: el precio puede ser por <strong>kg / g / l / ml / unidad</strong>.</div>
             </div>
             <div class="col-12 col-md-3">
               <label class="form-label" for="currency">Moneda</label>
@@ -683,7 +679,7 @@ function catalog_capitalize_first(string $value): string
                       <?php endif; ?>
                     </td>
                     <td class="text-muted"><?= e(trim((string)($r['description'] ?? '')) !== '' ? (string)$r['description'] : '—') ?></td>
-                    <td class="text-end"><?= e(catalog_price_display_label((int)$r['price_cents'], (string)$r['currency'], $unit)) ?></td>
+                    <td class="text-end"><?= e(money_format_cents((int)$r['price_cents'], (string)$r['currency']) . ($unit !== '' ? (' / ' . $unit) : '')) ?></td>
                     <td class="text-end">
                       <div class="d-inline-flex gap-2">
                         <a
@@ -694,7 +690,7 @@ function catalog_capitalize_first(string $value): string
                           data-description="<?= e((string)($r['description'] ?? '')) ?>"
                           data-image-url="<?= e($imageUrl) ?>"
                           data-unit="<?= e((string)($r['unit'] ?? '')) ?>"
-                          data-price="<?= e(number_format(catalog_price_display_cents((int)$r['price_cents'], (string)($r['unit'] ?? '')) / 100, 2, '.', '')) ?>"
+                          data-price="<?= e(number_format(((int)$r['price_cents']) / 100, 2, '.', '')) ?>"
                           data-currency="<?= e((string)$r['currency']) ?>"
                         >Editar</a>
                         <button type="button" class="btn btn-outline-danger btn-sm js-delete" data-id="<?= e((string)$r['id']) ?>">Eliminar</button>
@@ -825,9 +821,9 @@ function catalog_capitalize_first(string $value): string
 
     for (const it of items) {
       const tr = document.createElement('tr');
-      const priceRaw = (typeof it.price_display_cents === 'number')
-        ? (it.price_display_cents / 100).toFixed(2)
-        : (typeof it.price_cents === 'number' ? (it.price_cents / 100).toFixed(2) : '');
+      const priceRaw = (typeof it.price_cents === 'number')
+        ? (it.price_cents / 100).toFixed(2)
+        : '';
 
       const descValue = String(it.description || '').trim();
       const descHtml = descValue ? escapeHtml(descValue) : '<span class="text-muted">—</span>';

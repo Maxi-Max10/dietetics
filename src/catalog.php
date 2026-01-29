@@ -58,76 +58,6 @@ function catalog_parse_price_to_cents(string|float|int $price): int
     return $cents;
 }
 
-function catalog_price_cents_from_display(string|float|int $price, string $unitKey): int
-{
-    $baseCents = catalog_parse_price_to_cents($price);
-    $u = trim($unitKey);
-    if ($u === '') {
-        return $baseCents;
-    }
-
-    if ($u === 'un' || $u === 'u') {
-        return $baseCents;
-    }
-
-    if ($u === 'kg' || $u === 'l') {
-        return (int)round($baseCents * 10);
-    }
-
-    if ($u === 'g' || $u === 'ml') {
-        return (int)round($baseCents / 100);
-    }
-
-    return $baseCents;
-}
-
-function catalog_price_display_cents(int $baseCents, string $unitKey): int
-{
-    $u = trim($unitKey);
-    if ($u === '' || $u === 'un' || $u === 'u') {
-        return $baseCents;
-    }
-
-    if ($u === 'kg' || $u === 'l') {
-        return (int)round($baseCents / 10);
-    }
-
-    if ($u === 'g' || $u === 'ml') {
-        return (int)round($baseCents * 100);
-    }
-
-    return $baseCents;
-}
-
-function catalog_price_display_unit_label(string $unitKey): string
-{
-    $u = trim($unitKey);
-    if ($u === '' || $u === 'un' || $u === 'u') {
-        return '';
-    }
-
-    if ($u === 'kg' || $u === 'g') {
-        return '100 g';
-    }
-
-    if ($u === 'l' || $u === 'ml') {
-        return '100 ml';
-    }
-
-    return '';
-}
-
-function catalog_price_display_label(int $baseCents, string $currency, string $unitKey): string
-{
-    $displayCents = catalog_price_display_cents($baseCents, $unitKey);
-    $labelUnit = catalog_price_display_unit_label($unitKey);
-    $priceFormatted = money_format_cents($displayCents, $currency);
-    if ($labelUnit === '') {
-        return $priceFormatted;
-    }
-    return $priceFormatted . ' / ' . $labelUnit;
-}
-
 function catalog_supports_table(PDO $pdo): bool
 {
     static $cache = null;
@@ -553,12 +483,7 @@ function catalog_create(PDO $pdo, int $createdBy, string $name, string|float|int
         throw new InvalidArgumentException('Nombre demasiado largo.');
     }
 
-    $unitNorm = '';
-    if (trim($unit) !== '') {
-        $unitNorm = catalog_normalize_unit($unit);
-    }
-
-    $priceCents = catalog_price_cents_from_display($price, $unitNorm);
+    $priceCents = catalog_parse_price_to_cents($price);
 
     $currency = strtoupper(trim($currency));
     if ($currency === '') {
@@ -569,6 +494,11 @@ function catalog_create(PDO $pdo, int $createdBy, string $name, string|float|int
     $descLen = function_exists('mb_strlen') ? (int)mb_strlen($description, 'UTF-8') : strlen($description);
     if ($descLen > 255) {
         throw new InvalidArgumentException('Descripción demasiado larga.');
+    }
+
+    $unitNorm = '';
+    if (trim($unit) !== '') {
+        $unitNorm = catalog_normalize_unit($unit);
     }
 
     $unitLen = function_exists('mb_strlen') ? (int)mb_strlen($unitNorm, 'UTF-8') : strlen($unitNorm);
@@ -619,7 +549,7 @@ function catalog_update(PDO $pdo, int $createdBy, int $id, string $name, string|
         throw new InvalidArgumentException('Nombre demasiado largo.');
     }
 
-    $priceCents = catalog_price_cents_from_display($price, $unitNorm);
+    $priceCents = catalog_parse_price_to_cents($price);
 
     $currency = strtoupper(trim($currency));
     if ($currency === '') {

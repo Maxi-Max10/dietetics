@@ -51,14 +51,13 @@ try {
                 $unitKey = '';
             }
         }
-        $displayCents = catalog_price_display_cents($priceCents, $unitKey);
         $items[] = [
             'id' => (int)($r['id'] ?? 0),
             'name' => (string)($r['name'] ?? ''),
             'description' => (string)($r['description'] ?? ''),
             'unit' => $unitKey,
-            'price_cents' => $displayCents,
-            'price' => $displayCents / 100,
+            'price_cents' => $priceCents,
+            'price' => $priceCents / 100,
             'currency' => (string)($r['currency'] ?? 'ARS'),
         ];
     }
