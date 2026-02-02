@@ -951,14 +951,30 @@ function catalog_capitalize_first(string $value): string
           // 13,000.50
           s = s.replaceAll(',', '');
         }
+      } else if (hasComma && !hasDot) {
+        const lastComma = s.lastIndexOf(',');
+        const decimals = s.length - lastComma - 1;
+        if (decimals > 0 && decimals <= 2) {
+          s = s.replace(',', '.');
+        } else {
+          s = s.replaceAll(',', '');
+        }
+      } else if (hasDot && !hasComma) {
+        const lastDot = s.lastIndexOf('.');
+        const decimals = s.length - lastDot - 1;
+        if (decimals > 0 && decimals <= 2) {
+          // ok, decimal con punto
+        } else {
+          s = s.replaceAll('.', '');
+        }
+      }
 
-            if (formQ) formQ.value = searchInput.value || '';
-            const fd = new FormData(form);
-            fd.set('ajax', '1');
-            fd.set('csrf_token', csrfToken());
+      const n = Number.parseFloat(s);
+      return Number.isFinite(n) ? n : null;
+    };
 
-            postActionForm(fd)
-      const numRe = '([0-9]{1,3}(?:[\\.,\\s][0-9]{3})+(?:[\\.,][0-9]{1,2})?|[0-9]+(?:[\\.,][0-9]{1,2})?)';
+    const parseSpokenPrice = (s) => {
+      const numRe = '([0-9]{1,3}(?:[\.,\s][0-9]{3})+(?:[\.,][0-9]{1,2})?|[0-9]+(?:[\.,][0-9]{1,2})?)';
 
       let m = s.match(new RegExp('precios?\\s*[:\\-]?\\s*\\$?\\s*' + numRe + '(?:\\s*(mil|miles|k))?\\b', 'i'));
       if (!m) {
