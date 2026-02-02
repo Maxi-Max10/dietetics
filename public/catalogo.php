@@ -706,12 +706,41 @@ function catalog_capitalize_first(string $value): string
   </div>
 </main>
 
+<?php
+$initialItems = [];
+foreach ($rows as $r) {
+  $unit = trim((string)($r['unit'] ?? ''));
+  $imagePath = trim((string)($r['image_path'] ?? ''));
+  $imageUrl = $imagePath !== '' ? catalog_image_url($imagePath) : '';
+  $priceFormatted = money_format_cents((int)($r['price_cents'] ?? 0), (string)($r['currency'] ?? 'ARS'));
+  $initialItems[] = [
+    'id' => (int)($r['id'] ?? 0),
+    'name' => (string)($r['name'] ?? ''),
+    'description' => (string)($r['description'] ?? ''),
+    'image_path' => $imagePath,
+    'image_url' => $imageUrl,
+    'unit' => $unit,
+    'price_cents' => (int)($r['price_cents'] ?? 0),
+    'currency' => (string)($r['currency'] ?? 'ARS'),
+    'price_formatted' => $priceFormatted,
+    'price_label' => $priceFormatted . ($unit !== '' ? (' / ' . $unit) : ''),
+  ];
+}
+?>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 
 <script>
 (() => {
   const basePath = window.location.pathname || '/catalogo';
   const endpoint = `${basePath}?ajax=1`;
+  const initialItems = <?= json_encode($initialItems, JSON_UNESCAPED_UNICODE) ?>;
+  let localItems = Array.isArray(initialItems) ? initialItems : [];
+  let ajaxAvailable = true;
+
+  const setLocalItems = (items) => {
+    localItems = Array.isArray(items) ? items : [];
+  };
 
   const clientSuccess = document.getElementById('catalogClientSuccess');
   const clientError = document.getElementById('catalogClientError');
@@ -858,11 +887,33 @@ function catalog_capitalize_first(string $value): string
   };
 
   const fetchList = async (q) => {
+    if (!ajaxAvailable) return localItems;
+
     const url = endpoint + (q ? ('&q=' + encodeURIComponent(q)) : '');
-    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-    const data = await res.json();
+    let res;
+    try {
+      res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    } catch (_) {
+      ajaxAvailable = false;
+      return localItems;
+    }
+
+    if (!res || !res.ok) {
+      ajaxAvailable = false;
+      return localItems;
+    }
+
+    let data = null;
+    try {
+      data = await res.json();
+    } catch (_) {
+      ajaxAvailable = false;
+      return localItems;
+    }
+
     if (!data || data.ok !== true) {
-      throw new Error((data && data.error) ? data.error : 'No se pudo cargar el catálogo.');
+      ajaxAvailable = false;
+      return localItems;
     }
     return data.items || [];
   };
@@ -872,17 +923,12 @@ function catalog_capitalize_first(string $value): string
     formQ.value = searchInput.value || '';
     const query = String(searchInput.value || '').trim();
     const items = await fetchList(query);
-    if (query !== '') {
-      const nq = normalizeText(query);
-      const filtered = items.filter((it) => {
-        const name = normalizeText(it.name || '');
-        const desc = normalizeText(it.description || '');
-        return name.includes(nq) || desc.includes(nq);
-      });
-      renderRows(filtered);
+    if (query === '') {
+      setLocalItems(items);
+      renderRows(items);
       return;
     }
-    renderRows(items);
+    renderRows(filterItems(items, query));
   };
 
   const postAction = async (payload) => {
@@ -938,6 +984,16 @@ function catalog_capitalize_first(string $value): string
       .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase();
     return s.trim();
+  };
+
+  const filterItems = (items, query) => {
+    const nq = normalizeText(query);
+    if (!nq) return Array.isArray(items) ? items : [];
+    return (items || []).filter((it) => {
+      const name = normalizeText(it.name || '');
+      const desc = normalizeText(it.description || '');
+      return name.includes(nq) || desc.includes(nq);
+    });
   };
 
   const capitalizeFirst = (value) => {
