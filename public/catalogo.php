@@ -870,7 +870,18 @@ function catalog_capitalize_first(string $value): string
   const refresh = async () => {
     clearMsgs();
     formQ.value = searchInput.value || '';
-    const items = await fetchList(searchInput.value || '');
+    const query = String(searchInput.value || '').trim();
+    const items = await fetchList(query);
+    if (query !== '') {
+      const nq = normalizeText(query);
+      const filtered = items.filter((it) => {
+        const name = normalizeText(it.name || '');
+        const desc = normalizeText(it.description || '');
+        return name.includes(nq) || desc.includes(nq);
+      });
+      renderRows(filtered);
+      return;
+    }
     renderRows(items);
   };
 
@@ -920,6 +931,14 @@ function catalog_capitalize_first(string $value): string
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;');
   const escapeAttr = escapeHtml;
+
+  const normalizeText = (value) => {
+    const s = String(value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+    return s.trim();
+  };
 
   const capitalizeFirst = (value) => {
     const s = String(value || '').trim();
@@ -1200,12 +1219,17 @@ function catalog_capitalize_first(string $value): string
 
   let t = null;
   if (searchInput) {
-    searchInput.addEventListener('input', () => {
+    const triggerSearch = () => {
       clearTimeout(t);
       t = setTimeout(() => {
         refresh().catch((err) => showMsg(clientError, err.message || String(err)));
       }, 150);
-    });
+    };
+
+    searchInput.addEventListener('input', triggerSearch);
+    searchInput.addEventListener('keyup', triggerSearch);
+    searchInput.addEventListener('change', triggerSearch);
+    searchInput.addEventListener('search', triggerSearch);
   }
 
   // Crear / actualizar sin recargar
