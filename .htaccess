@@ -6,7 +6,6 @@ RewriteEngine On
 RewriteRule ^logo\.png$ public/logo.php [L]
 RewriteRule ^fondo\.png$ fondo.php [L]
 RewriteRule ^preload\.png$ public/preload.php [L]
-RewriteRule ^brand\.css$ public/brand.css [L]
 RewriteRule ^(src|database|vendor)/ - [F,L]
 
 # URLs amigables (ocultar .php)
