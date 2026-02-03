@@ -28,6 +28,10 @@ if (PHP_SAPI !== 'cli') {
         header('X-Content-Type-Options: nosniff');
         header('Referrer-Policy: strict-origin-when-cross-origin');
         header('Permissions-Policy: geolocation=(), microphone=(self), camera=()');
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Cache-Control: post-check=0, pre-check=0', false);
+        header('Pragma: no-cache');
+        header('Expires: 0');
         if ($https) {
             header('Strict-Transport-Security: max-age=31536000');
         }
