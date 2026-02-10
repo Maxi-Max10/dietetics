@@ -481,16 +481,17 @@ try {
           if (result) {
             const raw = result.getText();
             const digits = raw.replace(/\D+/g, '');
-            if (digits.length !== 13) {
+            if (digits.length < 8 || digits.length > 14) {
               setStatus('Lectura invalida. Probando de nuevo...', 'text-warning');
               return;
             }
 
             const now = Date.now();
+            const prefer = (digits.length === 13);
             if (digits === lastCandidate && (now - lastCandidateAt) < 2000) {
               stableCount += 1;
             } else {
-              stableCount = 1;
+              stableCount = prefer ? 2 : 1;
               lastCandidate = digits;
             }
             lastCandidateAt = now;
