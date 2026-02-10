@@ -623,6 +623,36 @@ if ($error !== '') {
   </div>
 <?php endif; ?>
 
+<div class="modal fade" id="successModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content card-lift" style="border-radius: 20px; border: 1px solid rgba(22, 163, 74, .2);">
+      <div class="modal-header text-white" style="border-top-left-radius: 20px; border-top-right-radius: 20px; background: linear-gradient(135deg, #16a34a, #15803d);">
+        <div class="d-flex align-items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20 6L9 17l-5-5" />
+          </svg>
+          <h5 class="modal-title mb-0">Listo</h5>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="d-flex align-items-center gap-3">
+          <div class="rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 44px; height: 44px; background: rgba(22, 163, 74, .12); color: #15803d;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 22a10 10 0 1 0-10-10" />
+              <path d="M9 12l2 2 4-4" />
+            </svg>
+          </div>
+          <div>
+            <div class="fw-semibold">Factura guardada con éxito</div>
+            <div class="text-muted small">Se cerrará automáticamente en 3 segundos.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <nav class="navbar navbar-expand-lg navbar-glass sticky-top">
   <div class="container py-2">
     <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-dark mb-0 h4 text-decoration-none" href="/dashboard" aria-label="<?= e($appName) ?>">
@@ -1102,6 +1132,17 @@ if ($error !== '') {
           if (!payload || payload.ok !== true) {
             console.error('No se pudo crear la factura', payload);
             return;
+          }
+
+          if (window.bootstrap) {
+            const modalEl = document.getElementById('successModal');
+            if (modalEl) {
+              const modal = bootstrap.Modal.getOrCreateInstance(modalEl, { backdrop: 'static', keyboard: true });
+              modal.show();
+              window.setTimeout(function () {
+                modal.hide();
+              }, 3000);
+            }
           }
 
           // Refrescar la gráfica con el rango actual.
