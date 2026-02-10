@@ -420,10 +420,39 @@ try {
       reader = null;
     }
 
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        const el = document.createElement('script');
+        el.src = src;
+        el.async = true;
+        el.onload = () => resolve();
+        el.onerror = () => reject(new Error('load-failed'));
+        document.head.appendChild(el);
+      });
+    }
+
+    async function ensureZxing() {
+      if (window.ZXingBrowser && window.ZXingBrowser.BrowserMultiFormatReader) {
+        return window.ZXingBrowser;
+      }
+      if (window.ZXing && window.ZXing.BrowserMultiFormatReader) {
+        return window.ZXing;
+      }
+
+      // Fallback a CDN si el script local no cargo.
+      try {
+        await loadScript('https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/zxing-browser.min.js');
+      } catch (e) {
+        return null;
+      }
+
+      return window.ZXingBrowser || window.ZXing || null;
+    }
+
     async function startScanner() {
-      const zxing = window.ZXingBrowser || window.ZXing || null;
+      const zxing = await ensureZxing();
       if (!zxing || !zxing.BrowserMultiFormatReader) {
-        alert('El escaneo no esta disponible en este navegador.');
+        alert('No se pudo cargar la libreria de escaneo.');
         return;
       }
       if (!window.isSecureContext) {
