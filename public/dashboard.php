@@ -1157,6 +1157,23 @@ if ($error !== '') {
       fd.set('action', action);
 
       const endpoint = window.location.href;
+      function parseJsonMaybe(text) {
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          const start = text.indexOf('{');
+          const end = text.lastIndexOf('}');
+          if (start !== -1 && end !== -1 && end > start) {
+            try {
+              return JSON.parse(text.slice(start, end + 1));
+            } catch (inner) {
+              return null;
+            }
+          }
+          return null;
+        }
+      }
+
       fetch(endpoint, {
         method: 'POST',
         headers: { 'Accept': 'application/json' },
@@ -1169,12 +1186,10 @@ if ($error !== '') {
           return res.text();
         })
         .then(text => {
-          let payload = null;
-          try {
-            payload = JSON.parse(text);
-          } catch (e) {
+          const payload = parseJsonMaybe(text);
+          if (!payload) {
             console.error('Respuesta no es JSON:', text);
-            throw e;
+            return;
           }
           if (!payload || payload.ok !== true) {
             console.error('No se pudo crear la factura', payload);
