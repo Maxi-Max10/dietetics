@@ -1101,6 +1101,40 @@ if ($error !== '') {
     const form = document.getElementById('invoiceForm');
     if (!form) return;
 
+    function showSuccessModal() {
+      const modalEl = document.getElementById('successModal');
+      if (!modalEl) return;
+      const bs = window.bootstrap || (typeof bootstrap !== 'undefined' ? bootstrap : null);
+      if (bs && bs.Modal) {
+        const modal = bs.Modal.getOrCreateInstance(modalEl, { backdrop: 'static', keyboard: true });
+        modal.show();
+        window.setTimeout(function () {
+          modal.hide();
+        }, 3000);
+        return;
+      }
+
+      modalEl.classList.add('show');
+      modalEl.style.display = 'block';
+      modalEl.removeAttribute('aria-hidden');
+      modalEl.setAttribute('aria-modal', 'true');
+      document.body.classList.add('modal-open');
+
+      const backdrop = document.createElement('div');
+      backdrop.className = 'modal-backdrop fade show';
+      backdrop.dataset.fallback = '1';
+      document.body.appendChild(backdrop);
+
+      window.setTimeout(function () {
+        modalEl.classList.remove('show');
+        modalEl.style.display = 'none';
+        modalEl.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
+        const bd = document.querySelector('.modal-backdrop[data-fallback="1"]');
+        if (bd) bd.remove();
+      }, 3000);
+    }
+
     // Iframe oculto para descargar el PDF sin navegar fuera del dashboard.
     let dlFrame = document.querySelector('iframe[name="invoiceDownloadFrame"]');
     if (!dlFrame) {
@@ -1134,16 +1168,7 @@ if ($error !== '') {
             return;
           }
 
-          if (window.bootstrap) {
-            const modalEl = document.getElementById('successModal');
-            if (modalEl) {
-              const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl, { backdrop: 'static', keyboard: true });
-              modal.show();
-              window.setTimeout(function () {
-                modal.hide();
-              }, 3000);
-            }
-          }
+          showSuccessModal();
 
           // Refrescar la gráfica con el rango actual.
           if (typeof window.refreshIncomeExpenseChart === 'function') {
