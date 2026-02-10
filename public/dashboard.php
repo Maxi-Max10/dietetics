@@ -889,7 +889,7 @@ if ($error !== '') {
         </div>
         <div class="card-body px-4 py-4">
 
-          <form method="post" action="/dashboard.php" id="invoiceForm">
+          <form method="post" action="" id="invoiceForm">
             <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
 
             <div class="row g-3">
@@ -1156,7 +1156,7 @@ if ($error !== '') {
       fd.set('ajax', '1');
       fd.set('action', action);
 
-      const endpoint = form.getAttribute('action') || window.location.pathname;
+      const endpoint = window.location.href;
       fetch(endpoint, {
         method: 'POST',
         headers: { 'Accept': 'application/json' },
