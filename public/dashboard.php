@@ -1137,7 +1137,7 @@ if ($error !== '') {
           if (window.bootstrap) {
             const modalEl = document.getElementById('successModal');
             if (modalEl) {
-              const modal = bootstrap.Modal.getOrCreateInstance(modalEl, { backdrop: 'static', keyboard: true });
+              const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl, { backdrop: 'static', keyboard: true });
               modal.show();
               window.setTimeout(function () {
                 modal.hide();
