@@ -1138,8 +1138,22 @@ if ($error !== '') {
     }
 
     function refreshKpis() {
-      fetch('/api_dashboard_kpi.php', { headers: { 'Accept': 'application/json' }, cache: 'no-store' })
-        .then(res => res.json())
+      const url = new URL('api_dashboard_kpi.php', window.location.href);
+      fetch(url.toString(), { headers: { 'Accept': 'application/json' }, cache: 'no-store' })
+        .then(res => {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.text();
+        })
+        .then(text => {
+          let data = null;
+          try {
+            data = JSON.parse(text);
+          } catch (e) {
+            console.warn('Respuesta KPIs no es JSON:', text);
+            return null;
+          }
+          return data;
+        })
         .then(data => {
           if (!data || data.ok !== true) return;
 
@@ -1254,7 +1268,7 @@ if ($error !== '') {
             window.refreshIncomeExpenseChart();
           }
 
-          refreshKpis();
+          window.setTimeout(refreshKpis, 350);
 
           // Descargar sin recargar.
           if (payload.action === 'download' && payload.invoice_id) {
