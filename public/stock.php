@@ -294,7 +294,11 @@ try {
             </div>
             <div class="col-12 col-md-3">
               <label class="form-label" for="sku">SKU (opcional)</label>
-              <input class="form-control" id="sku" name="sku" maxlength="64">
+              <div class="input-group">
+                <input class="form-control" id="sku" name="sku" maxlength="64" autocomplete="off">
+                <button class="btn btn-outline-primary" type="button" id="scan-sku-btn">Escanear</button>
+              </div>
+              <div class="form-text">Usa la camara del celular para leer el codigo.</div>
             </div>
             <div class="col-12 col-md-2">
               <label class="form-label" for="unit">Unidad</label>
@@ -378,6 +382,75 @@ try {
   </div>
 </main>
 
+<div class="modal fade" id="barcodeModal" tabindex="-1" aria-labelledby="barcodeModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="barcodeModalLabel">Escanear codigo de barras</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <video id="barcodeVideo" class="w-100 rounded" muted playsinline></video>
+        <p class="text-muted small mt-3 mb-0">Asegurate de dar permiso a la camara.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/index.min.js"></script>
+<script>
+  (function () {
+    const scanBtn = document.getElementById('scan-sku-btn');
+    const skuInput = document.getElementById('sku');
+    const modalEl = document.getElementById('barcodeModal');
+    const videoEl = document.getElementById('barcodeVideo');
+
+    if (!scanBtn || !skuInput || !modalEl || !videoEl) {
+      return;
+    }
+
+    let reader = null;
+    const modal = new bootstrap.Modal(modalEl);
+
+    function stopScanner() {
+      if (reader && typeof reader.stop === 'function') {
+        reader.stop();
+      }
+      reader = null;
+    }
+
+    async function startScanner() {
+      if (!window.ZXingBrowser || !window.ZXingBrowser.BrowserMultiFormatReader) {
+        alert('El escaneo no esta disponible en este navegador.');
+        return;
+      }
+
+      reader = new window.ZXingBrowser.BrowserMultiFormatReader();
+      try {
+        await reader.decodeFromVideoDevice(null, videoEl, (result, err) => {
+          if (result) {
+            skuInput.value = result.getText();
+            modal.hide();
+            stopScanner();
+            skuInput.focus();
+          }
+        });
+      } catch (e) {
+        stopScanner();
+        alert('No se pudo acceder a la camara.');
+      }
+    }
+
+    scanBtn.addEventListener('click', function () {
+      modal.show();
+      startScanner();
+    });
+
+    modalEl.addEventListener('hidden.bs.modal', function () {
+      stopScanner();
+    });
+  })();
+</script>
 </body>
 </html>
