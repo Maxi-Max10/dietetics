@@ -414,6 +414,9 @@ try {
 
     let reader = null;
     const modal = new bootstrap.Modal(modalEl);
+    let lastCandidate = '';
+    let lastCandidateAt = 0;
+    let stableCount = 0;
 
     function stopScanner() {
       if (reader && typeof reader.stop === 'function') {
@@ -476,8 +479,29 @@ try {
       try {
         await reader.decodeFromVideoDevice(null, videoEl, (result, err) => {
           if (result) {
-            skuInput.value = result.getText();
-            setStatus('Codigo leido: ' + result.getText(), 'text-success');
+            const raw = result.getText();
+            const digits = raw.replace(/\D+/g, '');
+            if (digits.length !== 13) {
+              setStatus('Lectura invalida. Probando de nuevo...', 'text-warning');
+              return;
+            }
+
+            const now = Date.now();
+            if (digits === lastCandidate && (now - lastCandidateAt) < 2000) {
+              stableCount += 1;
+            } else {
+              stableCount = 1;
+              lastCandidate = digits;
+            }
+            lastCandidateAt = now;
+
+            if (stableCount < 2) {
+              setStatus('Lectura: ' + digits + ' (confirmando...)', 'text-muted');
+              return;
+            }
+
+            skuInput.value = digits;
+            setStatus('Codigo confirmado: ' + digits, 'text-success');
             modal.hide();
             stopScanner();
             skuInput.focus();
