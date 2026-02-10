@@ -837,10 +837,10 @@ if ($error !== '') {
             <div class="card-body px-4 py-3">
               <p class="muted-label mb-1">Ingresos del día</p>
               <div class="d-flex align-items-baseline justify-content-between gap-3">
-                <div class="h4 mb-0"><?= e($kpiIncomeText) ?></div>
-                <span class="text-muted small"><?= e($todayPeriod['start']->format('d/m/Y')) ?></span>
+                <div class="h4 mb-0" id="kpiIncomeValue"><?= e($kpiIncomeText) ?></div>
+                <span class="text-muted small" id="kpiIncomeDate"><?= e($todayPeriod['start']->format('d/m/Y')) ?></span>
               </div>
-              <div class="text-muted small mt-1"><?= e((string)$kpiSalesCount) ?> ventas</div>
+              <div class="text-muted small mt-1" id="kpiIncomeSalesCount"><?= e((string)$kpiSalesCount) ?> ventas</div>
             </div>
           </div>
         </div>
@@ -849,22 +849,24 @@ if ($error !== '') {
           <div class="card card-lift h-100 kpi-card kpi-card--top">
             <div class="card-body px-4 py-3">
               <p class="muted-label mb-1">Más vendidos del día</p>
-              <?php if (count($kpiTopProducts) === 0): ?>
-                <div class="text-muted">—</div>
-              <?php else: ?>
-                <div class="vstack gap-1">
-                  <?php foreach ($kpiTopProducts as $p): ?>
-                    <div class="d-flex justify-content-between gap-3">
-                      <div class="text-truncate" style="max-width: 70%">
-                        <?= e((string)($p['description'] ?? '')) ?>
+              <div id="kpiTopProducts">
+                <?php if (count($kpiTopProducts) === 0): ?>
+                  <div class="text-muted">—</div>
+                <?php else: ?>
+                  <div class="vstack gap-1">
+                    <?php foreach ($kpiTopProducts as $p): ?>
+                      <div class="d-flex justify-content-between gap-3">
+                        <div class="text-truncate" style="max-width: 70%">
+                          <?= e((string)($p['description'] ?? '')) ?>
+                        </div>
+                        <div class="text-muted">
+                          <?= e(rtrim(rtrim(number_format((float)($p['qty'] ?? 0), 2, '.', ''), '0'), '.')) ?>
+                        </div>
                       </div>
-                      <div class="text-muted">
-                        <?= e(rtrim(rtrim(number_format((float)($p['qty'] ?? 0), 2, '.', ''), '0'), '.')) ?>
-                      </div>
-                    </div>
-                  <?php endforeach; ?>
-                </div>
-              <?php endif; ?>
+                    <?php endforeach; ?>
+                  </div>
+                <?php endif; ?>
+              </div>
             </div>
           </div>
         </div>
@@ -873,7 +875,7 @@ if ($error !== '') {
           <div class="card card-lift h-100 kpi-card kpi-card--count">
             <div class="card-body px-4 py-3">
               <p class="muted-label mb-1">Ventas realizadas</p>
-              <div class="h2 mb-0"><?= e((string)$kpiSalesCount) ?></div>
+              <div class="h2 mb-0" id="kpiSalesCount"><?= e((string)$kpiSalesCount) ?></div>
               <div class="text-muted small mt-1">Hoy</div>
             </div>
           </div>
@@ -1135,6 +1137,55 @@ if ($error !== '') {
       }, 3000);
     }
 
+    function refreshKpis() {
+      fetch('/api_dashboard_kpi.php', { headers: { 'Accept': 'application/json' }, cache: 'no-store' })
+        .then(res => res.json())
+        .then(data => {
+          if (!data || data.ok !== true) return;
+
+          const incomeValue = document.getElementById('kpiIncomeValue');
+          if (incomeValue) incomeValue.textContent = data.income_text || '—';
+
+          const incomeDate = document.getElementById('kpiIncomeDate');
+          if (incomeDate && data.income_date) incomeDate.textContent = data.income_date;
+
+          const salesCount = Number(data.sales_count || 0);
+          const incomeSales = document.getElementById('kpiIncomeSalesCount');
+          if (incomeSales) incomeSales.textContent = salesCount + ' ventas';
+
+          const salesCountEl = document.getElementById('kpiSalesCount');
+          if (salesCountEl) salesCountEl.textContent = String(salesCount);
+
+          const topWrap = document.getElementById('kpiTopProducts');
+          if (!topWrap) return;
+
+          const items = Array.isArray(data.top_products) ? data.top_products : [];
+          if (items.length === 0) {
+            topWrap.innerHTML = '<div class="text-muted">—</div>';
+            return;
+          }
+
+          const escapeHtml = (value) => String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+
+          topWrap.innerHTML = '<div class="vstack gap-1">' + items.map((item) => {
+            const desc = escapeHtml(item.description || '');
+            const qty = escapeHtml(item.qty_text || '');
+            return '<div class="d-flex justify-content-between gap-3">'
+              + '<div class="text-truncate" style="max-width: 70%">' + desc + '</div>'
+              + '<div class="text-muted">' + qty + '</div>'
+              + '</div>';
+          }).join('') + '</div>';
+        })
+        .catch(err => {
+          console.warn('No se pudieron actualizar KPIs', err);
+        });
+    }
+
     // Iframe oculto para descargar el PDF sin navegar fuera del dashboard.
     let dlFrame = document.querySelector('iframe[name="invoiceDownloadFrame"]');
     if (!dlFrame) {
@@ -1202,6 +1253,8 @@ if ($error !== '') {
           if (typeof window.refreshIncomeExpenseChart === 'function') {
             window.refreshIncomeExpenseChart();
           }
+
+          refreshKpis();
 
           // Descargar sin recargar.
           if (payload.action === 'download' && payload.invoice_id) {
