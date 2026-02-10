@@ -1,6 +1,16 @@
 <?php
 // Endpoint para KPIs del dashboard (sin recargar).
-require_once __DIR__ . '/../src/bootstrap.php';
+$bootstrap = __DIR__ . '/../src/bootstrap.php';
+if (!file_exists($bootstrap)) {
+    $bootstrap = __DIR__ . '/src/bootstrap.php';
+}
+if (!file_exists($bootstrap)) {
+    http_response_code(500);
+    header('Content-Type: application/json');
+    echo json_encode(['ok' => false, 'error' => 'No se encontró bootstrap.php'], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+require_once $bootstrap;
 
 header('Content-Type: application/json');
 header('Cache-Control: no-store');
