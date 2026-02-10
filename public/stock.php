@@ -391,7 +391,8 @@ try {
       </div>
       <div class="modal-body">
         <video id="barcodeVideo" class="w-100 rounded" muted playsinline></video>
-        <p class="text-muted small mt-3 mb-0">Asegurate de dar permiso a la camara.</p>
+        <p class="text-muted small mt-3 mb-1">Asegurate de dar permiso a la camara.</p>
+        <div id="barcodeStatus" class="small text-muted">Listo para escanear.</div>
       </div>
     </div>
   </div>
@@ -405,8 +406,9 @@ try {
     const skuInput = document.getElementById('sku');
     const modalEl = document.getElementById('barcodeModal');
     const videoEl = document.getElementById('barcodeVideo');
+    const statusEl = document.getElementById('barcodeStatus');
 
-    if (!scanBtn || !skuInput || !modalEl || !videoEl) {
+    if (!scanBtn || !skuInput || !modalEl || !videoEl || !statusEl) {
       return;
     }
 
@@ -418,6 +420,11 @@ try {
         reader.stop();
       }
       reader = null;
+    }
+
+    function setStatus(text, tone) {
+      statusEl.textContent = text;
+      statusEl.className = 'small ' + (tone || 'text-muted');
     }
 
     function loadScript(src) {
@@ -450,17 +457,18 @@ try {
     }
 
     async function startScanner() {
+      setStatus('Iniciando camara...', 'text-muted');
       const zxing = await ensureZxing();
       if (!zxing || !zxing.BrowserMultiFormatReader) {
-        alert('No se pudo cargar la libreria de escaneo.');
+        setStatus('No se pudo cargar la libreria de escaneo.', 'text-danger');
         return;
       }
       if (!window.isSecureContext) {
-        alert('Para usar la camara, la pagina debe abrirse en HTTPS.');
+        setStatus('Para usar la camara, la pagina debe abrirse en HTTPS.', 'text-danger');
         return;
       }
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        alert('Este navegador no permite acceso a la camara.');
+        setStatus('Este navegador no permite acceso a la camara.', 'text-danger');
         return;
       }
 
@@ -469,18 +477,22 @@ try {
         await reader.decodeFromVideoDevice(null, videoEl, (result, err) => {
           if (result) {
             skuInput.value = result.getText();
+            setStatus('Codigo leido: ' + result.getText(), 'text-success');
             modal.hide();
             stopScanner();
             skuInput.focus();
+          } else if (err) {
+            setStatus('Buscando codigo...', 'text-muted');
           }
         });
       } catch (e) {
         stopScanner();
-        alert('No se pudo acceder a la camara.');
+        setStatus('No se pudo acceder a la camara.', 'text-danger');
       }
     }
 
     scanBtn.addEventListener('click', function () {
+      setStatus('Listo para escanear.', 'text-muted');
       modal.show();
       startScanner();
     });
