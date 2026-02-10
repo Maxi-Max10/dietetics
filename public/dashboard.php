@@ -1156,13 +1156,26 @@ if ($error !== '') {
       fd.set('ajax', '1');
       fd.set('action', action);
 
-      fetch('/dashboard.php', {
+      const endpoint = form.getAttribute('action') || window.location.pathname;
+      fetch(endpoint, {
         method: 'POST',
         headers: { 'Accept': 'application/json' },
         body: fd
       })
-        .then(res => res.json())
-        .then(payload => {
+        .then(res => {
+          if (!res.ok) {
+            throw new Error('HTTP ' + res.status);
+          }
+          return res.text();
+        })
+        .then(text => {
+          let payload = null;
+          try {
+            payload = JSON.parse(text);
+          } catch (e) {
+            console.error('Respuesta no es JSON:', text);
+            throw e;
+          }
           if (!payload || payload.ok !== true) {
             console.error('No se pudo crear la factura', payload);
             return;
@@ -1177,7 +1190,9 @@ if ($error !== '') {
 
           // Descargar sin recargar.
           if (payload.action === 'download' && payload.invoice_id) {
-            dlFrame.src = `/invoice_download.php?id=${encodeURIComponent(payload.invoice_id)}`;
+            const dlUrl = new URL('invoice_download.php', window.location.href);
+            dlUrl.searchParams.set('id', String(payload.invoice_id));
+            dlFrame.src = dlUrl.toString();
           }
         })
         .catch(err => {
