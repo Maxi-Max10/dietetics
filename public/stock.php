@@ -421,12 +421,21 @@ try {
     }
 
     async function startScanner() {
-      if (!window.ZXingBrowser || !window.ZXingBrowser.BrowserMultiFormatReader) {
+      const zxing = window.ZXingBrowser || window.ZXing || null;
+      if (!zxing || !zxing.BrowserMultiFormatReader) {
         alert('El escaneo no esta disponible en este navegador.');
         return;
       }
+      if (!window.isSecureContext) {
+        alert('Para usar la camara, la pagina debe abrirse en HTTPS.');
+        return;
+      }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('Este navegador no permite acceso a la camara.');
+        return;
+      }
 
-      reader = new window.ZXingBrowser.BrowserMultiFormatReader();
+      reader = new zxing.BrowserMultiFormatReader();
       try {
         await reader.decodeFromVideoDevice(null, videoEl, (result, err) => {
           if (result) {
