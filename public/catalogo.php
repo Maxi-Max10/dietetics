@@ -650,6 +650,7 @@ function catalog_capitalize_first(string $value): string
             <table class="table align-middle">
               <thead>
                 <tr>
+                    <th style="width:80px">PLU</th>
                   <th>Producto</th>
                   <th style="width:90px">Imagen</th>
                   <th>Descripción</th>
@@ -659,13 +660,14 @@ function catalog_capitalize_first(string $value): string
               </thead>
               <tbody id="catalogTbody">
               <?php if (count($rows) === 0): ?>
-                <tr><td colspan="5" class="text-muted">Sin resultados.</td></tr>
+                <tr><td colspan="6" class="text-muted">Sin resultados.</td></tr>
               <?php else: ?>
                 <?php foreach ($rows as $r): ?>
                   <?php $unit = trim((string)($r['unit'] ?? '')); ?>
                   <?php $imagePath = trim((string)($r['image_path'] ?? '')); ?>
                   <?php $imageUrl = $imagePath !== '' ? catalog_image_url($imagePath) : ''; ?>
                   <tr>
+                    <td><?= e((string)$r['id']) ?></td>
                     <td><?= e(catalog_capitalize_first((string)$r['name'])) ?></td>
                     <td>
                       <?php if ($imageUrl !== ''): ?>
@@ -840,7 +842,7 @@ foreach ($rows as $r) {
     tbody.innerHTML = '';
     if (!items || items.length === 0) {
       const tr = document.createElement('tr');
-      tr.innerHTML = '<td colspan="5" class="text-muted">Sin resultados.</td>';
+      tr.innerHTML = '<td colspan="6" class="text-muted">Sin resultados.</td>';
       tbody.appendChild(tr);
       return;
     }
@@ -861,6 +863,7 @@ foreach ($rows as $r) {
         : '<span class="catalog-thumb-fallback">IMG</span>';
       const displayName = capitalizeFirst(it.name || '');
       tr.innerHTML = `
+        <td>${escapeHtml(String(it.id ?? ''))}</td>
         <td>${escapeHtml(displayName)}</td>
         <td>${imageHtml}</td>
         <td class="text-muted">${descHtml}</td>
