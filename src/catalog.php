@@ -365,7 +365,8 @@ function catalog_list(PDO $pdo, int $createdBy, string $search = '', int $limit 
     catalog_ensure_unit_column($pdo);
     catalog_ensure_image_column($pdo);
 
-    $limit = max(1, min(5000, (int)$limit));
+
+    $limit = (int)$limit;
     $search = trim($search);
 
     $where = 'created_by = :created_by';
@@ -373,6 +374,11 @@ function catalog_list(PDO $pdo, int $createdBy, string $search = '', int $limit 
 
     $rows = null;
     $lastError = null;
+
+    $limitSql = '';
+    if ($limit > 0) {
+        $limitSql = ' LIMIT ' . $limit;
+    }
 
     if ($search !== '') {
         $params['q'] = '%' . $search . '%';
@@ -389,8 +395,7 @@ function catalog_list(PDO $pdo, int $createdBy, string $search = '', int $limit 
                     'SELECT id, name, description, COALESCE(image_path, "") AS image_path, COALESCE(unit, "") AS unit, price_cents, currency, updated_at, created_at
                      FROM catalog_products
                      WHERE ' . $where . $searchWhere . '
-                     ORDER BY name ASC, id ASC
-                     LIMIT ' . $limit
+                     ORDER BY name ASC, id ASC' . $limitSql
                 );
                 $stmt->execute($params);
                 $rows = $stmt->fetchAll();
@@ -404,8 +409,7 @@ function catalog_list(PDO $pdo, int $createdBy, string $search = '', int $limit 
             'SELECT id, name, description, COALESCE(image_path, "") AS image_path, COALESCE(unit, "") AS unit, price_cents, currency, updated_at, created_at
              FROM catalog_products
              WHERE ' . $where . '
-             ORDER BY name ASC, id ASC
-             LIMIT ' . $limit
+             ORDER BY name ASC, id ASC' . $limitSql
         );
         $stmt->execute($params);
         $rows = $stmt->fetchAll();

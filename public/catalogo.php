@@ -55,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && $wantsJson) {
     }
 
     $qAjax = trim((string)($_GET['q'] ?? ''));
-    $items = catalog_list($pdo, $userId, $qAjax, 300);
+    $items = catalog_list($pdo, $userId, $qAjax, 0);
     $out = [];
     foreach ($items as $r) {
       $unit = trim((string)($r['unit'] ?? ''));
@@ -243,7 +243,7 @@ try {
         $edit = catalog_get($pdo, $userId, $editId);
     }
 
-    $rows = catalog_list($pdo, $userId, $q, 300);
+    $rows = catalog_list($pdo, $userId, $q, 0);
 } catch (Throwable $e) {
     error_log('catalogo.php load error: ' . $e->getMessage());
     $rows = [];
