@@ -925,7 +925,10 @@ if ($error !== '') {
 
             <div class="d-flex align-items-center justify-content-between mb-2">
               <h3 class="h6 mb-0">Productos</h3>
-              <button type="button" class="btn btn-outline-primary btn-sm action-btn" id="addItem">Agregar producto</button>
+              <div class="d-flex gap-2 align-items-center">
+                <input type="text" id="barcodeInput" class="form-control form-control-sm" placeholder="&#x1F4F7; Escanear etiqueta..." inputmode="numeric" autocomplete="off" style="max-width:195px" title="Escaneá o ingresá el código de barras de la etiqueta de balanza">
+                <button type="button" class="btn btn-outline-primary btn-sm action-btn" id="addItem">Agregar producto</button>
+              </div>
             </div>
 
             <div class="table-responsive">
@@ -1333,6 +1336,7 @@ if ($error !== '') {
     }
 
     addBtn.addEventListener('click', addRow);
+    window.addInvoiceRow = addRow;
 
     table.addEventListener('click', function (e) {
       const btn = e.target.closest('[data-remove]');
@@ -1621,6 +1625,8 @@ if ($error !== '') {
       if (!activeInput) return;
       positionSuggestBox(activeInput);
     });
+
+    window.renderInvoiceUnitOptions = renderUnitOptions;
   })();
 </script>
 <script>
@@ -1704,6 +1710,157 @@ if ($error !== '') {
     // Calcular totales iniciales
     const rows = table.querySelectorAll('tbody tr');
     rows.forEach(recalculateRow);
+  })();
+</script>
+<script>
+  // Escaneo de etiquetas de balanza (EAN-13 con prefijo 2)
+  (function () {
+    const input = document.getElementById('barcodeInput');
+    if (!input) return;
+
+    const table = document.getElementById('itemsTable');
+    if (!table) return;
+
+    const moneyFormatter = new Intl.NumberFormat('es-AR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+
+    let scanBuffer = '';
+    let scanTimer = 0;
+
+    function fillRow(row, name, unit, data) {
+      const descInput  = row.querySelector('input[name="item_description[]"]');
+      const qtyInput   = row.querySelector('input[name="item_quantity[]"]');
+      const unitSelect = row.querySelector('select[name="item_unit[]"]');
+      const priceInput = row.querySelector('input[name="item_unit_price[]"]');
+
+      if (descInput)  descInput.value = name;
+
+      if (unitSelect && typeof window.renderInvoiceUnitOptions === 'function') {
+        window.renderInvoiceUnitOptions(unitSelect, unit);
+        unitSelect.value = unit;
+      } else if (unitSelect) {
+        unitSelect.value = unit;
+      }
+
+      // Calcular cantidad y precio base según unidad del producto
+      const totalCents   = data.price_cents;
+      const catalogCents = data.catalog_price_cents;
+      let quantity, basePrice;
+
+      if ((unit === 'g' || unit === 'kg' || unit === 'l' || unit === 'ml') && catalogCents > 0) {
+        // Derivar el peso/volumen a partir del importe y el precio unitario del catálogo:
+        //   cantidad = importe_total / precio_por_unidad_canónica
+        // La lógica de cálculo del dashboard usa precio_por_kg para g/kg y precio_por_l para ml/l.
+        if (unit === 'g') {
+          // precio catálogo está en $/kg → cantidad en gramos = (total / precio_por_kg) × 1000
+          quantity  = Math.round(totalCents * 1000 / catalogCents);
+        } else if (unit === 'ml') {
+          quantity  = Math.round(totalCents * 1000 / catalogCents);
+        } else {
+          // kg o l: cantidad directa con 3 decimales
+          quantity  = Math.round(totalCents / catalogCents * 1000) / 1000;
+        }
+        basePrice = data.catalog_price; // precio por kg/l del catálogo
+      } else {
+        // Unidad o catálogo sin precio: cargar como 1 u al importe total
+        quantity  = 1;
+        basePrice = data.price;
+      }
+
+      if (qtyInput)   qtyInput.value   = quantity;
+      if (priceInput) priceInput.value = basePrice.toFixed(2);
+
+      if (typeof window.recalculateInvoiceRow === 'function') {
+        window.recalculateInvoiceRow(row);
+      }
+
+      // Resaltar brevemente la fila para feedback visual
+      row.style.transition = 'background 0.3s';
+      row.style.background = '#d1fae5';
+      setTimeout(function () { row.style.background = ''; }, 800);
+    }
+
+    function getOrAddRow() {
+      const tbody = table.querySelector('tbody');
+      // Si la última fila ya tiene descripción, agregamos una nueva
+      const rows = tbody.querySelectorAll('tr');
+      const last = rows[rows.length - 1];
+      const lastDesc = last ? last.querySelector('input[name="item_description[]"]') : null;
+      if (lastDesc && lastDesc.value.trim() !== '') {
+        if (typeof window.addInvoiceRow === 'function') {
+          window.addInvoiceRow();
+        }
+        const updated = tbody.querySelectorAll('tr');
+        return updated[updated.length - 1];
+      }
+      return last;
+    }
+
+    function processBarcode(barcode) {
+      barcode = barcode.trim().replace(/\D/g, '');
+      if (barcode.length !== 13 || barcode[0] !== '2') {
+        showScanError('Código inválido: se esperan 13 dígitos con prefijo 2');
+        return;
+      }
+
+      fetch('/api_scan_barcode.php?barcode=' + encodeURIComponent(barcode), {
+        headers: { 'Accept': 'application/json' }
+      })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (!data.ok) {
+            showScanError(data.error || 'Producto no encontrado');
+            return;
+          }
+          const row = getOrAddRow();
+          if (!row) return;
+          fillRow(row, data.name, data.unit || 'u', data);
+          clearScanError();
+          input.value = '';
+          input.focus();
+        })
+        .catch(function () {
+          showScanError('Error de red al buscar el producto');
+        });
+    }
+
+    function showScanError(msg) {
+      let err = document.getElementById('barcodeError');
+      if (!err) {
+        err = document.createElement('div');
+        err.id = 'barcodeError';
+        err.className = 'text-danger small mt-1';
+        input.parentNode.insertAdjacentElement('afterend', err);
+      }
+      err.textContent = msg;
+    }
+
+    function clearScanError() {
+      const err = document.getElementById('barcodeError');
+      if (err) err.textContent = '';
+    }
+
+    // Soporte para lector USB (escribe rápido y envía Enter) y teclado manual
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        window.clearTimeout(scanTimer);
+        processBarcode(input.value);
+      }
+    });
+
+    // Auto-disparar cuando se acumulan 13+ dígitos (lector USB típico)
+    input.addEventListener('input', function () {
+      window.clearTimeout(scanTimer);
+      const val = input.value.replace(/\D/g, '');
+      if (val.length >= 13) {
+        scanTimer = window.setTimeout(function () {
+          processBarcode(val);
+        }, 80);
+      }
+    });
   })();
 </script>
 <script>
