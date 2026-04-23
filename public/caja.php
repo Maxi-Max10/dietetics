@@ -372,7 +372,7 @@ try {
                 <path d="M21 5v2"/><path d="M21 19v-2"/><path d="M17 5h.5A1.5 1.5 0 0 1 19 6.5V7"/><path d="M17 19h.5A1.5 1.5 0 0 0 19 17.5V17"/>
                 <line x1="7" y1="12" x2="7" y2="12"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="17" y1="12" x2="17" y2="12"/>
               </svg>
-              <input type="text" id="cajaScanInput" class="form-control" placeholder="Escaneá la etiqueta de balanza..." inputmode="numeric" autocomplete="off" autofocus>
+              <input type="text" id="cajaScanInput" class="form-control" placeholder="Ingresá o escaneá el código del ticket..." inputmode="numeric" autocomplete="off" autofocus>
             </div>
             <div id="cajaScanError" class="text-danger small mb-3" style="min-height:1.2em"></div>
 
