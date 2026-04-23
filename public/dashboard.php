@@ -704,6 +704,14 @@ if ($error !== '') {
   </div>
   <div class="offcanvas-body">
     <div class="list-group offcanvas-nav">
+      <a class="list-group-item list-group-item-action d-flex align-items-center gap-2" href="/caja">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="1.5" y="3.5" width="13" height="9" rx="1" />
+          <path d="M5 3.5v9" />
+          <path d="M1.5 7h13" />
+        </svg>
+        Caja
+      </a>
       <a class="list-group-item list-group-item-action d-flex align-items-center gap-2" href="/sales">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <rect x="2" y="9" width="2" height="5" rx="0.5" />
