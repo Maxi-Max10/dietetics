@@ -673,6 +673,7 @@ if ($error !== '') {
       <div class="d-none d-lg-flex align-items-center gap-2 justify-content-end">
         <div class="nav-shell" role="navigation" aria-label="Secciones">
           <a class="nav-link-pill is-active" href="/dashboard" aria-current="page">Dashboard</a>
+          <a class="nav-link-pill" href="/caja">Caja</a>
           <a class="nav-link-pill" href="/sales">Ventas</a>
           <a class="nav-link-pill" href="/customers">Clientes</a>
           <a class="nav-link-pill" href="/products">Productos</a>

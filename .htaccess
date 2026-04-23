@@ -11,11 +11,12 @@ RewriteRule ^(src|database|vendor)/ - [F,L]
 # URLs amigables (ocultar .php)
 # Nota: se mantiene compatibilidad con URLs antiguas, pero se redirige a la versión "limpia".
 RewriteCond %{REQUEST_METHOD} !POST
-RewriteCond %{THE_REQUEST} \s/+(dashboard|sales|customers|products|income|expense|stock|catalogo|pedidos|lista_precios)\.php[\?\s] [NC]
+RewriteCond %{THE_REQUEST} \s/+(dashboard|sales|customers|products|income|expense|stock|catalogo|pedidos|lista_precios|caja)\.php[\?\s] [NC]
 RewriteRule ^ %1 [R=302,L]
 
 # Rutas sin extensión
 RewriteRule ^dashboard/?$ dashboard.php [L,QSA]
+RewriteRule ^caja/?$ caja.php [L,QSA]
 
 RewriteRule ^sales/?$ sales.php [L,QSA]
 RewriteRule ^sales/(day|week|month|year)/?$ sales.php?period=$1 [L,QSA]
