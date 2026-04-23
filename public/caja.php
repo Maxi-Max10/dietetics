@@ -217,6 +217,12 @@ try {
     .nav-link-pill--danger { color: rgba(220,38,38,.85); }
     .nav-link-pill--danger:hover { background: rgba(220,38,38,.12); color: #991b1b; }
 
+    .navbar-logo {
+      height: 34px;
+      width: auto;
+      display: inline-block;
+    }
+
     .muted-label {
       color: var(--muted); font-weight: 600; text-transform: uppercase;
       letter-spacing: 0.04em; font-size: 0.8rem;
