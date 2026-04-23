@@ -361,7 +361,7 @@ try {
         <div class="card card-lift">
           <div class="card-header card-header-clean bg-white px-4 py-3">
             <p class="muted-label mb-1">Modo caja</p>
-            <h2 class="h5 mb-0">Escanear productos</h2>
+            <h2 class="h5 mb-0">Escanear</h2>
           </div>
           <div class="card-body px-4 py-4">
 

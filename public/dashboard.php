@@ -934,10 +934,7 @@ if ($error !== '') {
 
             <div class="d-flex align-items-center justify-content-between mb-2">
               <h3 class="h6 mb-0">Productos</h3>
-              <div class="d-flex gap-2 align-items-center">
-                <input type="text" id="barcodeInput" class="form-control form-control-sm" placeholder="&#x1F4F7; Escanear etiqueta..." inputmode="numeric" autocomplete="off" style="max-width:195px" title="Escaneá o ingresá el código de barras de la etiqueta de balanza">
-                <button type="button" class="btn btn-outline-primary btn-sm action-btn" id="addItem">Agregar producto</button>
-              </div>
+              <button type="button" class="btn btn-outline-primary btn-sm action-btn" id="addItem">Agregar producto</button>
             </div>
 
             <div class="table-responsive">
