@@ -185,6 +185,7 @@ $label = function (string $status): string {
       <div class="d-none d-lg-flex align-items-center gap-2 justify-content-end">
         <div class="nav-shell" role="navigation" aria-label="Secciones">
           <a class="nav-link-pill" href="/dashboard">Dashboard</a>
+          <a class="nav-link-pill" href="/caja">Caja</a>
           <a class="nav-link-pill" href="/sales">Ventas</a>
           <a class="nav-link-pill" href="/customers">Clientes</a>
           <a class="nav-link-pill" href="/products">Productos</a>
@@ -217,6 +218,7 @@ $label = function (string $status): string {
   <div class="offcanvas-body">
     <div class="list-group offcanvas-nav">
       <a class="list-group-item list-group-item-action" href="/dashboard">Dashboard</a>
+      <a class="list-group-item list-group-item-action" href="/caja">Caja</a>
       <a class="list-group-item list-group-item-action" href="/sales">Ventas</a>
       <a class="list-group-item list-group-item-action" href="/customers">Clientes</a>
       <a class="list-group-item list-group-item-action" href="/products">Productos</a>
