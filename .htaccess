@@ -16,7 +16,7 @@ RewriteRule ^ %1 [R=302,L]
 
 # Rutas sin extensión
 RewriteRule ^dashboard/?$ dashboard.php [L,QSA]
-RewriteRule ^caja/?$ caja.php [L,QSA]
+RewriteRule ^caja/?$ public/caja.php [L,QSA]
 
 RewriteRule ^sales/?$ sales.php [L,QSA]
 RewriteRule ^sales/(day|week|month|year)/?$ sales.php?period=$1 [L,QSA]
