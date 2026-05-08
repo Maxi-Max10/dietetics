@@ -567,13 +567,13 @@ try {
 
   function processBarcode(raw) {
     const barcode = raw.replace(/\D/g, '');
-    if (barcode.length !== 13 || barcode[0] !== '2') {
-      showScanError('Código inválido: se esperan 13 dígitos con prefijo 2');
+    if (barcode.length !== 13 || !(barcode[0] === '2' || barcode.startsWith('02'))) {
+      showScanError('Codigo invalido: se esperan 13 digitos con prefijo 2 o 02');
       return;
     }
     clearScanError();
 
-    fetch('/api_scan_barcode.php?barcode=' + encodeURIComponent(barcode), {
+    fetch('/api_scan_barcode.php?mode=caja&barcode=' + encodeURIComponent(barcode), {
       headers: { 'Accept': 'application/json' }
     })
       .then(function (res) { return res.json(); })
