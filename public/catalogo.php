@@ -46,6 +46,92 @@ $editId = isset($_GET['edit']) ? (int)$_GET['edit'] : 0;
 
 $edit = null;
 
+function catalog_qendra_clean_text(string $value, int $maxLen): string
+{
+  $value = trim(str_replace(["\r", "\n", ';'], ' ', $value));
+  if (function_exists('iconv')) {
+    $ascii = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
+    if (is_string($ascii)) {
+      $value = $ascii;
+    }
+  }
+  $value = preg_replace('/\s+/', ' ', $value) ?? $value;
+  $value = preg_replace('/[^\x20-\x7E]/', '', $value) ?? $value;
+  $value = str_replace(';', ' ', $value);
+
+  if (function_exists('mb_substr')) {
+    return mb_substr($value, 0, $maxLen, 'UTF-8');
+  }
+  return substr($value, 0, $maxLen);
+}
+
+function catalog_qendra_sale_type(string $unit): string
+{
+  $unit = strtolower(trim($unit));
+  return in_array($unit, ['kg', 'g', 'l', 'ml'], true) ? 'P' : 'U';
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && ((string)($_GET['export'] ?? '') === 'qendra')) {
+  try {
+    $pdo = db($config);
+    if (!catalog_supports_table($pdo)) {
+      throw new RuntimeException('No se encontro la tabla del catalogo.');
+    }
+
+    $section = catalog_qendra_clean_text((string)($_GET['section'] ?? 'Dietetica'), 18);
+    if ($section === '') {
+      $section = 'Dietetica';
+    }
+
+    $rowsExport = catalog_list($pdo, $userId, '', 0);
+    $filename = 'qendra_catalogo_' . date('Ymd_His') . '.csv';
+
+    header('Content-Type: text/csv; charset=Windows-1252');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    header('X-Content-Type-Options: nosniff');
+
+    foreach ($rowsExport as $r) {
+      $plu = (int)($r['id'] ?? 0);
+      if ($plu < 1 || $plu > 4000) {
+        continue;
+      }
+
+      $name = catalog_qendra_clean_text((string)($r['name'] ?? ''), 18);
+      if ($name === '') {
+        continue;
+      }
+
+      $price = number_format(((int)($r['price_cents'] ?? 0)) / 100, 2, ',', '');
+      $type = catalog_qendra_sale_type((string)($r['unit'] ?? ''));
+      $line = implode(';', [
+        $section,
+        (string)$plu,
+        $name,
+        (string)$plu,
+        $price,
+        '0,00',
+        $type,
+        '0',
+        '',
+      ]) . "\r\n";
+
+      if (function_exists('iconv')) {
+        $converted = @iconv('UTF-8', 'Windows-1252//TRANSLIT', $line);
+        echo is_string($converted) ? $converted : $line;
+      } else {
+        echo $line;
+      }
+    }
+    exit;
+  } catch (Throwable $e) {
+    error_log('catalogo.php qendra export error: ' . $e->getMessage());
+    http_response_code(500);
+    header('Content-Type: text/plain; charset=UTF-8');
+    echo 'No se pudo exportar el catalogo para Qendra.';
+    exit;
+  }
+}
+
 // API JSON (para carga dinámica y buscador en vivo)
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && $wantsJson) {
   try {
@@ -645,7 +731,10 @@ function catalog_capitalize_first(string $value): string
             <div class="d-flex gap-2 flex-grow-1">
               <input class="form-control" id="catalogSearch" name="q" value="<?= e($q) ?>" placeholder="Buscar por producto" aria-label="Buscar" autocomplete="off">
             </div>
-            <button class="btn btn-outline-secondary btn-sm" type="submit">Buscar</button>
+            <div class="d-flex gap-2">
+              <button class="btn btn-outline-secondary btn-sm" type="submit">Buscar</button>
+              <a class="btn btn-outline-primary btn-sm" href="/catalogo?export=qendra">Exportar Qendra CSV</a>
+            </div>
           </form>
 
           <div class="table-responsive">

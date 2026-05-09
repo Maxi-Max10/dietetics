@@ -15,7 +15,6 @@ if (auth_user_id() === null) {
 }
 
 $barcode = isset($_GET['barcode']) ? trim((string)$_GET['barcode']) : '';
-$mode = isset($_GET['mode']) ? strtolower(trim((string)$_GET['mode'])) : '';
 
 // Debe ser exactamente 13 digitos y usar un prefijo tipico de balanza.
 if (!preg_match('/^\d{13}$/', $barcode) || (!str_starts_with($barcode, '02') && $barcode[0] !== '2')) {
@@ -51,22 +50,6 @@ try {
     if (!($e instanceof InvalidArgumentException) && $e->getMessage() !== 'Producto no encontrado.') {
         http_response_code(500);
         echo json_encode(['ok' => false, 'error' => 'Error al buscar el producto'], JSON_UNESCAPED_UNICODE);
-        exit;
-    }
-
-    if ($mode === 'caja' && $priceCents > 0) {
-        echo json_encode([
-            'ok'                  => true,
-            'source'              => 'scale_ticket_total',
-            'product_id'          => 0,
-            'name'                => 'Ticket balanza',
-            'unit'                => 'u',
-            'price_cents'         => $priceCents,
-            'price'               => round($priceCents / 100, 2),
-            'catalog_price_cents' => 0,
-            'catalog_price'       => 0,
-            'currency'            => 'ARS',
-        ], JSON_UNESCAPED_UNICODE);
         exit;
     }
 

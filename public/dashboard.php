@@ -937,13 +937,6 @@ if ($error !== '') {
               <button type="button" class="btn btn-outline-primary btn-sm action-btn" id="addItem">Agregar producto</button>
             </div>
 
-            <div class="row g-2 align-items-end mb-3">
-              <div class="col-12 col-md-5">
-                <label class="form-label" for="barcodeInput">Codigo de barras balanza</label>
-                <input class="form-control" id="barcodeInput" inputmode="numeric" autocomplete="off" placeholder="Escanear o ingresar 13 digitos">
-              </div>
-            </div>
-
             <div class="table-responsive">
               <table class="table align-middle" id="itemsTable">
                 <thead>
@@ -1726,7 +1719,7 @@ if ($error !== '') {
   })();
 </script>
 <script>
-  // Escaneo de etiquetas de balanza (EAN-13 con prefijo 2 o 02)
+  // Escaneo de etiquetas de balanza (EAN-13 con prefijo 2)
   (function () {
     const input = document.getElementById('barcodeInput');
     if (!input) return;
@@ -1813,8 +1806,8 @@ if ($error !== '') {
 
     function processBarcode(barcode) {
       barcode = barcode.trim().replace(/\D/g, '');
-      if (barcode.length !== 13 || !(barcode[0] === '2' || barcode.startsWith('02'))) {
-        showScanError('Codigo invalido: se esperan 13 digitos con prefijo 2 o 02');
+      if (barcode.length !== 13 || barcode[0] !== '2') {
+        showScanError('Código inválido: se esperan 13 dígitos con prefijo 2');
         return;
       }
 
