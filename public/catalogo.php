@@ -46,7 +46,7 @@ $editId = isset($_GET['edit']) ? (int)$_GET['edit'] : 0;
 
 $edit = null;
 
-function catalog_qendra_clean_text(string $value, int $maxLen): string
+function catalog_qendra_clean_text(string $value, ?int $maxLen = null): string
 {
   $value = trim(str_replace(["\r", "\n", ';'], ' ', $value));
   if (function_exists('iconv')) {
@@ -58,6 +58,10 @@ function catalog_qendra_clean_text(string $value, int $maxLen): string
   $value = preg_replace('/\s+/', ' ', $value) ?? $value;
   $value = preg_replace('/[^\x20-\x7E]/', '', $value) ?? $value;
   $value = str_replace(';', ' ', $value);
+
+  if ($maxLen === null || $maxLen <= 0) {
+    return $value;
+  }
 
   if (function_exists('mb_substr')) {
     return mb_substr($value, 0, $maxLen, 'UTF-8');
@@ -96,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ((string)($_GET['export'] ?? '') ===
         continue;
       }
 
-      $name = catalog_qendra_clean_text((string)($r['name'] ?? ''), 18);
+      $name = catalog_qendra_clean_text((string)($r['name'] ?? ''));
       if ($name === '') {
         continue;
       }
