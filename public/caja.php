@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $token    = (string)($body['csrf_token'] ?? '');
-    $currency = strtoupper(trim((string)($body['currency'] ?? 'ARS')));
+    $currency = 'ARS';
     $items    = $body['items'] ?? [];
 
     if (!csrf_verify($token)) {
@@ -418,12 +418,9 @@ try {
           <div class="card-body px-4 py-4">
 
             <div class="mb-3">
-              <label class="form-label fw-semibold" for="cajaCurrency">Moneda</label>
-              <select class="form-select" id="cajaCurrency">
-                <option value="ARS" selected>ARS — Pesos</option>
-                <option value="USD">USD — Dólares</option>
-                <option value="EUR">EUR — Euros</option>
-              </select>
+              <div class="form-label fw-semibold">Moneda</div>
+              <div class="form-control bg-light">ARS — Pesos</div>
+              <input type="hidden" id="cajaCurrency" value="ARS">
             </div>
 
             <hr class="my-3">
