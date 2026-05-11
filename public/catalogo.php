@@ -75,6 +75,17 @@ function catalog_qendra_sale_type(string $unit): string
   return in_array($unit, ['kg', 'g', 'l', 'ml'], true) ? 'P' : 'U';
 }
 
+function catalog_qendra_export_unit(string $unit): ?string
+{
+  try {
+    $unit = catalog_normalize_unit($unit);
+  } catch (InvalidArgumentException $e) {
+    return null;
+  }
+
+  return in_array($unit, ['un', 'kg'], true) ? $unit : null;
+}
+
 function catalog_qendra_csv_field(string $value): string
 {
   if (strpos($value, '"') !== false) {
@@ -113,13 +124,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ((string)($_GET['export'] ?? '') ===
         continue;
       }
 
+      $unit = catalog_qendra_export_unit((string)($r['unit'] ?? ''));
+      if ($unit === null) {
+        continue;
+      }
+
       $name = catalog_qendra_clean_text((string)($r['name'] ?? ''));
       if ($name === '') {
         continue;
       }
 
       $price = number_format(((int)($r['price_cents'] ?? 0)) / 100, 2, ',', '');
-      $type = catalog_qendra_sale_type((string)($r['unit'] ?? ''));
+      $type = catalog_qendra_sale_type($unit);
       $fields = [
         $section,
         (string)$plu,
