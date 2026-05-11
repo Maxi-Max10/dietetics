@@ -75,6 +75,19 @@ function catalog_qendra_sale_type(string $unit): string
   return in_array($unit, ['kg', 'g', 'l', 'ml'], true) ? 'P' : 'U';
 }
 
+function catalog_qendra_csv_field(string $value): string
+{
+  if (strpos($value, '"') !== false) {
+    $value = str_replace('"', '""', $value);
+  }
+
+  if (strpbrk($value, "\";\r\n") !== false) {
+    return '"' . $value . '"';
+  }
+
+  return $value;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && ((string)($_GET['export'] ?? '') === 'qendra')) {
   try {
     $pdo = db($config);
@@ -107,7 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ((string)($_GET['export'] ?? '') ===
 
       $price = number_format(((int)($r['price_cents'] ?? 0)) / 100, 2, ',', '');
       $type = catalog_qendra_sale_type((string)($r['unit'] ?? ''));
-      $line = implode(';', [
+      $fields = [
         $section,
         (string)$plu,
         $name,
@@ -117,7 +130,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ((string)($_GET['export'] ?? '') ===
         $type,
         '0',
         '',
-      ]) . "\r\n";
+      ];
+      $line = implode(';', array_map('catalog_qendra_csv_field', $fields)) . "\r\n";
 
       if (function_exists('iconv')) {
         $converted = @iconv('UTF-8', 'Windows-1252//TRANSLIT', $line);
