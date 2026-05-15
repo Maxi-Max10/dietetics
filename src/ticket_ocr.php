@@ -42,11 +42,11 @@ function ticket_ocr_gemini_model(array $config): string
 function ticket_ocr_extract(array $config, string $filePath, string $mimeType): array
 {
     $geminiKey = (string)($config['ticket_ocr']['gemini_api_key'] ?? '');
-    if ($geminiKey !== '') {
-        return ticket_ocr_extract_gemini($config, $filePath, $mimeType);
+    if ($geminiKey === '') {
+        throw new RuntimeException('Falta GEMINI_API_KEY en config.');
     }
 
-    return ticket_ocr_extract_openai($config, $filePath, $mimeType);
+    return ticket_ocr_extract_gemini($config, $filePath, $mimeType);
 }
 
 function ticket_ocr_schema(): array
