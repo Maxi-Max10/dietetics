@@ -121,7 +121,7 @@ function invoice_compute_line_from_base_price(string $unit, float $quantity, flo
 /**
  * @param array<int, array{description:string, quantity:string|float|int, unit?:string, unit_price:string|float|int}> $items
  */
-function invoices_create(PDO $pdo, int $createdBy, string $customerName, string $customerEmail, string $detail, array $items, string $currency = 'ARS', string $customerDni = '', string $customerPhone = '', string $customerAddress = ''): int
+function invoices_create(PDO $pdo, int $createdBy, string $customerName, string $customerEmail, string $detail, array $items, string $currency = 'ARS', string $customerDni = '', string $customerPhone = '', string $customerAddress = '', ?DateTimeInterface $createdAt = null): int
 {
     $customerName = trim($customerName);
     $customerEmail = trim($customerEmail);
@@ -259,6 +259,12 @@ function invoices_create(PDO $pdo, int $createdBy, string $customerName, string 
         $cols[] = 'total_cents';
         $vals[] = ':total_cents';
         $params['total_cents'] = $totalCents;
+
+        if ($createdAt !== null) {
+            $cols[] = 'created_at';
+            $vals[] = ':created_at';
+            $params['created_at'] = $createdAt->format('Y-m-d H:i:s');
+        }
 
         $sql = 'INSERT INTO invoices (' . implode(', ', $cols) . ') VALUES (' . implode(', ', $vals) . ')';
         $stmt = $pdo->prepare($sql);

@@ -68,6 +68,7 @@ require_once __DIR__ . DIRECTORY_SEPARATOR . 'mailer.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'finance.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'catalog.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'speech.php';
+require_once __DIR__ . DIRECTORY_SEPARATOR . 'ticket_ocr.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'stock.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'sales.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'reports.php';

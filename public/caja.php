@@ -11,6 +11,80 @@ $appName = (string)($config['app']['name'] ?? 'Dietetic');
 $userId  = (int)auth_user_id();
 $csrf    = csrf_token();
 
+function caja_decimal(mixed $value): float
+{
+    if (is_int($value) || is_float($value)) {
+        $n = (float)$value;
+        return is_finite($n) ? $n : 0.0;
+    }
+
+    $s = trim((string)$value);
+    if ($s === '') {
+        return 0.0;
+    }
+    $s = str_replace(['$', ' '], '', $s);
+    if (str_contains($s, '.') && str_contains($s, ',')) {
+        $s = str_replace('.', '', $s);
+        $s = str_replace(',', '.', $s);
+    } elseif (str_contains($s, ',')) {
+        $s = str_replace(',', '.', $s);
+    }
+    $s = preg_replace('/[^0-9.\-]/', '', $s);
+    if (!is_string($s) || $s === '' || !is_numeric($s)) {
+        return 0.0;
+    }
+
+    $n = (float)$s;
+    return is_finite($n) ? $n : 0.0;
+}
+
+function caja_compute_line_total(float $quantity, string $unit, float $basePrice): float
+{
+    $unit = invoice_normalize_unit($unit);
+    if ($quantity <= 0 || $basePrice <= 0) {
+        return 0.0;
+    }
+    if ($unit === 'g' || $unit === 'ml') {
+        return round(($quantity / 1000.0) * $basePrice, 2);
+    }
+    return round($quantity * $basePrice, 2);
+}
+
+function caja_base_price_from_total(float $lineTotal, float $quantity, string $unit): float
+{
+    $unit = invoice_normalize_unit($unit);
+    if ($lineTotal <= 0 || $quantity <= 0) {
+        return 0.0;
+    }
+    if ($unit === 'g' || $unit === 'ml') {
+        return round(($lineTotal * 1000.0) / $quantity, 2);
+    }
+    return round($lineTotal / $quantity, 2);
+}
+
+function caja_parse_sale_datetime(string $value): ?DateTimeImmutable
+{
+    $value = trim($value);
+    if ($value === '') {
+        return null;
+    }
+    $value = str_replace('T', ' ', $value);
+    if (preg_match('/^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})(?::(\d{2}))?$/', $value, $m) !== 1) {
+        return null;
+    }
+    $time = $m[2] . ':' . ($m[3] ?? '00');
+    try {
+        return new DateTimeImmutable($m[1] . ' ' . $time, new DateTimeZone(date_default_timezone_get()));
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
+function caja_money_detail(float $amount): string
+{
+    return '$' . number_format($amount, 2, ',', '.');
+}
+
 // ── AJAX: guardar venta ──────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
@@ -26,9 +100,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    $token    = (string)($body['csrf_token'] ?? '');
-    $currency = 'ARS';
-    $items    = $body['items'] ?? [];
+    $token        = (string)($body['csrf_token'] ?? '');
+    $currency     = 'ARS';
+    $items        = $body['items'] ?? [];
+    $ticketTotal  = caja_decimal($body['ticket_total'] ?? 0);
+    $saleDateTime = caja_parse_sale_datetime((string)($body['sale_datetime'] ?? ''));
 
     if (!csrf_verify($token)) {
         http_response_code(403);
@@ -43,11 +119,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $invoiceItems = [];
+    $detailLines = ['Venta cargada desde ticket de balanza (IA/OCR).'];
+    if ($saleDateTime !== null) {
+        $detailLines[] = 'Fecha/hora ticket: ' . $saleDateTime->format('Y-m-d H:i:s');
+    }
+    if ($ticketTotal > 0) {
+        $detailLines[] = 'Total ticket detectado: ' . caja_money_detail($ticketTotal);
+    }
+    $detailItemLines = [];
+
     foreach ($items as $it) {
-        $desc  = trim((string)($it['description'] ?? ''));
-        $qty   = (float)($it['quantity'] ?? 0);
-        $unit  = (string)($it['unit'] ?? 'u');
-        $price = (float)($it['unit_price'] ?? 0);
+        $plu = preg_replace('/\D+/', '', (string)($it['plu'] ?? ''));
+        $plu = is_string($plu) ? ltrim($plu, '0') : '';
+
+        $desc      = trim((string)($it['description'] ?? ''));
+        $qty       = caja_decimal($it['quantity'] ?? 0);
+        $unit      = invoice_normalize_unit((string)($it['unit'] ?? 'u'));
+        $price     = caja_decimal($it['unit_price'] ?? 0);
+        $lineTotal = caja_decimal($it['line_total'] ?? 0);
+
+        if ($desc === '' && $plu !== '') {
+            $desc = 'PLU ' . $plu;
+        }
+
+        if ($price <= 0 && $lineTotal > 0 && $qty > 0) {
+            $price = caja_base_price_from_total($lineTotal, $qty, $unit);
+        }
+
+        if ($price > 0 && $lineTotal > 0) {
+            $computed = caja_compute_line_total($qty, $unit, $price);
+            if ($computed > 0 && abs($computed - $lineTotal) > 0.05) {
+                $price = caja_base_price_from_total($lineTotal, $qty, $unit);
+            }
+        }
 
         if ($desc === '' || $qty <= 0 || $price <= 0) {
             http_response_code(400);
@@ -61,6 +165,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'unit'        => $unit,
             'unit_price'  => $price,
         ];
+
+        $detailItemLines[] = ($plu !== '' ? ('PLU ' . $plu . ' - ') : '') . $desc
+            . ' | Cantidad: ' . (string)$qty . ' ' . $unit
+            . ' | Precio base: ' . caja_money_detail($price)
+            . ($lineTotal > 0 ? (' | Importe: ' . caja_money_detail($lineTotal)) : '');
+    }
+
+    if (count($detailItemLines) > 0) {
+        $detailLines[] = 'Productos detectados:';
+        foreach ($detailItemLines as $line) {
+            $detailLines[] = $line;
+        }
     }
 
     try {
@@ -70,9 +186,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $userId,
             'Mostrador',   // cliente genérico para ventas rápidas
             '',            // email
-            'Venta rápida (caja)',
+            implode("\n", $detailLines),
             $invoiceItems,
-            $currency
+            $currency,
+            '',
+            '',
+            '',
+            $saleDateTime
         );
 
         echo json_encode([
@@ -235,22 +355,52 @@ try {
 
     .table td, .table th { border-color: rgba(148,163,184,0.35); }
 
-    /* Scan input destacado */
-    .scan-input-wrap { position: relative; }
-    .scan-input-wrap input {
-      border-radius: 14px;
-      font-size: 1.1rem;
-      padding: .75rem 1rem .75rem 3rem;
-      border: 2px solid rgba(var(--accent-rgb),.25);
-      transition: border-color .2s;
+    .ticket-upload {
+      border: 2px dashed rgba(var(--accent-rgb), .25);
+      border-radius: 16px;
+      background: rgba(255,255,255,.64);
+      padding: 1rem;
     }
-    .scan-input-wrap input:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(var(--accent-rgb),.15);
+
+    .ticket-preview {
+      display: none;
+      width: 100%;
+      max-height: 260px;
+      object-fit: contain;
+      border-radius: 12px;
+      background: rgba(15,23,42,.04);
+      border: 1px solid rgba(15,23,42,.08);
     }
-    .scan-input-wrap .scan-icon {
-      position: absolute; left: 1rem; top: 50%; transform: translateY(-50%);
-      color: var(--muted); pointer-events: none;
+
+    .ticket-preview.is-visible { display: block; }
+
+    .ticket-status {
+      min-height: 1.3em;
+      color: var(--muted);
+    }
+
+    .editable-cell {
+      min-width: 96px;
+    }
+
+    .editable-cell--product {
+      min-width: 190px;
+    }
+
+    .cart-input {
+      min-width: 0;
+      border-radius: 10px;
+    }
+
+    .confidence-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: .18rem .5rem;
+      border-radius: 999px;
+      background: rgba(15,23,42,.06);
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 650;
     }
 
     /* Total destacado */
@@ -356,52 +506,64 @@ try {
   <div class="container">
     <div class="row g-4">
 
-      <!-- Panel izquierdo: escaneo + carrito -->
+      <!-- Panel izquierdo: ticket + venta editable -->
       <div class="col-12 col-lg-8">
         <div class="card card-lift">
           <div class="card-header card-header-clean bg-white px-4 py-3">
             <p class="muted-label mb-1">Modo caja</p>
-            <h2 class="h5 mb-0">Escanear</h2>
+            <h2 class="h5 mb-0">Ticket de balanza</h2>
           </div>
           <div class="card-body px-4 py-4">
 
-            <!-- Campo de escaneo -->
-            <div class="scan-input-wrap mb-2">
-              <svg class="scan-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M3 5v2"/><path d="M3 19v-2"/><path d="M7 5h-.5A1.5 1.5 0 0 0 5 6.5V7"/><path d="M7 19h-.5A1.5 1.5 0 0 1 5 17.5V17"/>
-                <path d="M21 5v2"/><path d="M21 19v-2"/><path d="M17 5h.5A1.5 1.5 0 0 1 19 6.5V7"/><path d="M17 19h.5A1.5 1.5 0 0 0 19 17.5V17"/>
-                <line x1="7" y1="12" x2="7" y2="12"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="17" y1="12" x2="17" y2="12"/>
-              </svg>
-              <input type="text" id="cajaScanInput" class="form-control" placeholder="Ingresá o escaneá el código del ticket..." inputmode="numeric" autocomplete="off" autofocus>
+            <div class="ticket-upload mb-3">
+              <div class="row g-3 align-items-center">
+                <div class="col-12 col-md">
+                  <label for="cajaTicketImage" class="form-label fw-semibold mb-1">Foto del ticket</label>
+                  <input type="file" id="cajaTicketImage" class="form-control" accept="image/*" capture="environment">
+                </div>
+                <div class="col-12 col-md-auto">
+                  <button type="button" id="cajaAnalyzeTicket" class="btn btn-primary action-btn w-100" disabled>
+                    Leer ticket con IA
+                  </button>
+                </div>
+              </div>
+              <img id="cajaTicketPreview" class="ticket-preview mt-3" alt="Vista previa del ticket">
+              <div id="cajaTicketStatus" class="ticket-status small mt-2"></div>
             </div>
-            <div id="cajaScanError" class="text-danger small mb-3" style="min-height:1.2em"></div>
 
-            <!-- Tabla carrito -->
+            <div id="cajaTicketWarnings" class="mb-3" style="display:none"></div>
+
+            <!-- Tabla venta editable -->
             <div class="table-responsive">
               <table class="table align-middle" id="cajaCart">
                 <thead>
                   <tr>
+                    <th style="width:90px">PLU</th>
                     <th>Producto</th>
                     <th style="width:110px">Cant.</th>
                     <th style="width:60px">Un.</th>
-                    <th style="width:120px">Precio base</th>
+                    <th style="width:130px">Precio base</th>
                     <th style="width:120px">Subtotal</th>
                     <th style="width:44px"></th>
                   </tr>
                 </thead>
                 <tbody id="cajaCartBody">
                   <tr id="cajaEmptyRow">
-                    <td colspan="6" class="text-center text-muted py-4">
+                    <td colspan="7" class="text-center text-muted py-4">
                       <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mb-2 d-block mx-auto opacity-50" aria-hidden="true">
-                        <path d="M3 5v2"/><path d="M3 19v-2"/><path d="M7 5h-.5A1.5 1.5 0 0 0 5 6.5V7"/><path d="M7 19h-.5A1.5 1.5 0 0 1 5 17.5V17"/>
-                        <path d="M21 5v2"/><path d="M21 19v-2"/><path d="M17 5h.5A1.5 1.5 0 0 1 19 6.5V7"/><path d="M17 19h.5A1.5 1.5 0 0 0 19 17.5V17"/>
-                        <line x1="7" y1="12" x2="7" y2="12"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="17" y1="12" x2="17" y2="12"/>
+                        <path d="M4 7h3l2-2h6l2 2h3v12H4z"/>
+                        <circle cx="12" cy="13" r="3"/>
                       </svg>
-                      Escaneá una etiqueta para empezar
+                      Carga una foto para detectar productos
                     </td>
                   </tr>
                 </tbody>
               </table>
+            </div>
+            <div class="d-flex justify-content-end">
+              <button type="button" id="cajaAddItem" class="btn btn-outline-primary btn-sm action-btn">
+                Agregar producto
+              </button>
             </div>
 
           </div>
@@ -423,11 +585,20 @@ try {
               <input type="hidden" id="cajaCurrency" value="ARS">
             </div>
 
+            <div class="mb-3">
+              <label for="cajaSaleDatetime" class="form-label fw-semibold">Fecha/hora de venta</label>
+              <input type="datetime-local" id="cajaSaleDatetime" class="form-control">
+            </div>
+
             <hr class="my-3">
 
             <div class="d-flex justify-content-between align-items-center mb-1">
               <span class="text-muted">Ítems</span>
               <span id="cajaItemCount" class="fw-semibold">0</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span class="text-muted">Total detectado</span>
+              <span id="cajaDetectedTotal" class="fw-semibold">-</span>
             </div>
             <div class="d-flex justify-content-between align-items-center mb-4">
               <span class="fw-semibold">Total</span>
@@ -458,23 +629,32 @@ try {
   'use strict';
 
   const CSRF = <?= json_encode($csrf) ?>;
+  const SAVE_URL = window.location.pathname || '/caja';
 
-  const scanInput    = document.getElementById('cajaScanInput');
-  const scanError    = document.getElementById('cajaScanError');
-  const cartBody     = document.getElementById('cajaCartBody');
-  const emptyRow     = document.getElementById('cajaEmptyRow');
-  const itemCountEl  = document.getElementById('cajaItemCount');
-  const totalDisplay = document.getElementById('cajaTotalDisplay');
-  const confirmBtn   = document.getElementById('cajaConfirm');
-  const clearBtn     = document.getElementById('cajaClear');
-  const saleResult   = document.getElementById('cajaSaleResult');
-  const currencyEl   = document.getElementById('cajaCurrency');
+  const ticketInput      = document.getElementById('cajaTicketImage');
+  const analyzeBtn       = document.getElementById('cajaAnalyzeTicket');
+  const ticketPreview    = document.getElementById('cajaTicketPreview');
+  const ticketStatus     = document.getElementById('cajaTicketStatus');
+  const ticketWarnings   = document.getElementById('cajaTicketWarnings');
+  const addItemBtn       = document.getElementById('cajaAddItem');
+  const cartBody         = document.getElementById('cajaCartBody');
+  const emptyRow         = document.getElementById('cajaEmptyRow');
+  const itemCountEl      = document.getElementById('cajaItemCount');
+  const detectedTotalEl  = document.getElementById('cajaDetectedTotal');
+  const totalDisplay     = document.getElementById('cajaTotalDisplay');
+  const saleDatetimeEl   = document.getElementById('cajaSaleDatetime');
+  const confirmBtn       = document.getElementById('cajaConfirm');
+  const clearBtn         = document.getElementById('cajaClear');
+  const saleResult       = document.getElementById('cajaSaleResult');
+  const currencyEl       = document.getElementById('cajaCurrency');
 
   const money = new Intl.NumberFormat('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   // ── Cart state ──────────────────────────────────────────────────────────────
   // Cada ítem: { description, quantity, unit, unit_price, line_total }
   const cart = [];
+  let detectedTicketTotal = 0;
+  let previewUrl = '';
 
   function computeLineTotal(quantity, unit, unitPrice) {
     if (unit === 'g' || unit === 'ml') {
@@ -483,50 +663,55 @@ try {
     return quantity * unitPrice;
   }
 
+  function computeBasePrice(lineTotal, quantity, unit) {
+    if (lineTotal <= 0 || quantity <= 0) return 0;
+    if (unit === 'g' || unit === 'ml') {
+      return (lineTotal * 1000) / quantity;
+    }
+    return lineTotal / quantity;
+  }
+
   function cartTotal() {
     return cart.reduce(function (sum, it) { return sum + it.line_total; }, 0);
   }
 
   function updateSummary() {
     const total = cartTotal();
-    const cur   = currencyEl.value;
     itemCountEl.textContent = cart.length;
     totalDisplay.textContent = '$' + money.format(total);
+    detectedTotalEl.textContent = detectedTicketTotal > 0 ? ('$' + money.format(detectedTicketTotal)) : '-';
+    detectedTotalEl.classList.toggle('text-danger', detectedTicketTotal > 0 && Math.abs(total - detectedTicketTotal) > 0.10);
     confirmBtn.disabled = cart.length === 0;
     clearBtn.style.display = cart.length === 0 ? 'none' : '';
     emptyRow.style.display = cart.length === 0 ? '' : 'none';
   }
 
-  function addCartRow(item, tr) {
-    // Crea o actualiza la fila de la tabla
-    if (!tr) {
-      tr = document.createElement('tr');
-      cartBody.insertBefore(tr, emptyRow);
-    }
+  function renderCart() {
+    cartBody.querySelectorAll('tr:not(#cajaEmptyRow)').forEach(function (r) { r.remove(); });
+    cart.forEach(function (item, idx) { addCartRow(item, idx); });
+    updateSummary();
+  }
 
-    const unitLabel = item.unit === 'u' ? 'u'
-      : item.unit === 'g'  ? 'g'
-      : item.unit === 'kg' ? 'kg'
-      : item.unit === 'ml' ? 'ml'
-      : item.unit === 'l'  ? 'l'
-      : item.unit;
+  function addCartRow(item, idx) {
+    const tr = document.createElement('tr');
+    tr.dataset.index = String(idx);
+    cartBody.insertBefore(tr, emptyRow);
 
-    const qtyDisplay = Number.isInteger(item.quantity)
-      ? item.quantity
-      : parseFloat(item.quantity.toFixed(3));
+    const confidence = item.confidence > 0
+      ? '<div class="confidence-chip mt-1">' + Math.round(item.confidence * 100) + '% IA</div>'
+      : '';
 
     tr.innerHTML =
-      '<td>' + escHtml(item.description) + '</td>' +
-      '<td class="text-end">' + qtyDisplay + '</td>' +
-      '<td>' + unitLabel + '</td>' +
-      '<td class="text-end">$' + money.format(item.unit_price) + '</td>' +
-      '<td class="text-end fw-semibold">$' + money.format(item.line_total) + '</td>' +
+      '<td class="editable-cell"><input type="text" class="form-control form-control-sm cart-input" data-field="plu" value="' + escAttr(item.plu || '') + '" inputmode="numeric"></td>' +
+      '<td class="editable-cell editable-cell--product"><input type="text" class="form-control form-control-sm cart-input" data-field="description" value="' + escAttr(item.description) + '">' + confidence + '</td>' +
+      '<td class="editable-cell"><input type="number" min="0" step="0.001" class="form-control form-control-sm cart-input text-end" data-field="quantity" value="' + escAttr(formatInputNumber(item.quantity)) + '"></td>' +
+      '<td><select class="form-select form-select-sm cart-input" data-field="unit">' + unitOptions(item.unit) + '</select></td>' +
+      '<td class="editable-cell"><input type="number" min="0" step="0.01" class="form-control form-control-sm cart-input text-end" data-field="unit_price" value="' + escAttr(formatInputNumber(item.unit_price)) + '"></td>' +
+      '<td class="editable-cell"><input type="number" min="0" step="0.01" class="form-control form-control-sm cart-input text-end fw-semibold" data-field="line_total" value="' + escAttr(formatInputNumber(item.line_total)) + '"></td>' +
       '<td><button type="button" class="btn btn-outline-danger btn-sm" data-remove aria-label="Quitar">&times;</button></td>';
 
     tr.classList.add('row-scanned');
     setTimeout(function () { tr.classList.remove('row-scanned'); }, 900);
-
-    return tr;
   }
 
   function escHtml(str) {
@@ -535,106 +720,229 @@ try {
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
+  function escAttr(str) {
+    return escHtml(str).replace(/'/g, '&#039;');
+  }
+
+  function toNumber(value) {
+    const n = Number(String(value || '').replace(',', '.'));
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function formatInputNumber(value) {
+    const n = Number(value || 0);
+    if (!Number.isFinite(n)) return '0';
+    return String(Math.round(n * 1000) / 1000).replace(/\.0+$/, '');
+  }
+
+  function normalizeUnit(unit) {
+    const u = String(unit || '').toLowerCase().trim();
+    if (['g', 'kg', 'ml', 'l', 'u'].includes(u)) return u;
+    if (['un', 'uni', 'unidad', 'unidades'].includes(u)) return 'u';
+    return 'u';
+  }
+
+  function unitOptions(current) {
+    const unit = normalizeUnit(current);
+    return ['u', 'g', 'kg', 'ml', 'l'].map(function (opt) {
+      return '<option value="' + opt + '"' + (opt === unit ? ' selected' : '') + '>' + opt + '</option>';
+    }).join('');
+  }
+
+  function normalizeTicketItem(raw) {
+    const unit = normalizeUnit(raw.unit);
+    const quantity = toNumber(raw.quantity) > 0 ? toNumber(raw.quantity) : 1;
+    let lineTotal = toNumber(raw.line_total);
+    let unitPrice = toNumber(raw.unit_price);
+
+    if (unitPrice <= 0 && lineTotal > 0) {
+      unitPrice = computeBasePrice(lineTotal, quantity, unit);
+    }
+    if (lineTotal <= 0 && unitPrice > 0) {
+      lineTotal = computeLineTotal(quantity, unit, unitPrice);
+    }
+
+    const plu = String(raw.plu || '').replace(/\D/g, '');
+    const name = String(raw.name || raw.catalog_name || '').trim() || (plu ? ('PLU ' + plu) : 'Producto ticket');
+
+    return {
+      plu: plu,
+      description: name,
+      quantity: quantity,
+      unit: unit,
+      unit_price: Math.round(unitPrice * 100) / 100,
+      line_total: Math.round(lineTotal * 100) / 100,
+      confidence: Math.max(0, Math.min(1, toNumber(raw.confidence))),
+    };
+  }
+
+  function showTicketStatus(message, type) {
+    ticketStatus.className = 'ticket-status small mt-2' + (type ? (' text-' + type) : '');
+    ticketStatus.textContent = message || '';
+  }
+
+  function showWarnings(warnings) {
+    if (!warnings || warnings.length === 0) {
+      ticketWarnings.style.display = 'none';
+      ticketWarnings.innerHTML = '';
+      return;
+    }
+    ticketWarnings.style.display = '';
+    ticketWarnings.innerHTML = '<div class="alert alert-warning py-2 mb-0 rounded-3">'
+      + warnings.map(escHtml).join('<br>') + '</div>';
+  }
+
+  function clearCart() {
+    cart.length = 0;
+    detectedTicketTotal = 0;
+    renderCart();
+    showWarnings([]);
+  }
+
   // ── Eliminar ítem ────────────────────────────────────────────────────────────
   cartBody.addEventListener('click', function (e) {
     const btn = e.target.closest('[data-remove]');
     if (!btn) return;
     const tr  = btn.closest('tr');
-    const idx = Array.from(cartBody.querySelectorAll('tr:not(#cajaEmptyRow)')).indexOf(tr);
+    const idx = Number(tr && tr.dataset ? tr.dataset.index : -1);
     if (idx < 0) return;
     cart.splice(idx, 1);
-    tr.remove();
+    renderCart();
+  });
+
+  cartBody.addEventListener('input', updateItemFromControl);
+  cartBody.addEventListener('change', updateItemFromControl);
+
+  function updateItemFromControl(e) {
+    const control = e.target.closest('[data-field]');
+    if (!control) return;
+    const tr = control.closest('tr');
+    const idx = Number(tr && tr.dataset ? tr.dataset.index : -1);
+    const item = cart[idx];
+    if (!item) return;
+
+    const field = control.dataset.field;
+    if (field === 'plu') {
+      item.plu = String(control.value || '').replace(/\D/g, '');
+      control.value = item.plu;
+    } else if (field === 'description') {
+      item.description = String(control.value || '').trim();
+    } else if (field === 'unit') {
+      item.unit = normalizeUnit(control.value);
+      item.line_total = computeLineTotal(item.quantity, item.unit, item.unit_price);
+      const lineInput = tr.querySelector('[data-field="line_total"]');
+      if (lineInput) lineInput.value = formatInputNumber(item.line_total);
+    } else if (field === 'line_total') {
+      item.line_total = toNumber(control.value);
+      item.unit_price = computeBasePrice(item.line_total, item.quantity, item.unit);
+      const priceInput = tr.querySelector('[data-field="unit_price"]');
+      if (priceInput) priceInput.value = formatInputNumber(item.unit_price);
+    } else {
+      item[field] = toNumber(control.value);
+      item.line_total = computeLineTotal(item.quantity, item.unit, item.unit_price);
+      const lineInput = tr.querySelector('[data-field="line_total"]');
+      if (lineInput) lineInput.value = formatInputNumber(item.line_total);
+    }
+
     updateSummary();
+  }
+
+  addItemBtn.addEventListener('click', function () {
+    cart.push({
+      plu: '',
+      description: 'Producto ticket',
+      quantity: 1,
+      unit: 'u',
+      unit_price: 0,
+      line_total: 0,
+      confidence: 0,
+    });
+    renderCart();
   });
 
   // ── Limpiar carrito ──────────────────────────────────────────────────────────
   clearBtn.addEventListener('click', function () {
-    cart.length = 0;
-    cartBody.querySelectorAll('tr:not(#cajaEmptyRow)').forEach(function (r) { r.remove(); });
-    updateSummary();
+    clearCart();
     saleResult.style.display = 'none';
-    scanInput.focus();
   });
 
   // ── Escaneo ──────────────────────────────────────────────────────────────────
-  let scanTimer = 0;
+  ticketInput.addEventListener('change', function () {
+    const file = ticketInput.files && ticketInput.files[0] ? ticketInput.files[0] : null;
+    analyzeBtn.disabled = !file;
+    showWarnings([]);
+    saleResult.style.display = 'none';
 
-  function showScanError(msg) { scanError.textContent = msg; }
-  function clearScanError()   { scanError.textContent = ''; }
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      previewUrl = '';
+    }
 
-  function processBarcode(raw) {
-    const barcode = raw.replace(/\D/g, '');
-    if (barcode.length !== 13 || barcode[0] !== '2') {
-      showScanError('Código inválido: se esperan 13 dígitos con prefijo 2');
+    if (!file) {
+      ticketPreview.classList.remove('is-visible');
+      ticketPreview.removeAttribute('src');
+      showTicketStatus('', '');
       return;
     }
-    clearScanError();
 
-    fetch('/api_scan_barcode.php?barcode=' + encodeURIComponent(barcode), {
-      headers: { 'Accept': 'application/json' }
+    previewUrl = URL.createObjectURL(file);
+    ticketPreview.src = previewUrl;
+    ticketPreview.classList.add('is-visible');
+    showTicketStatus('Foto lista para analizar.', '');
+  });
+
+  analyzeBtn.addEventListener('click', function () {
+    const file = ticketInput.files && ticketInput.files[0] ? ticketInput.files[0] : null;
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('csrf_token', CSRF);
+    formData.append('ticket_image', file);
+
+    analyzeBtn.disabled = true;
+    analyzeBtn.textContent = 'Leyendo...';
+    showTicketStatus('Analizando ticket con IA/OCR...', '');
+    showWarnings([]);
+
+    fetch('/api_ticket_ocr.php', {
+      method: 'POST',
+      headers: { 'Accept': 'application/json' },
+      body: formData,
     })
       .then(function (res) { return res.json(); })
       .then(function (data) {
         if (!data.ok) {
-          showScanError(data.error || 'Producto no encontrado');
+          showTicketStatus(data.error || 'No se pudo leer el ticket.', 'danger');
+          if (data.ticket && data.ticket.warnings) showWarnings(data.ticket.warnings);
           return;
         }
 
-        const unit           = data.unit || 'u';
-        const totalCents     = data.price_cents;
-        const catalogCents   = data.catalog_price_cents || 0;
-        let quantity, unitPrice;
+        const ticket = data.ticket || {};
+        const items = Array.isArray(ticket.items) ? ticket.items : [];
+        cart.length = 0;
+        items.forEach(function (raw) { cart.push(normalizeTicketItem(raw)); });
+        detectedTicketTotal = toNumber(ticket.total);
 
-        if ((unit === 'g' || unit === 'kg' || unit === 'l' || unit === 'ml') && catalogCents > 0) {
-          // Derivar cantidad a partir del importe total y el precio del catálogo
-          if (unit === 'g') {
-            quantity  = Math.round(totalCents * 1000 / catalogCents);
-          } else if (unit === 'ml') {
-            quantity  = Math.round(totalCents * 1000 / catalogCents);
-          } else {
-            quantity  = Math.round(totalCents / catalogCents * 1000) / 1000;
-          }
-          unitPrice = data.catalog_price;
-        } else {
-          quantity  = 1;
-          unitPrice = data.price;
+        if (ticket.sale_date && ticket.sale_time) {
+          saleDatetimeEl.value = String(ticket.sale_date) + 'T' + String(ticket.sale_time).slice(0, 5);
         }
 
-        const lineTotal = computeLineTotal(quantity, unit, unitPrice);
-
-        const item = {
-          description : data.name,
-          quantity    : quantity,
-          unit        : unit,
-          unit_price  : unitPrice,
-          line_total  : lineTotal,
-        };
-
-        cart.push(item);
-        addCartRow(item);
-        updateSummary();
-        scanInput.value = '';
-        scanInput.focus();
+        const warnings = Array.isArray(ticket.warnings) ? ticket.warnings.slice() : [];
+        const total = cartTotal();
+        if (detectedTicketTotal > 0 && Math.abs(total - detectedTicketTotal) > 0.10) {
+          warnings.push('El total detectado no coincide con la suma editable. Revisalo antes de confirmar.');
+        }
+        showWarnings(warnings);
+        renderCart();
+        showTicketStatus('Ticket leido. Revisa y edita la venta antes de confirmar.', 'success');
       })
       .catch(function () {
-        showScanError('Error de red al buscar el producto');
+        showTicketStatus('Error de red al leer el ticket.', 'danger');
+      })
+      .finally(function () {
+        analyzeBtn.disabled = !(ticketInput.files && ticketInput.files[0]);
+        analyzeBtn.textContent = 'Leer ticket con IA';
       });
-  }
-
-  scanInput.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      clearTimeout(scanTimer);
-      processBarcode(scanInput.value);
-    }
-  });
-
-  scanInput.addEventListener('input', function () {
-    clearTimeout(scanTimer);
-    const val = scanInput.value.replace(/\D/g, '');
-    if (val.length >= 13) {
-      scanTimer = setTimeout(function () { processBarcode(val); }, 80);
-    }
   });
 
   // ── Confirmar venta ──────────────────────────────────────────────────────────
@@ -648,17 +956,21 @@ try {
     const payload = {
       csrf_token : CSRF,
       currency   : currencyEl.value,
+      sale_datetime: saleDatetimeEl.value,
+      ticket_total: detectedTicketTotal,
       items      : cart.map(function (it) {
         return {
+          plu         : it.plu,
           description : it.description,
           quantity    : it.quantity,
           unit        : it.unit,
           unit_price  : it.unit_price,
+          line_total  : it.line_total,
         };
       }),
     };
 
-    fetch('/caja.php', {
+    fetch(SAVE_URL, {
       method  : 'POST',
       headers : { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body    : JSON.stringify(payload),
@@ -668,15 +980,12 @@ try {
         if (data.ok) {
           // Mostrar éxito, limpiar carrito
           showResult('success', data.message || 'Venta guardada');
-          cart.length = 0;
-          cartBody.querySelectorAll('tr:not(#cajaEmptyRow)').forEach(function (r) { r.remove(); });
-          updateSummary();
+          clearCart();
         } else {
           showResult('danger', data.error || 'Error al guardar la venta');
           confirmBtn.disabled = false;
         }
         confirmBtn.textContent = 'Confirmar venta';
-        scanInput.focus();
       })
       .catch(function () {
         showResult('danger', 'Error de red. Intentá de nuevo.');
@@ -695,7 +1004,6 @@ try {
   }
 
   updateSummary();
-  scanInput.focus();
 })();
 </script>
 </body>

@@ -33,6 +33,10 @@ return [
         'openai_api_key' => getenv('OPENAI_API_KEY') ?: (defined('OPENAI_API_KEY') ? OPENAI_API_KEY : ''),
         'openai_transcribe_model' => getenv('OPENAI_TRANSCRIBE_MODEL') ?: (defined('OPENAI_TRANSCRIBE_MODEL') ? OPENAI_TRANSCRIBE_MODEL : 'whisper-1'),
     ],
+    'ticket_ocr' => [
+        'openai_api_key' => getenv('OPENAI_API_KEY') ?: (defined('OPENAI_API_KEY') ? OPENAI_API_KEY : ''),
+        'openai_model' => getenv('OPENAI_TICKET_OCR_MODEL') ?: (defined('OPENAI_TICKET_OCR_MODEL') ? OPENAI_TICKET_OCR_MODEL : 'gpt-4.1-mini'),
+    ],
     'google_maps' => [
         'api_key' => getenv('GOOGLE_MAPS_API_KEY') ?: (defined('GOOGLE_MAPS_API_KEY') ? GOOGLE_MAPS_API_KEY : ''),
     ],
