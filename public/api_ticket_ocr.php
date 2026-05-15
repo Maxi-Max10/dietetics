@@ -88,8 +88,17 @@ function ticket_ocr_safe_error(string $rawMsg): string
     if (str_contains($msg, 'gemini') && (str_contains($msg, 'model') || str_contains($msg, 'not found') || str_contains($msg, 'not supported'))) {
         return 'El modelo Gemini configurado no esta disponible. Proba GEMINI_TICKET_OCR_MODEL=gemini-2.5-flash.';
     }
+    if (str_contains($msg, 'requested entity was not found')) {
+        return 'El modelo Gemini configurado no existe o no esta disponible para tu API key. Proba GEMINI_TICKET_OCR_MODEL=gemini-2.5-flash.';
+    }
+    if (str_contains($msg, 'unknown name') || str_contains($msg, 'invalid json payload') || str_contains($msg, 'responseformat') || str_contains($msg, 'responsemimetype') || str_contains($msg, 'responseschema')) {
+        return 'Gemini rechazo el formato del pedido OCR. Actualiza los archivos del OCR y proba de nuevo.';
+    }
     if (str_contains($msg, 'gemini') && (str_contains($msg, 'quota') || str_contains($msg, 'billing') || str_contains($msg, 'resource_exhausted'))) {
         return 'La cuenta de Gemini no tiene credito/cupo disponible para usar OCR.';
+    }
+    if (str_contains($msg, 'gemini ocr fallo')) {
+        return 'Gemini rechazo el pedido OCR luego de varios reintentos. Proba GEMINI_TICKET_OCR_MODEL=gemini-2.5-flash o revisa error_log.';
     }
     if (str_contains($msg, 'gemini devolvio') || str_contains($msg, 'gemini no devolvio')) {
         return 'Gemini no pudo devolver una lectura usable. Proba con una foto mas nitida y centrada.';

@@ -152,6 +152,7 @@ function ticket_ocr_prompt(): string
         'Todos los importes deben ser numeros en pesos argentinos, sin simbolo $, sin separadores de miles.',
         'La fecha debe salir en ISO YYYY-MM-DD y la hora en HH:MM:SS. Si el mes aparece como MAY, interpretalo como mayo.',
         'No inventes datos. Si un campo no se puede leer, usa "" o 0 y agrega una advertencia breve.',
+        'Objeto JSON requerido: {"sale_date":"","sale_time":"","items":[{"plu":"","name":"","quantity":0,"unit":"g","unit_price":0,"line_total":0,"confidence":0}],"total":0,"confidence":0,"warnings":[],"raw_text":""}.',
         'JSON obligatorio.',
     ]);
 }
@@ -173,22 +174,35 @@ function ticket_ocr_extract_gemini(array $config, string $filePath, string $mime
         throw new RuntimeException('No se pudo leer la imagen.');
     }
 
-    $payload = ticket_ocr_gemini_payload($mimeType, base64_encode($bytes), true);
-    $decoded = ticket_ocr_gemini_request($apiKey, $model, $payload);
-    $text = ticket_ocr_gemini_response_text($decoded);
-    if ($text === '') {
-        throw new RuntimeException('Gemini no devolvio texto util.');
+    $base64Image = base64_encode($bytes);
+    $errors = [];
+    foreach (['modern_schema', 'legacy_schema', 'prompt_json'] as $mode) {
+        try {
+            $payload = ticket_ocr_gemini_payload($mimeType, $base64Image, $mode);
+            $decoded = ticket_ocr_gemini_request($apiKey, $model, $payload);
+            $text = ticket_ocr_gemini_response_text($decoded);
+            if ($text === '') {
+                throw new RuntimeException('Gemini no devolvio texto util.');
+            }
+
+            $data = json_decode($text, true);
+            if (!is_array($data)) {
+                throw new RuntimeException('Gemini devolvio una respuesta que no es JSON valido.');
+            }
+
+            return ticket_ocr_normalize_result($data);
+        } catch (Throwable $e) {
+            $errors[] = '[' . $mode . '] ' . $e->getMessage();
+            if (!ticket_ocr_gemini_can_retry((string)$e->getMessage())) {
+                throw $e;
+            }
+        }
     }
 
-    $data = json_decode($text, true);
-    if (!is_array($data)) {
-        throw new RuntimeException('Gemini devolvio una respuesta que no es JSON valido.');
-    }
-
-    return ticket_ocr_normalize_result($data);
+    throw new RuntimeException('Gemini OCR fallo: ' . implode(' | ', array_slice($errors, 0, 3)));
 }
 
-function ticket_ocr_gemini_payload(string $mimeType, string $base64Image, bool $structured): array
+function ticket_ocr_gemini_payload(string $mimeType, string $base64Image, string $mode): array
 {
     $payload = [
         'contents' => [
@@ -213,16 +227,37 @@ function ticket_ocr_gemini_payload(string $mimeType, string $base64Image, bool $
         ],
     ];
 
-    if ($structured) {
+    if ($mode === 'modern_schema') {
         $payload['generationConfig']['responseFormat'] = [
             'text' => [
                 'mimeType' => 'application/json',
                 'schema' => ticket_ocr_gemini_schema(),
             ],
         ];
+    } elseif ($mode === 'legacy_schema') {
+        $payload['generationConfig']['responseMimeType'] = 'application/json';
+        $payload['generationConfig']['responseSchema'] = ticket_ocr_gemini_schema();
     }
 
     return $payload;
+}
+
+function ticket_ocr_gemini_can_retry(string $message): bool
+{
+    $m = strtolower($message);
+    if (str_contains($m, 'api key') || str_contains($m, 'permission_denied') || str_contains($m, 'quota') || str_contains($m, 'billing') || str_contains($m, 'resource_exhausted')) {
+        return false;
+    }
+    if (str_contains($m, 'unknown name') || str_contains($m, 'invalid json payload') || str_contains($m, 'invalid_argument')) {
+        return true;
+    }
+    if (str_contains($m, 'responseformat') || str_contains($m, 'responsemimetype') || str_contains($m, 'responseschema') || str_contains($m, 'schema')) {
+        return true;
+    }
+    if (str_contains($m, 'json valido') || str_contains($m, 'no devolvio texto')) {
+        return true;
+    }
+    return false;
 }
 
 function ticket_ocr_gemini_request(string $apiKey, string $model, array $payload): array
