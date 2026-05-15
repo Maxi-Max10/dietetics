@@ -24,6 +24,31 @@ function ticket_ocr_openai_model(array $config): string
     return $model !== '' ? $model : 'gpt-4.1-mini';
 }
 
+function ticket_ocr_gemini_api_key(array $config): string
+{
+    $key = (string)($config['ticket_ocr']['gemini_api_key'] ?? '');
+    if ($key === '') {
+        throw new RuntimeException('Falta GEMINI_API_KEY en config.');
+    }
+    return $key;
+}
+
+function ticket_ocr_gemini_model(array $config): string
+{
+    $model = (string)($config['ticket_ocr']['gemini_model'] ?? '');
+    return $model !== '' ? $model : 'gemini-3-flash-preview';
+}
+
+function ticket_ocr_extract(array $config, string $filePath, string $mimeType): array
+{
+    $geminiKey = (string)($config['ticket_ocr']['gemini_api_key'] ?? '');
+    if ($geminiKey !== '') {
+        return ticket_ocr_extract_gemini($config, $filePath, $mimeType);
+    }
+
+    return ticket_ocr_extract_openai($config, $filePath, $mimeType);
+}
+
 function ticket_ocr_schema(): array
 {
     return [
@@ -99,6 +124,23 @@ function ticket_ocr_schema(): array
     ];
 }
 
+function ticket_ocr_gemini_schema(): array
+{
+    $schema = ticket_ocr_schema();
+    ticket_ocr_strip_schema_descriptions($schema);
+    return $schema;
+}
+
+function ticket_ocr_strip_schema_descriptions(array &$schema): void
+{
+    unset($schema['description']);
+    foreach ($schema as &$value) {
+        if (is_array($value)) {
+            ticket_ocr_strip_schema_descriptions($value);
+        }
+    }
+}
+
 function ticket_ocr_prompt(): string
 {
     return implode("\n", [
@@ -112,6 +154,160 @@ function ticket_ocr_prompt(): string
         'No inventes datos. Si un campo no se puede leer, usa "" o 0 y agrega una advertencia breve.',
         'JSON obligatorio.',
     ]);
+}
+
+function ticket_ocr_extract_gemini(array $config, string $filePath, string $mimeType): array
+{
+    $apiKey = ticket_ocr_gemini_api_key($config);
+    $model = ticket_ocr_gemini_model($config);
+
+    if (!is_file($filePath)) {
+        throw new RuntimeException('Imagen no encontrada.');
+    }
+    if (!function_exists('curl_init')) {
+        throw new RuntimeException('cURL no disponible en este hosting.');
+    }
+
+    $bytes = file_get_contents($filePath);
+    if ($bytes === false || $bytes === '') {
+        throw new RuntimeException('No se pudo leer la imagen.');
+    }
+
+    $payload = ticket_ocr_gemini_payload($mimeType, base64_encode($bytes), true);
+    $decoded = ticket_ocr_gemini_request($apiKey, $model, $payload);
+    $text = ticket_ocr_gemini_response_text($decoded);
+    if ($text === '') {
+        throw new RuntimeException('Gemini no devolvio texto util.');
+    }
+
+    $data = json_decode($text, true);
+    if (!is_array($data)) {
+        throw new RuntimeException('Gemini devolvio una respuesta que no es JSON valido.');
+    }
+
+    return ticket_ocr_normalize_result($data);
+}
+
+function ticket_ocr_gemini_payload(string $mimeType, string $base64Image, bool $structured): array
+{
+    $payload = [
+        'contents' => [
+            [
+                'role' => 'user',
+                'parts' => [
+                    [
+                        'text' => ticket_ocr_prompt(),
+                    ],
+                    [
+                        'inline_data' => [
+                            'mime_type' => $mimeType,
+                            'data' => $base64Image,
+                        ],
+                    ],
+                ],
+            ],
+        ],
+        'generationConfig' => [
+            'temperature' => 0,
+            'maxOutputTokens' => 2500,
+        ],
+    ];
+
+    if ($structured) {
+        $payload['generationConfig']['responseFormat'] = [
+            'text' => [
+                'mimeType' => 'application/json',
+                'schema' => ticket_ocr_gemini_schema(),
+            ],
+        ];
+    }
+
+    return $payload;
+}
+
+function ticket_ocr_gemini_request(string $apiKey, string $model, array $payload): array
+{
+    $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . rawurlencode($model) . ':generateContent';
+    $ch = curl_init($url);
+    if ($ch === false) {
+        throw new RuntimeException('No se pudo iniciar cURL.');
+    }
+
+    $json = json_encode($payload, JSON_UNESCAPED_UNICODE);
+    if (!is_string($json)) {
+        throw new RuntimeException('No se pudo preparar el pedido de OCR con Gemini.');
+    }
+
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 90,
+        CURLOPT_HTTPHEADER => [
+            'Content-Type: application/json',
+            'x-goog-api-key: ' . $apiKey,
+        ],
+        CURLOPT_POSTFIELDS => $json,
+    ]);
+
+    $body = curl_exec($ch);
+    $err = curl_error($ch);
+    $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($body === false || $body === '') {
+        throw new RuntimeException('No hubo respuesta de Gemini OCR.' . ($err !== '' ? (' ' . $err) : ''));
+    }
+
+    $decoded = json_decode($body, true);
+    if (!is_array($decoded)) {
+        throw new RuntimeException('Respuesta invalida de Gemini OCR.');
+    }
+
+    if ($status >= 400) {
+        $msg = '';
+        if (isset($decoded['error']['message']) && is_string($decoded['error']['message'])) {
+            $msg = $decoded['error']['message'];
+        }
+        throw new RuntimeException($msg !== '' ? ('Gemini: ' . $msg) : 'Error de Gemini OCR.');
+    }
+
+    return $decoded;
+}
+
+function ticket_ocr_gemini_response_text(array $decoded): string
+{
+    $chunks = [];
+    foreach (($decoded['candidates'] ?? []) as $candidate) {
+        if (!is_array($candidate)) {
+            continue;
+        }
+        $content = $candidate['content'] ?? [];
+        if (!is_array($content)) {
+            continue;
+        }
+        foreach (($content['parts'] ?? []) as $part) {
+            if (is_array($part) && isset($part['text'])) {
+                $chunks[] = (string)$part['text'];
+            }
+        }
+    }
+
+    $text = trim(implode("\n", $chunks));
+    if ($text !== '') {
+        return ticket_ocr_extract_json_text($text);
+    }
+    return '';
+}
+
+function ticket_ocr_extract_json_text(string $text): string
+{
+    $text = trim($text);
+    if (str_starts_with($text, '```')) {
+        $text = preg_replace('/^```(?:json)?\s*/i', '', $text) ?? $text;
+        $text = preg_replace('/\s*```$/', '', $text) ?? $text;
+        $text = trim($text);
+    }
+    return $text;
 }
 
 function ticket_ocr_extract_openai(array $config, string $filePath, string $mimeType): array

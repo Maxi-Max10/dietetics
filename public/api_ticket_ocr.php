@@ -72,8 +72,67 @@ if (!in_array($mime, $allowed, true)) {
 $config = app_config();
 $userId = (int)auth_user_id();
 
+function ticket_ocr_safe_error(string $rawMsg): string
+{
+    $msg = strtolower($rawMsg);
+
+    if (str_contains($msg, 'gemini_api_key')) {
+        return 'OCR con Gemini no configurado (falta GEMINI_API_KEY).';
+    }
+    if (str_contains($msg, 'api key not valid') || str_contains($msg, 'api_key_invalid') || str_contains($msg, 'permission_denied')) {
+        return 'La API key de Gemini no es valida o no tiene permisos. Revisa GEMINI_API_KEY.';
+    }
+    if (str_contains($msg, 'generativelanguage.googleapis.com') || str_contains($msg, 'no hubo respuesta de gemini')) {
+        return 'El hosting no pudo conectarse con Gemini. Revisa conectividad saliente/Firewall del hosting.';
+    }
+    if (str_contains($msg, 'gemini') && (str_contains($msg, 'model') || str_contains($msg, 'not found') || str_contains($msg, 'not supported'))) {
+        return 'El modelo Gemini configurado no esta disponible. Proba GEMINI_TICKET_OCR_MODEL=gemini-2.5-flash.';
+    }
+    if (str_contains($msg, 'gemini') && (str_contains($msg, 'quota') || str_contains($msg, 'billing') || str_contains($msg, 'resource_exhausted'))) {
+        return 'La cuenta de Gemini no tiene credito/cupo disponible para usar OCR.';
+    }
+    if (str_contains($msg, 'gemini devolvio') || str_contains($msg, 'gemini no devolvio')) {
+        return 'Gemini no pudo devolver una lectura usable. Proba con una foto mas nitida y centrada.';
+    }
+    if (str_contains($msg, 'openai_api_key')) {
+        return 'No hay proveedor OCR configurado. Agrega GEMINI_API_KEY o OPENAI_API_KEY.';
+    }
+    if (str_contains($msg, 'incorrect api key') || str_contains($msg, 'invalid api key') || str_contains($msg, 'invalid_api_key')) {
+        return 'La API key de OpenAI no es valida. Revisa OPENAI_API_KEY en config.local.php.';
+    }
+    if (str_contains($msg, 'insufficient_quota') || str_contains($msg, 'quota') || str_contains($msg, 'billing') || str_contains($msg, 'credit')) {
+        return 'La cuenta de OpenAI no tiene credito/cupo disponible para usar OCR.';
+    }
+    if (str_contains($msg, 'model') && (str_contains($msg, 'not found') || str_contains($msg, 'does not exist') || str_contains($msg, 'access'))) {
+        return 'El modelo de OCR configurado no esta disponible para esa cuenta. Proba OPENAI_TICKET_OCR_MODEL=gpt-4o-mini.';
+    }
+    if (str_contains($msg, 'rate limit') || str_contains($msg, 'rate_limit')) {
+        return 'OpenAI limito temporalmente las consultas. Espera un momento y proba de nuevo.';
+    }
+    if (str_contains($msg, 'curl no disponible')) {
+        return 'Tu hosting no permite OCR server-side (cURL no disponible).';
+    }
+    if (str_contains($msg, 'could not resolve host') || str_contains($msg, 'failed to connect') || str_contains($msg, 'timed out') || str_contains($msg, 'operation timed out')) {
+        return 'El hosting no pudo conectarse con OpenAI. Revisa conectividad saliente/Firewall del hosting.';
+    }
+    if (str_contains($msg, 'certificate') || str_contains($msg, 'ssl')) {
+        return 'El hosting no pudo validar la conexion SSL con OpenAI. Revisa certificados/cURL del servidor.';
+    }
+    if (str_contains($msg, 'image') && (str_contains($msg, 'too large') || str_contains($msg, 'size'))) {
+        return 'La imagen es demasiado grande para OCR. Proba con una foto mas liviana.';
+    }
+    if (str_contains($msg, 'json_schema') || str_contains($msg, 'schema') || str_contains($msg, 'response_format')) {
+        return 'El pedido de OCR no fue aceptado por OpenAI por el formato de respuesta. Actualiza el codigo del OCR.';
+    }
+    if (str_contains($msg, 'no devolvio texto') || str_contains($msg, 'json valido')) {
+        return 'La IA no pudo devolver una lectura usable. Proba con una foto mas nítida y centrada.';
+    }
+
+    return 'No se pudo leer el ticket. Revisa el error_log del hosting para ver el detalle.';
+}
+
 try {
-    $ticket = ticket_ocr_extract_openai($config, $tmp, $mime);
+    $ticket = ticket_ocr_extract($config, $tmp, $mime);
 
     try {
         $pdo = db($config);
@@ -95,12 +154,7 @@ try {
     $env = (string)($config['app']['env'] ?? 'production');
     $rawMsg = (string)$e->getMessage();
 
-    $safeMsg = 'No se pudo leer el ticket.';
-    if (stripos($rawMsg, 'OPENAI_API_KEY') !== false) {
-        $safeMsg = 'OCR no configurado (falta OPENAI_API_KEY).';
-    } elseif (stripos($rawMsg, 'cURL no disponible') !== false) {
-        $safeMsg = 'Tu hosting no permite OCR server-side (cURL no disponible).';
-    }
+    $safeMsg = ticket_ocr_safe_error($rawMsg);
 
     $msg = $env === 'production' ? $safeMsg : ('Error: ' . $rawMsg);
     http_response_code(500);
