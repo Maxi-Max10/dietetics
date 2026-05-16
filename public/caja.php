@@ -696,7 +696,8 @@ try {
         <div class="card card-lift">
           <div class="card-header card-header-clean bg-white px-4 py-3">
             <p class="muted-label mb-1">Modo caja</p>
-            <h2 class="h5 mb-0">Ticket de balanza</h2>
+            <h2 class="h5 mb-0">Ticket de balanza (OCR/IA visual)</h2>
+            <p class="small text-muted mb-0">Extrae PLU y cantidad desde el texto impreso del ticket, sin depender de codigos de barras.</p>
           </div>
           <div class="card-body px-4 py-4">
 
@@ -1007,7 +1008,7 @@ try {
 
   function normalizeTicketItem(raw) {
     const unit = normalizeUnit(raw.unit);
-    const quantity = toNumber(raw.quantity) > 0 ? toNumber(raw.quantity) : 1;
+    const quantity = toNumber(raw.quantity);
     let lineTotal = toNumber(raw.line_total);
     let unitPrice = toNumber(raw.unit_price);
 
@@ -1049,6 +1050,12 @@ try {
     }
 
     const warnings = Array.isArray(ticket.warnings) ? ticket.warnings.slice() : [];
+    cart.forEach(function (item, idx) {
+      if (!item.plu || item.quantity <= 0 || !item.unit) {
+        warnings.push('Item ' + String(idx + 1) + ' necesita revision: falta PLU, cantidad o unidad.');
+      }
+    });
+
     const total = cartTotal();
     if (detectedTicketTotal > 0 && Math.abs(total - detectedTicketTotal) > 0.10) {
       warnings.push('El total detectado no coincide con la suma editable. Revisalo antes de confirmar.');
@@ -1376,34 +1383,29 @@ try {
 
   function runLocalTicketRead(file, serverError) {
     showTicketStatus('Gemini no esta disponible. Intentando lectura local...', 'warning');
-    setTicketProgress(Math.max(progressValue, 58), 'Probando lectura local...');
-    return detectBarcodesFromFile(file)
-      .then(function (barcodeTicket) {
-        if (barcodeTicket && barcodeTicket.total > 0) return barcodeTicket;
-        setTicketProgress(Math.max(progressValue, 64), 'Cargando OCR local...');
-        return loadScriptOnce('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js')
-          .then(function () {
-            if (!window.Tesseract) throw new Error('OCR local no disponible');
-            setTicketProgress(Math.max(progressValue, 70), 'Reconociendo texto del ticket...');
-            return window.Tesseract.recognize(file, 'eng', {
-              logger: function (m) {
-                if (m && m.status === 'recognizing text' && m.progress) {
-                  setTicketProgress(70 + Math.round(m.progress * 22), 'OCR local ' + Math.round(m.progress * 100) + '%...');
-                  showTicketStatus('Lectura local OCR ' + Math.round(m.progress * 100) + '%...', 'warning');
-                }
-              },
-            });
-          })
-          .then(function (result) {
-            setTicketProgress(Math.max(progressValue, 94), 'Interpretando importe y productos...');
-            const text = result && result.data ? String(result.data.text || '') : '';
-            const ticket = parseTicketText(text);
-            if (!ticket.items.length || toNumber(ticket.total) <= 0) {
-              throw new Error('OCR local sin importes');
+    setTicketProgress(Math.max(progressValue, 64), 'Cargando OCR local...');
+    return loadScriptOnce('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js')
+      .then(function () {
+        if (!window.Tesseract) throw new Error('OCR local no disponible');
+        setTicketProgress(Math.max(progressValue, 70), 'Reconociendo texto del ticket...');
+        return window.Tesseract.recognize(file, 'eng', {
+          logger: function (m) {
+            if (m && m.status === 'recognizing text' && m.progress) {
+              setTicketProgress(70 + Math.round(m.progress * 22), 'OCR local ' + Math.round(m.progress * 100) + '%...');
+              showTicketStatus('Lectura local OCR ' + Math.round(m.progress * 100) + '%...', 'warning');
             }
-            ticket.warnings.unshift('Gemini respondio: ' + serverError);
-            return ticket;
-          });
+          },
+        });
+      })
+      .then(function (result) {
+        setTicketProgress(Math.max(progressValue, 94), 'Interpretando importe y productos...');
+        const text = result && result.data ? String(result.data.text || '') : '';
+        const ticket = parseTicketText(text);
+        if (!ticket.items.length || toNumber(ticket.total) <= 0) {
+          throw new Error('OCR local sin importes');
+        }
+        ticket.warnings.unshift('Gemini respondio: ' + serverError);
+        return ticket;
       });
   }
 

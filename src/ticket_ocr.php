@@ -187,6 +187,9 @@ function ticket_ocr_prompt(): string
     return implode("\n", [
         'Lee la foto de un ticket de balanza de comercio argentino y devolve solo JSON segun el esquema.',
         'Extrae fecha y hora de venta, TODOS los productos, PLU, nombre si aparece, cantidad/peso vendido, precio unitario/base, importe por producto y total general.',
+        'Toma el PLU del numero entre corchetes al inicio de cada articulo, por ejemplo "[ 203]". No uses codigos de barras ni datos de la etiqueta de codigo de barras.',
+        'Toma la cantidad vendida del valor impreso como peso o unidad, por ejemplo "0.245kg" o "1u".',
+        'Para cada producto, si no aparece precio unitario en el ticket, busca el producto en el catalogo usando el PLU y calcula line_total = cantidad * precio unitario.',
         'El ticket puede ser largo y tener varios bloques de producto. Cada producto suele empezar con un PLU entre corchetes o parentesis, por ejemplo "[203] - Pistachos".',
         'Despues de cada producto suele aparecer una linea con peso/cantidad, precio por kg/unidad y el importe: por ejemplo "0.245kg 50000$/kg = 12250$". Para ese caso usa quantity=0.245, unit="kg", unit_price=50000 y line_total=12250.',
         'Si el ticket dice "ARTICULOS: 6", intenta devolver 6 items; si no podes leer alguno, agrega warning.',
@@ -198,6 +201,7 @@ function ticket_ocr_prompt(): string
         'El total general es el numero que aparece junto a la palabra TOTAL, no la suma de codigos de barras.',
         'La fecha debe salir en ISO YYYY-MM-DD y la hora en HH:MM:SS. Si el mes aparece como MAY, interpretalo como mayo.',
         'No inventes datos. Si un campo no se puede leer, usa "" o 0 y agrega una advertencia breve.',
+        'Devuelve items con al menos {plu, quantity, unit}. Si falta algun campo importante, mantenlo en el objeto y agrega warnings para revision manual.',
         'Objeto JSON requerido: {"sale_date":"","sale_time":"","items":[{"plu":"","name":"","quantity":0,"unit":"g","unit_price":0,"line_total":0,"confidence":0}],"total":0,"confidence":0,"warnings":[],"raw_text":""}.',
         'JSON obligatorio.',
     ]);
@@ -715,13 +719,17 @@ function ticket_ocr_enrich_with_catalog(PDO $pdo, int $userId, array $ticket): a
         }
 
         $catalogPriceCents = (int)($product['price_cents'] ?? 0);
-        if ((float)($ticket['items'][$idx]['unit_price'] ?? 0) <= 0 && $catalogPriceCents > 0) {
-            $ticket['items'][$idx]['unit_price'] = round($catalogPriceCents / 100, 2);
-            $ticket['items'][$idx]['line_total'] = ticket_ocr_compute_line_total(
-                (float)$ticket['items'][$idx]['quantity'],
-                (string)$ticket['items'][$idx]['unit'],
-                (float)$ticket['items'][$idx]['unit_price']
-            );
+        if ($catalogPriceCents > 0) {
+            if ((float)($ticket['items'][$idx]['unit_price'] ?? 0) <= 0) {
+                $ticket['items'][$idx]['unit_price'] = round($catalogPriceCents / 100, 2);
+            }
+            if (ticket_ocr_number($ticket['items'][$idx]['line_total'] ?? 0) <= 0 && (float)($ticket['items'][$idx]['quantity'] ?? 0) > 0) {
+                $ticket['items'][$idx]['line_total'] = ticket_ocr_compute_line_total(
+                    (float)$ticket['items'][$idx]['quantity'],
+                    (string)$ticket['items'][$idx]['unit'],
+                    (float)$ticket['items'][$idx]['unit_price']
+                );
+            }
         }
     }
 
