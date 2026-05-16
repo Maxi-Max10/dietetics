@@ -756,11 +756,11 @@ try {
                 </tbody>
               </table>
             </div>
-            <div class="d-flex justify-content-end">
+            <!-- <div class="d-flex justify-content-end">
               <button type="button" id="cajaAddItem" class="btn btn-outline-primary btn-sm action-btn">
                 Agregar producto
               </button>
-            </div>
+            </div> -->
 
           </div>
         </div>
