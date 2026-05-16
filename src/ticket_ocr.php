@@ -26,11 +26,57 @@ function ticket_ocr_openai_model(array $config): string
 
 function ticket_ocr_gemini_api_key(array $config): string
 {
-    $key = (string)($config['ticket_ocr']['gemini_api_key'] ?? '');
+    $key = ticket_ocr_clean_api_key((string)($config['ticket_ocr']['gemini_api_key'] ?? ''));
+    if ($key === '') {
+        foreach (['GEMINI_API_KEY', 'GOOGLE_API_KEY', 'GOOGLE_AI_API_KEY', 'GOOGLE_GENAI_API_KEY'] as $name) {
+            $candidate = getenv($name);
+            if (!is_string($candidate) || $candidate === '') {
+                $candidate = defined($name) ? (string)constant($name) : '';
+            }
+            $candidate = ticket_ocr_clean_api_key($candidate);
+            if ($candidate !== '') {
+                $key = $candidate;
+                break;
+            }
+        }
+    }
     if ($key === '') {
         throw new RuntimeException('Falta GEMINI_API_KEY en config.');
     }
+    if (str_starts_with($key, '{') || str_contains($key, '-----BEGIN')) {
+        throw new RuntimeException('GEMINI_API_KEY no debe ser JSON de service account ni certificado; usa una API key de Google AI Studio.');
+    }
     return $key;
+}
+
+function ticket_ocr_clean_api_key(string $key): string
+{
+    $key = trim($key);
+    $key = trim($key, " \t\n\r\0\x0B\"'");
+    if (stripos($key, 'Bearer ') === 0) {
+        $key = trim(substr($key, 7));
+    }
+    if (str_contains($key, '=')) {
+        $parts = explode('=', $key);
+        $last = trim((string)end($parts));
+        if ($last !== '') {
+            $key = $last;
+        }
+    }
+    return trim($key);
+}
+
+function ticket_ocr_mask_key(string $key): string
+{
+    $key = ticket_ocr_clean_api_key($key);
+    $len = strlen($key);
+    if ($len === 0) {
+        return '';
+    }
+    if ($len <= 8) {
+        return str_repeat('*', $len);
+    }
+    return substr($key, 0, 4) . str_repeat('*', max(4, $len - 8)) . substr($key, -4);
 }
 
 function ticket_ocr_gemini_model(array $config): string
@@ -41,11 +87,6 @@ function ticket_ocr_gemini_model(array $config): string
 
 function ticket_ocr_extract(array $config, string $filePath, string $mimeType): array
 {
-    $geminiKey = (string)($config['ticket_ocr']['gemini_api_key'] ?? '');
-    if ($geminiKey === '') {
-        throw new RuntimeException('Falta GEMINI_API_KEY en config.');
-    }
-
     return ticket_ocr_extract_gemini($config, $filePath, $mimeType);
 }
 
@@ -262,6 +303,7 @@ function ticket_ocr_gemini_can_retry(string $message): bool
 
 function ticket_ocr_gemini_request(string $apiKey, string $model, array $payload): array
 {
+    $apiKey = ticket_ocr_clean_api_key($apiKey);
     $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . rawurlencode($model) . ':generateContent';
     $ch = curl_init($url);
     if ($ch === false) {
@@ -273,14 +315,21 @@ function ticket_ocr_gemini_request(string $apiKey, string $model, array $payload
         throw new RuntimeException('No se pudo preparar el pedido de OCR con Gemini.');
     }
 
+    $headers = [
+        'Content-Type: application/json',
+        'x-goog-api-key: ' . $apiKey,
+    ];
+    $host = (string)($_SERVER['HTTP_HOST'] ?? '');
+    if ($host !== '') {
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'https';
+        $headers[] = 'Referer: ' . $scheme . '://' . $host . '/';
+    }
+
     curl_setopt_array($ch, [
         CURLOPT_POST => true,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT => 90,
-        CURLOPT_HTTPHEADER => [
-            'Content-Type: application/json',
-            'x-goog-api-key: ' . $apiKey,
-        ],
+        CURLOPT_HTTPHEADER => $headers,
         CURLOPT_POSTFIELDS => $json,
     ]);
 
@@ -307,6 +356,77 @@ function ticket_ocr_gemini_request(string $apiKey, string $model, array $payload
     }
 
     return $decoded;
+}
+
+function ticket_ocr_gemini_diagnostic(array $config): array
+{
+    $raw = (string)($config['ticket_ocr']['gemini_api_key'] ?? '');
+    $source = $raw !== '' ? 'config.ticket_ocr.gemini_api_key' : '';
+    if ($raw === '') {
+        foreach (['GEMINI_API_KEY', 'GOOGLE_API_KEY', 'GOOGLE_AI_API_KEY', 'GOOGLE_GENAI_API_KEY'] as $name) {
+            $candidate = getenv($name);
+            if (!is_string($candidate) || $candidate === '') {
+                $candidate = defined($name) ? (string)constant($name) : '';
+            }
+            if ($candidate !== '') {
+                $raw = $candidate;
+                $source = $name;
+                break;
+            }
+        }
+    }
+
+    $key = ticket_ocr_clean_api_key($raw);
+    $model = ticket_ocr_gemini_model($config);
+    $out = [
+        'provider' => 'gemini',
+        'model' => $model,
+        'key_source' => $source,
+        'key_present' => $key !== '',
+        'key_length' => strlen($key),
+        'key_mask' => ticket_ocr_mask_key($key),
+        'curl_available' => function_exists('curl_init'),
+        'ok' => false,
+        'message' => '',
+    ];
+
+    if ($key === '') {
+        $out['message'] = 'No se encontro GEMINI_API_KEY.';
+        return $out;
+    }
+    if (str_starts_with($key, '{') || str_contains($key, '-----BEGIN')) {
+        $out['message'] = 'La key parece JSON/certificado. Gemini API necesita una API key de Google AI Studio.';
+        return $out;
+    }
+    if (!function_exists('curl_init')) {
+        $out['message'] = 'cURL no esta disponible en el hosting.';
+        return $out;
+    }
+
+    try {
+        $payload = [
+            'contents' => [
+                [
+                    'role' => 'user',
+                    'parts' => [
+                        ['text' => 'Respond only with OK.'],
+                    ],
+                ],
+            ],
+            'generationConfig' => [
+                'temperature' => 0,
+                'maxOutputTokens' => 8,
+            ],
+        ];
+        $decoded = ticket_ocr_gemini_request($key, $model, $payload);
+        $text = ticket_ocr_gemini_response_text($decoded);
+        $out['ok'] = true;
+        $out['message'] = $text !== '' ? $text : 'Gemini respondio correctamente.';
+    } catch (Throwable $e) {
+        $out['message'] = $e->getMessage();
+    }
+
+    return $out;
 }
 
 function ticket_ocr_gemini_response_text(array $decoded): string

@@ -80,7 +80,10 @@ function ticket_ocr_safe_error(string $rawMsg): string
         return 'OCR con Gemini no configurado (falta GEMINI_API_KEY).';
     }
     if (str_contains($msg, 'api key not valid') || str_contains($msg, 'api_key_invalid') || str_contains($msg, 'permission_denied')) {
-        return 'La API key de Gemini no es valida o no tiene permisos. Revisa GEMINI_API_KEY.';
+        return 'La API key de Gemini no es valida o no tiene permisos. Abri /api_ticket_ocr_status.php para ver que key esta leyendo el hosting.';
+    }
+    if (str_contains($msg, 'json de service account') || str_contains($msg, 'certificado')) {
+        return 'GEMINI_API_KEY debe ser una API key de Google AI Studio, no un JSON de service account.';
     }
     if (str_contains($msg, 'generativelanguage.googleapis.com') || str_contains($msg, 'no hubo respuesta de gemini')) {
         return 'El hosting no pudo conectarse con Gemini. Revisa conectividad saliente/Firewall del hosting.';

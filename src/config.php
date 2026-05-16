@@ -36,7 +36,7 @@ return [
     'ticket_ocr' => [
         'openai_api_key' => getenv('OPENAI_API_KEY') ?: (defined('OPENAI_API_KEY') ? OPENAI_API_KEY : ''),
         'openai_model' => getenv('OPENAI_TICKET_OCR_MODEL') ?: (defined('OPENAI_TICKET_OCR_MODEL') ? OPENAI_TICKET_OCR_MODEL : 'gpt-4.1-mini'),
-        'gemini_api_key' => getenv('GEMINI_API_KEY') ?: (defined('GEMINI_API_KEY') ? GEMINI_API_KEY : ''),
+        'gemini_api_key' => getenv('GEMINI_API_KEY') ?: (defined('GEMINI_API_KEY') ? GEMINI_API_KEY : (getenv('GOOGLE_API_KEY') ?: (defined('GOOGLE_API_KEY') ? GOOGLE_API_KEY : (getenv('GOOGLE_AI_API_KEY') ?: (defined('GOOGLE_AI_API_KEY') ? GOOGLE_AI_API_KEY : '')))),
         'gemini_model' => getenv('GEMINI_TICKET_OCR_MODEL') ?: (defined('GEMINI_TICKET_OCR_MODEL') ? GEMINI_TICKET_OCR_MODEL : 'gemini-3-flash-preview'),
     ],
     'google_maps' => [
