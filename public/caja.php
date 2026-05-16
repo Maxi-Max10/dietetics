@@ -390,8 +390,160 @@ try {
     .ticket-upload {
       border: 2px dashed rgba(var(--accent-rgb), .25);
       border-radius: 16px;
-      background: rgba(255,255,255,.64);
-      padding: 1rem;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,.88), rgba(231,227,213,.52)),
+        rgba(255,255,255,.64);
+      padding: 1.25rem;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.7);
+    }
+
+    .ticket-upload-row {
+      align-items: end;
+    }
+
+    .ticket-ai-btn {
+      position: relative;
+      min-width: 230px;
+      min-height: 52px;
+      border: 0;
+      border-radius: 16px;
+      overflow: hidden;
+      background: linear-gradient(135deg, #10b981, #047857 42%, var(--accent));
+      color: #fff;
+      box-shadow: 0 16px 36px rgba(16,185,129,.28), 0 8px 22px rgba(var(--accent-rgb),.18);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: .65rem;
+      font-weight: 800;
+      letter-spacing: .01em;
+      transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
+    }
+
+    .ticket-ai-btn::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(110deg, transparent 0%, rgba(255,255,255,.24) 42%, transparent 66%);
+      transform: translateX(-120%);
+      transition: transform .5s ease;
+    }
+
+    .ticket-ai-btn:hover:not(:disabled),
+    .ticket-ai-btn:focus-visible:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 20px 44px rgba(16,185,129,.34), 0 10px 26px rgba(var(--accent-rgb),.22);
+      color: #fff;
+    }
+
+    .ticket-ai-btn:hover:not(:disabled)::before,
+    .ticket-ai-btn:focus-visible:not(:disabled)::before {
+      transform: translateX(120%);
+    }
+
+    .ticket-ai-btn:disabled {
+      background: linear-gradient(135deg, #96957E, #7d7b68);
+      box-shadow: none;
+      color: rgba(255,255,255,.9);
+      opacity: .82;
+    }
+
+    .ticket-ai-btn.is-ready {
+      animation: ticket-ready-pulse 1.8s ease-in-out infinite;
+    }
+
+    .ticket-ai-btn.is-loading {
+      animation: none;
+      filter: saturate(1.08);
+    }
+
+    .ticket-ai-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255,255,255,.18);
+      border: 1px solid rgba(255,255,255,.28);
+      font-size: .82rem;
+      font-weight: 900;
+      flex: 0 0 auto;
+    }
+
+    .ticket-ai-spinner {
+      display: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      border: 2px solid rgba(255,255,255,.4);
+      border-top-color: #fff;
+      animation: ticket-spin .75s linear infinite;
+      flex: 0 0 auto;
+    }
+
+    .ticket-ai-btn.is-loading .ticket-ai-icon { display: none; }
+    .ticket-ai-btn.is-loading .ticket-ai-spinner { display: inline-block; }
+
+    .ticket-progress {
+      display: none;
+      border: 1px solid rgba(16,185,129,.22);
+      border-radius: 14px;
+      background: rgba(255,255,255,.74);
+      padding: .75rem .85rem;
+      box-shadow: 0 12px 28px rgba(16,185,129,.08);
+    }
+
+    .ticket-progress.is-visible {
+      display: block;
+    }
+
+    .ticket-progress-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .75rem;
+      color: var(--muted);
+      font-size: .88rem;
+      font-weight: 700;
+      margin-bottom: .45rem;
+    }
+
+    .ticket-progress-track {
+      height: 11px;
+      border-radius: 999px;
+      background: rgba(70,59,30,.10);
+      overflow: hidden;
+    }
+
+    .ticket-progress-bar {
+      position: relative;
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #34d399, #10b981, var(--accent));
+      transition: width .28s ease;
+      overflow: hidden;
+    }
+
+    .ticket-progress-bar::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.42), transparent);
+      animation: ticket-progress-shine 1.1s linear infinite;
+    }
+
+    @keyframes ticket-spin { to { transform: rotate(360deg); } }
+
+    @keyframes ticket-ready-pulse {
+      0%, 100% { box-shadow: 0 16px 36px rgba(16,185,129,.25), 0 8px 22px rgba(var(--accent-rgb),.16); }
+      50% { box-shadow: 0 20px 46px rgba(16,185,129,.38), 0 10px 26px rgba(var(--accent-rgb),.22); }
+    }
+
+    @keyframes ticket-progress-shine {
+      from { transform: translateX(-100%); }
+      to { transform: translateX(100%); }
     }
 
     .ticket-preview {
@@ -450,6 +602,7 @@ try {
     @media (max-width: 768px) {
       .caja-page .caja-shell { padding: 1rem .75rem 2rem !important; }
       .card-lift { border-radius: 14px; }
+      .ticket-ai-btn { width: 100%; min-width: 0; }
     }
 
     @media (max-width: 576px) {
@@ -548,15 +701,26 @@ try {
           <div class="card-body px-4 py-4">
 
             <div class="ticket-upload mb-3">
-              <div class="row g-3 align-items-center">
+              <div class="row g-3 ticket-upload-row">
                 <div class="col-12 col-md">
                   <label for="cajaTicketImage" class="form-label fw-semibold mb-1">Foto del ticket</label>
                   <input type="file" id="cajaTicketImage" class="form-control" accept="image/*" capture="environment">
                 </div>
-                <div class="col-12 col-md-auto">
-                  <button type="button" id="cajaAnalyzeTicket" class="btn btn-primary action-btn w-100" disabled>
-                    Leer ticket con IA
+                <div class="col-12 col-lg-auto">
+                  <button type="button" id="cajaAnalyzeTicket" class="btn ticket-ai-btn w-100" disabled>
+                    <span class="ticket-ai-icon">IA</span>
+                    <span class="ticket-ai-spinner" aria-hidden="true"></span>
+                    <span class="ticket-ai-label">Leer ticket con IA</span>
                   </button>
+                </div>
+              </div>
+              <div id="cajaTicketProgress" class="ticket-progress mt-3" aria-hidden="true">
+                <div class="ticket-progress-head">
+                  <span id="cajaTicketProgressText">Preparando lectura...</span>
+                  <span id="cajaTicketProgressPct">0%</span>
+                </div>
+                <div class="ticket-progress-track">
+                  <div id="cajaTicketProgressBar" class="ticket-progress-bar"></div>
                 </div>
               </div>
               <img id="cajaTicketPreview" class="ticket-preview mt-3" alt="Vista previa del ticket">
@@ -665,9 +829,14 @@ try {
 
   const ticketInput      = document.getElementById('cajaTicketImage');
   const analyzeBtn       = document.getElementById('cajaAnalyzeTicket');
+  const analyzeBtnLabel  = analyzeBtn ? analyzeBtn.querySelector('.ticket-ai-label') : null;
   const ticketPreview    = document.getElementById('cajaTicketPreview');
   const ticketStatus     = document.getElementById('cajaTicketStatus');
   const ticketWarnings   = document.getElementById('cajaTicketWarnings');
+  const ticketProgress   = document.getElementById('cajaTicketProgress');
+  const progressBar      = document.getElementById('cajaTicketProgressBar');
+  const progressText     = document.getElementById('cajaTicketProgressText');
+  const progressPct      = document.getElementById('cajaTicketProgressPct');
   const addItemBtn       = document.getElementById('cajaAddItem');
   const cartBody         = document.getElementById('cajaCartBody');
   const emptyRow         = document.getElementById('cajaEmptyRow');
@@ -687,6 +856,58 @@ try {
   const cart = [];
   let detectedTicketTotal = 0;
   let previewUrl = '';
+  let progressTimer = 0;
+  let progressValue = 0;
+
+  function setAnalyzeButton(text, loading) {
+    if (analyzeBtnLabel) analyzeBtnLabel.textContent = text;
+    analyzeBtn.classList.toggle('is-loading', !!loading);
+  }
+
+  function setTicketProgress(percent, text) {
+    progressValue = Math.max(0, Math.min(100, Math.round(percent)));
+    if (ticketProgress) {
+      ticketProgress.classList.add('is-visible');
+      ticketProgress.setAttribute('aria-hidden', 'false');
+    }
+    if (progressBar) progressBar.style.width = progressValue + '%';
+    if (progressPct) progressPct.textContent = progressValue + '%';
+    if (progressText && text) progressText.textContent = text;
+  }
+
+  function resetTicketProgress() {
+    window.clearInterval(progressTimer);
+    progressTimer = 0;
+    progressValue = 0;
+    if (progressBar) progressBar.style.width = '0%';
+    if (progressPct) progressPct.textContent = '0%';
+    if (progressText) progressText.textContent = 'Preparando lectura...';
+    if (ticketProgress) {
+      ticketProgress.classList.remove('is-visible');
+      ticketProgress.setAttribute('aria-hidden', 'true');
+    }
+  }
+
+  function startTicketProgress(text) {
+    window.clearInterval(progressTimer);
+    setTicketProgress(8, text || 'Preparando lectura...');
+    progressTimer = window.setInterval(function () {
+      if (progressValue < 42) {
+        setTicketProgress(progressValue + 4, 'Subiendo foto al OCR...');
+      } else if (progressValue < 76) {
+        setTicketProgress(progressValue + 2, 'Leyendo datos del ticket...');
+      } else if (progressValue < 91) {
+        setTicketProgress(progressValue + 1, 'Armando venta editable...');
+      }
+    }, 420);
+  }
+
+  function finishTicketProgress(ok) {
+    window.clearInterval(progressTimer);
+    progressTimer = 0;
+    setTicketProgress(100, ok ? 'Ticket procesado.' : 'Lectura finalizada.');
+    window.setTimeout(resetTicketProgress, ok ? 850 : 1300);
+  }
 
   function computeLineTotal(quantity, unit, unitPrice) {
     if (unit === 'g' || unit === 'ml') {
@@ -1008,21 +1229,26 @@ try {
 
   function runLocalTicketRead(file, serverError) {
     showTicketStatus('Gemini no esta disponible. Intentando lectura local...', 'warning');
+    setTicketProgress(Math.max(progressValue, 58), 'Probando lectura local...');
     return detectBarcodesFromFile(file)
       .then(function (barcodeTicket) {
         if (barcodeTicket && barcodeTicket.total > 0) return barcodeTicket;
+        setTicketProgress(Math.max(progressValue, 64), 'Cargando OCR local...');
         return loadScriptOnce('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js')
           .then(function () {
             if (!window.Tesseract) throw new Error('OCR local no disponible');
+            setTicketProgress(Math.max(progressValue, 70), 'Reconociendo texto del ticket...');
             return window.Tesseract.recognize(file, 'eng', {
               logger: function (m) {
                 if (m && m.status === 'recognizing text' && m.progress) {
+                  setTicketProgress(70 + Math.round(m.progress * 22), 'OCR local ' + Math.round(m.progress * 100) + '%...');
                   showTicketStatus('Lectura local OCR ' + Math.round(m.progress * 100) + '%...', 'warning');
                 }
               },
             });
           })
           .then(function (result) {
+            setTicketProgress(Math.max(progressValue, 94), 'Interpretando importe y productos...');
             const text = result && result.data ? String(result.data.text || '') : '';
             const ticket = parseTicketText(text);
             if (!ticket.items.length || toNumber(ticket.total) <= 0) {
@@ -1128,6 +1354,10 @@ try {
   ticketInput.addEventListener('change', function () {
     const file = ticketInput.files && ticketInput.files[0] ? ticketInput.files[0] : null;
     analyzeBtn.disabled = !file;
+    analyzeBtn.classList.toggle('is-ready', !!file);
+    analyzeBtn.classList.remove('is-loading');
+    setAnalyzeButton('Leer ticket con IA', false);
+    resetTicketProgress();
     showWarnings([]);
     saleResult.style.display = 'none';
 
@@ -1146,7 +1376,7 @@ try {
     previewUrl = URL.createObjectURL(file);
     ticketPreview.src = previewUrl;
     ticketPreview.classList.add('is-visible');
-    showTicketStatus('Foto lista para analizar.', '');
+    showTicketStatus('Foto lista. Toca el boton verde para leer el ticket.', 'success');
   });
 
   analyzeBtn.addEventListener('click', function () {
@@ -1157,8 +1387,11 @@ try {
     formData.append('csrf_token', CSRF);
     formData.append('ticket_image', file);
 
+    let readOk = false;
     analyzeBtn.disabled = true;
-    analyzeBtn.textContent = 'Leyendo...';
+    analyzeBtn.classList.remove('is-ready');
+    setAnalyzeButton('Analizando...', true);
+    startTicketProgress('Preparando foto...');
     showTicketStatus('Analizando ticket con IA/OCR...', '');
     showWarnings([]);
 
@@ -1167,13 +1400,17 @@ try {
       headers: { 'Accept': 'application/json' },
       body: formData,
     })
-      .then(function (res) { return res.json(); })
+      .then(function (res) {
+        setTicketProgress(Math.max(progressValue, 52), 'Esperando respuesta de IA...');
+        return res.json();
+      })
       .then(function (data) {
         if (!data.ok) {
           const errorMessage = data.error || 'No se pudo leer el ticket.';
           return runLocalTicketRead(file, errorMessage)
             .then(function (ticket) {
               applyDetectedTicket(ticket, 'Lectura local cargada. Revisa y edita la venta antes de confirmar.');
+              readOk = true;
             })
             .catch(function () {
               showTicketStatus(errorMessage + ' La lectura local tampoco pudo completarse.', 'danger');
@@ -1181,12 +1418,15 @@ try {
             });
         }
 
+        setTicketProgress(Math.max(progressValue, 92), 'Cargando venta editable...');
         applyDetectedTicket(data.ticket || {}, 'Ticket leido. Revisa y edita la venta antes de confirmar.');
+        readOk = true;
       })
       .catch(function () {
         return runLocalTicketRead(file, 'Error de red al leer el ticket.')
           .then(function (ticket) {
             applyDetectedTicket(ticket, 'Lectura local cargada. Revisa y edita la venta antes de confirmar.');
+            readOk = true;
           })
           .catch(function () {
             showTicketStatus('Error de red al leer el ticket. La lectura local tampoco pudo completarse.', 'danger');
@@ -1194,7 +1434,9 @@ try {
       })
       .finally(function () {
         analyzeBtn.disabled = !(ticketInput.files && ticketInput.files[0]);
-        analyzeBtn.textContent = 'Leer ticket con IA';
+        analyzeBtn.classList.toggle('is-ready', !!(ticketInput.files && ticketInput.files[0]));
+        setAnalyzeButton('Leer ticket con IA', false);
+        finishTicketProgress(readOk);
       });
   });
 
