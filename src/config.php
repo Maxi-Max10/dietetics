@@ -5,47 +5,71 @@ declare(strict_types=1);
 // Carga opcional de secrets locales (NO versionar).
 $localConfigPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'config.local.php';
 if (is_file($localConfigPath)) {
-    /** @noinspection PhpIncludeInspection */
-    require_once $localConfigPath;
+    $localConfigSource = file_get_contents($localConfigPath);
+    if (is_string($localConfigSource) && $localConfigSource !== '') {
+        $matchCount = preg_match_all('/define\s*\(\s*[\'"]([A-Z0-9_]+)[\'"]\s*,\s*([\'"])(.*?)\2\s*\)\s*;?/s', $localConfigSource, $matches, PREG_SET_ORDER);
+        if (is_int($matchCount) && $matchCount > 0) {
+            foreach ($matches as $match) {
+                $name = (string)($match[1] ?? '');
+                $value = stripcslashes((string)($match[3] ?? ''));
+                if ($name !== '' && !defined($name)) {
+                    define($name, $value);
+                }
+            }
+        }
+    }
 }
+
+$cfgValue = static function (array $names, string $default = ''): string {
+    foreach ($names as $name) {
+        $env = getenv($name);
+        if (is_string($env) && $env !== '') {
+            return $env;
+        }
+        if (defined($name)) {
+            return (string)constant($name);
+        }
+    }
+    return $default;
+};
 
 /**
  * Config por defecto: usa variables de entorno o valores definidos en config.local.php.
- * En Hostinger, lo más simple es crear config.local.php con estos define().
+ * En Hostinger, lo mas simple es crear config.local.php con estos define().
  */
 return [
     'app' => [
-        'name' => getenv('APP_NAME') ?: (defined('APP_NAME') ? APP_NAME : 'Dietetic'),
-        'env' => getenv('APP_ENV') ?: (defined('APP_ENV') ? APP_ENV : 'production'),
-        'base_url' => getenv('APP_BASE_URL') ?: (defined('APP_BASE_URL') ? APP_BASE_URL : ''),
+        'name' => $cfgValue(['APP_NAME'], 'Dietetic'),
+        'env' => $cfgValue(['APP_ENV'], 'production'),
+        'base_url' => $cfgValue(['APP_BASE_URL']),
     ],
     'db' => [
-        'host' => getenv('DB_HOST') ?: (defined('DB_HOST') ? DB_HOST : 'localhost'),
-        'name' => getenv('DB_NAME') ?: (defined('DB_NAME') ? DB_NAME : ''),
-        'user' => getenv('DB_USER') ?: (defined('DB_USER') ? DB_USER : ''),
-        'pass' => getenv('DB_PASS') ?: (defined('DB_PASS') ? DB_PASS : ''),
-        'charset' => getenv('DB_CHARSET') ?: (defined('DB_CHARSET') ? DB_CHARSET : 'utf8mb4'),
+        'host' => $cfgValue(['DB_HOST'], 'localhost'),
+        'name' => $cfgValue(['DB_NAME']),
+        'user' => $cfgValue(['DB_USER']),
+        'pass' => $cfgValue(['DB_PASS']),
+        'charset' => $cfgValue(['DB_CHARSET'], 'utf8mb4'),
     ],
     'security' => [
-        'session_name' => getenv('SESSION_NAME') ?: (defined('SESSION_NAME') ? SESSION_NAME : 'dietetic_session'),
+        'session_name' => $cfgValue(['SESSION_NAME'], 'dietetic_session'),
     ],
     'speech' => [
-        'openai_api_key' => getenv('OPENAI_API_KEY') ?: (defined('OPENAI_API_KEY') ? OPENAI_API_KEY : ''),
-        'openai_transcribe_model' => getenv('OPENAI_TRANSCRIBE_MODEL') ?: (defined('OPENAI_TRANSCRIBE_MODEL') ? OPENAI_TRANSCRIBE_MODEL : 'whisper-1'),
+        'openai_api_key' => $cfgValue(['OPENAI_API_KEY']),
+        'openai_transcribe_model' => $cfgValue(['OPENAI_TRANSCRIBE_MODEL'], 'whisper-1'),
     ],
     'ticket_ocr' => [
-        'openai_api_key' => getenv('OPENAI_API_KEY') ?: (defined('OPENAI_API_KEY') ? OPENAI_API_KEY : ''),
-        'openai_model' => getenv('OPENAI_TICKET_OCR_MODEL') ?: (defined('OPENAI_TICKET_OCR_MODEL') ? OPENAI_TICKET_OCR_MODEL : 'gpt-4.1-mini'),
-        'gemini_api_key' => getenv('GEMINI_API_KEY') ?: (defined('GEMINI_API_KEY') ? GEMINI_API_KEY : (getenv('GOOGLE_API_KEY') ?: (defined('GOOGLE_API_KEY') ? GOOGLE_API_KEY : (getenv('GOOGLE_AI_API_KEY') ?: (defined('GOOGLE_AI_API_KEY') ? GOOGLE_AI_API_KEY : '')))),
-        'gemini_model' => getenv('GEMINI_TICKET_OCR_MODEL') ?: (defined('GEMINI_TICKET_OCR_MODEL') ? GEMINI_TICKET_OCR_MODEL : 'gemini-3-flash-preview'),
+        'openai_api_key' => $cfgValue(['OPENAI_API_KEY']),
+        'openai_model' => $cfgValue(['OPENAI_TICKET_OCR_MODEL'], 'gpt-4.1-mini'),
+        'gemini_api_key' => $cfgValue(['GEMINI_API_KEY', 'GOOGLE_API_KEY', 'GOOGLE_AI_API_KEY', 'GOOGLE_GENAI_API_KEY']),
+        'gemini_model' => $cfgValue(['GEMINI_TICKET_OCR_MODEL'], 'gemini-3-flash-preview'),
     ],
     'google_maps' => [
-        'api_key' => getenv('GOOGLE_MAPS_API_KEY') ?: (defined('GOOGLE_MAPS_API_KEY') ? GOOGLE_MAPS_API_KEY : ''),
+        'api_key' => $cfgValue(['GOOGLE_MAPS_API_KEY']),
     ],
-    // Lista de precios pública (cliente) + pedidos para retiro.
-    // PUBLIC_CATALOG_USER_ID: si tenés un solo usuario admin, podés dejarlo vacío y se toma el primero.
+    // Lista de precios publica (cliente) + pedidos para retiro.
+    // PUBLIC_CATALOG_USER_ID: si tenes un solo usuario admin, podes dejarlo vacio y se toma el primero.
     'public_catalog' => [
-        'enabled' => (string)(getenv('PUBLIC_CATALOG_ENABLED') ?: (defined('PUBLIC_CATALOG_ENABLED') ? PUBLIC_CATALOG_ENABLED : '1')),
-        'user_id' => (string)(getenv('PUBLIC_CATALOG_USER_ID') ?: (defined('PUBLIC_CATALOG_USER_ID') ? PUBLIC_CATALOG_USER_ID : '')),
+        'enabled' => $cfgValue(['PUBLIC_CATALOG_ENABLED'], '1'),
+        'user_id' => $cfgValue(['PUBLIC_CATALOG_USER_ID']),
     ],
 ];

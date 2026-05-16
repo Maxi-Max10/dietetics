@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../src/bootstrap.php';
+require_once __DIR__ . '/../src/ticket_ocr.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
