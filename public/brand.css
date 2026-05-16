@@ -249,3 +249,9 @@ body.has-leaves-bg > main.page-shell > .container-fluid:first-child {
   box-shadow: 0 4px 14px rgba(5,150,105,0.4) !important;
 }
 
+/* Ocultar Stock en la navegación principal y el menú móvil hasta que se requiera */
+.nav-shell a[href="/stock"],
+.offcanvas-nav a[href="/stock"] {
+  display: none !important;
+}
+
