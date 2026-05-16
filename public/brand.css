@@ -120,9 +120,20 @@ body.has-leaves-bg {
   z-index: 0;
   overflow: hidden;
 }
-.has-leaves-bg > :not(.bg-leaves) {
+.has-leaves-bg > :not(.bg-leaves):not(.preload-overlay):not(.modal):not(.modal-backdrop):not(.offcanvas):not(.offcanvas-backdrop) {
   position: relative;
   z-index: 1;
+}
+
+body.has-leaves-bg > .preload-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  min-height: 100vh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  z-index: 9999 !important;
 }
 
 /* Layout admin: evita que estilos viejos/cacheados centren verticalmente las vistas. */

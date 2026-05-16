@@ -225,8 +225,8 @@ try {
   <title>Caja — <?= e($appName) ?></title>
   <link rel="icon" href="/logo.png" type="image/png">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-  <link rel="stylesheet" href="/brand.css?v=20260515">
-  <link rel="stylesheet" href="/public/brand.css?v=20260515">
+  <link rel="stylesheet" href="/brand.css?v=20260516">
+  <link rel="stylesheet" href="/public/brand.css?v=20260516">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -299,7 +299,7 @@ try {
       overflow: hidden;
     }
 
-    body.has-leaves-bg > :not(.bg-leaves) {
+    body.has-leaves-bg > :not(.bg-leaves):not(.preload-overlay):not(.modal):not(.modal-backdrop):not(.offcanvas):not(.offcanvas-backdrop) {
       position: relative;
       z-index: 1;
     }

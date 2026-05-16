@@ -237,7 +237,7 @@ if ($error !== '') {
   <link rel="icon" type="image/png" href="/logo.png">
   <link rel="preload" as="image" href="/preload.png">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-  <link rel="stylesheet" href="/brand.css?v=20260515">
+  <link rel="stylesheet" href="/brand.css?v=20260516">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -531,9 +531,14 @@ if ($error !== '') {
     }
 
     .preload-overlay {
-      position: fixed;
-      inset: 0;
-      z-index: 2000;
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100vw !important;
+      height: 100dvh !important;
+      min-height: 100vh !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      z-index: 9999 !important;
       background: rgba(255, 255, 255, .92);
       display: flex;
       align-items: center;
@@ -1891,10 +1896,10 @@ if ($error !== '') {
     }
 
     if (document.readyState === 'complete') {
-      window.setTimeout(hide, 7000);
+      window.setTimeout(hide, 800);
     } else {
       window.addEventListener('load', function () {
-        window.setTimeout(hide, 7000);
+        window.setTimeout(hide, 800);
       }, { once: true });
     }
   })();
