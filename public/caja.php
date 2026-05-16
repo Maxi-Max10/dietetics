@@ -1017,6 +1017,12 @@ try {
     if (lineTotal <= 0 && unitPrice > 0) {
       lineTotal = computeLineTotal(quantity, unit, unitPrice);
     }
+    if ((unit === 'kg' || unit === 'l') && quantity > 50 && unitPrice > 0 && lineTotal > 0) {
+      const expectedQuantity = lineTotal / unitPrice;
+      if (expectedQuantity > 0 && Math.abs(expectedQuantity - (quantity / 1000)) < 0.01) {
+        quantity = Math.round(quantity) / 1000;
+      }
+    }
 
     const plu = String(raw.plu || '').replace(/\D/g, '');
     const name = String(raw.name || raw.catalog_name || '').trim() || (plu ? ('PLU ' + plu) : 'Producto ticket');
@@ -1084,6 +1090,18 @@ try {
     return Number.isFinite(n) ? n : 0;
   }
 
+  function parseQuantity(raw) {
+    let s = String(raw || '').replace(/[^\d.,]/g, '');
+    if (!s) return 0;
+    if (s.includes(',') && !s.includes('.')) {
+      s = s.replace(',', '.');
+    } else if (s.includes('.') && s.includes(',')) {
+      s = s.replace(/\./g, '').replace(',', '.');
+    }
+    const n = Number(s);
+    return Number.isFinite(n) ? n : 0;
+  }
+
   function parseDateToIso(text) {
     const months = {
       ene: '01', jan: '01', feb: '02', mar: '03', abr: '04', apr: '04',
@@ -1105,7 +1123,7 @@ try {
     return String(m[1]).padStart(2, '0') + ':' + m[2] + ':' + (m[3] || '00');
   }
 
-  function parseTicketText(text) {
+  function parseTicketTextLegacy(text) {
     const source = String(text || '');
     const compact = source.replace(/\s+/g, ' ');
     const totalMatch = compact.match(/total\s*\$?\s*([0-9][0-9.,]*)/i);
@@ -1167,6 +1185,134 @@ try {
     };
   }
 
+  function cleanTicketProductName(name) {
+    let s = String(name || '')
+      .replace(/[_|]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    s = s.replace(/\b(cantidad|precio|unit|importe|total|vendedor|descripcion)\b.*$/i, '').trim();
+    s = s.replace(/\b[0-9]+(?:[.,][0-9]+)?\s*(kg|kilo|g|gr|gramos|ml|l)\b.*$/i, '').trim();
+    s = s.replace(/\b[0-9]{3,}\s*\$?.*$/i, '').trim();
+    return s;
+  }
+
+  function plausibleTicketAmount(value, total) {
+    return value > 0 && value < 10000000 && (total <= 0 || value <= Math.max(total * 1.15, total + 1000));
+  }
+
+  function parseTicketItemBlock(plu, headerName, block, total) {
+    const name = cleanTicketProductName(headerName) || (plu ? ('PLU ' + plu) : 'Producto ticket');
+    let quantity = 1;
+    let unit = 'u';
+    const qtyMatch = block.match(/([0-9]+(?:[.,][0-9]+)?)\s*(kg|kilo|kilos|g|gr|grs|gramos|ml|l)\b/i);
+    if (qtyMatch) {
+      quantity = parseQuantity(qtyMatch[1]);
+      unit = normalizeUnit(qtyMatch[2]);
+    }
+
+    let unitPrice = 0;
+    const unitPriceMatch = block.match(/([0-9]{2,}(?:[.,][0-9]{3})*(?:[.,][0-9]{1,2})?)\s*\$?\s*\/\s*(kg|kilo|kilos|g|gr|grs|gramos|ml|l|u|un)\b/i)
+      || block.match(/(?:x|por)\s*\$?\s*([0-9]{2,}(?:[.,][0-9]{3})*(?:[.,][0-9]{1,2})?)/i);
+    if (unitPriceMatch) {
+      unitPrice = parseMoney(unitPriceMatch[1]);
+    }
+
+    let lineTotal = 0;
+    const afterPrice = unitPriceMatch && typeof unitPriceMatch.index === 'number'
+      ? block.slice(unitPriceMatch.index + unitPriceMatch[0].length)
+      : block;
+    const totalCandidates = Array.from(afterPrice.matchAll(/(?:^|[^\d])([0-9]{3,6}(?:[.,][0-9]{3})*(?:[.,][0-9]{1,2})?)\s*\$?/g))
+      .map(function (m) { return parseMoney(m[1]); })
+      .filter(function (n) { return plausibleTicketAmount(n, total) && Math.abs(n - unitPrice) > 0.01; });
+    if (totalCandidates.length) {
+      lineTotal = totalCandidates[0];
+    }
+    if (lineTotal <= 0 && quantity > 0 && unitPrice > 0) {
+      lineTotal = computeLineTotal(quantity, unit, unitPrice);
+    }
+    if (unitPrice <= 0 && quantity > 0 && lineTotal > 0) {
+      unitPrice = computeBasePrice(lineTotal, quantity, unit);
+    }
+
+    return {
+      plu: plu,
+      name: name,
+      quantity: quantity > 0 ? quantity : 1,
+      unit: unit,
+      unit_price: unitPrice,
+      line_total: lineTotal,
+      confidence: lineTotal > 0 ? 0.62 : 0.42,
+    };
+  }
+
+  function parseTicketText(text) {
+    const source = String(text || '');
+    const compact = source.replace(/\s+/g, ' ');
+    const totalMatches = Array.from(compact.matchAll(/\btotal\b\s*\$?\s*([0-9][0-9.,]*)/ig));
+    let total = totalMatches.length ? parseMoney(totalMatches[totalMatches.length - 1][1]) : 0;
+
+    if (total <= 0) {
+      const amounts = Array.from(compact.matchAll(/\$?\s*([0-9]{3,6}(?:[.,][0-9]{3})*(?:[.,][0-9]{1,2})?)/g))
+        .map(function (m) { return parseMoney(m[1]); })
+        .filter(function (n) { return n > 0 && n < 10000000; });
+      if (amounts.length) total = Math.max.apply(null, amounts);
+    }
+
+    const headerMatches = [];
+    const headerRegex = /[\[(]\s*(\d{1,5})\s*[\])]\s*[-:]\s*([^\n\r]{0,90})/gi;
+    let match;
+    while ((match = headerRegex.exec(source)) !== null) {
+      headerMatches.push({
+        index: match.index,
+        plu: String(match[1] || '').replace(/^0+/, ''),
+        name: match[2] || '',
+      });
+    }
+
+    const items = [];
+    headerMatches.forEach(function (h, idx) {
+      const next = headerMatches[idx + 1] ? headerMatches[idx + 1].index : source.length;
+      const block = source.slice(h.index, next);
+      const item = parseTicketItemBlock(h.plu, h.name, block, total);
+      if (item.line_total > 0 || item.plu || item.name) {
+        items.push(item);
+      }
+    });
+
+    if (items.length === 0) {
+      const fallbackMatch = compact.match(/(?:plu|ic\.?plu)?\D{0,14}[\[(]?\s*(\d{2,5})\s*[\])]?\s*[-:]\s*([A-Za-z][A-Za-z .]{2,40})?/i);
+      const plu = fallbackMatch ? String(fallbackMatch[1]).replace(/^0+/, '') : '';
+      let name = fallbackMatch && fallbackMatch[2] ? cleanTicketProductName(fallbackMatch[2]) : '';
+      if (!name && /pistach/i.test(compact)) name = 'Pistachos';
+      const item = parseTicketItemBlock(plu, name || (plu ? ('PLU ' + plu) : 'Producto ticket'), compact, total);
+      if (item.line_total <= 0 && total > 0) {
+        item.line_total = total;
+        item.unit_price = computeBasePrice(total, item.quantity, item.unit);
+      }
+      items.push(item);
+    }
+
+    const itemsSum = items.reduce(function (sum, it) { return sum + toNumber(it.line_total); }, 0);
+    const articleMatch = compact.match(/articulos?\s*:?\s*(\d{1,3})/i);
+    const warnings = ['Lectura local del navegador: revisa los campos antes de confirmar.'];
+    if (articleMatch && items.length !== Number(articleMatch[1])) {
+      warnings.push('El ticket dice ' + articleMatch[1] + ' articulos y la lectura local detecto ' + items.length + '.');
+    }
+    if (total > 0 && itemsSum > 0 && Math.abs(total - itemsSum) > 1) {
+      warnings.push('El total del ticket no coincide exactamente con la suma detectada.');
+    }
+
+    return {
+      sale_date: parseDateToIso(source),
+      sale_time: parseTime(source),
+      items: items,
+      total: total > 0 ? total : itemsSum,
+      confidence: items.length > 1 ? 0.62 : 0.52,
+      warnings: warnings,
+      raw_text: source.slice(0, 900),
+    };
+  }
+
   function parseScaleBarcode(code) {
     const barcode = String(code || '').replace(/\D/g, '');
     if (barcode.length !== 13) return null;
@@ -1204,6 +1350,7 @@ try {
       .then(function (codes) {
         const parsed = (codes || []).map(function (c) { return parseScaleBarcode(c.rawValue); }).filter(Boolean);
         if (!parsed.length) return null;
+        if (parsed.length > 1) return null;
         const item = parsed.find(function (p) { return p.plu; }) || parsed[0];
         const total = parsed.reduce(function (max, p) { return Math.max(max, p.total || 0); }, item.total || 0);
         return {

@@ -186,11 +186,16 @@ function ticket_ocr_prompt(): string
 {
     return implode("\n", [
         'Lee la foto de un ticket de balanza de comercio argentino y devolve solo JSON segun el esquema.',
-        'Extrae fecha y hora de venta, todos los productos, PLU, nombre si aparece, cantidad/peso vendido, precio unitario/base, importe por producto y total general.',
-        'Los PLU suelen estar entre corchetes o antes del nombre, por ejemplo "[203] Pistachos".',
-        'Cuando el ticket dice algo como "5000g / Kg x 2450$", usa quantity=5000, unit="g", unit_price=2450 y line_total=12250.',
+        'Extrae fecha y hora de venta, TODOS los productos, PLU, nombre si aparece, cantidad/peso vendido, precio unitario/base, importe por producto y total general.',
+        'El ticket puede ser largo y tener varios bloques de producto. Cada producto suele empezar con un PLU entre corchetes o parentesis, por ejemplo "[203] - Pistachos".',
+        'Despues de cada producto suele aparecer una linea con peso/cantidad, precio por kg/unidad y el importe: por ejemplo "0.245kg 50000$/kg = 12250$". Para ese caso usa quantity=0.245, unit="kg", unit_price=50000 y line_total=12250.',
+        'Si el ticket dice "ARTICULOS: 6", intenta devolver 6 items; si no podes leer alguno, agrega warning.',
+        'Ignora los codigos de barras y los numeros largos impresos debajo de cada producto. No uses codigos de barras como PLU ni como importe.',
+        'Los PLU reales son cortos (normalmente 1 a 5 digitos) y estan cerca del nombre del producto.',
         'Si la cantidad esta en kg, usa unit="kg"; si es por unidad, unit="u".',
         'Todos los importes deben ser numeros en pesos argentinos, sin simbolo $, sin separadores de miles.',
+        'En Argentina un punto puede ser separador de miles: "50.000" significa 50000 y "107.390" significa 107390.',
+        'El total general es el numero que aparece junto a la palabra TOTAL, no la suma de codigos de barras.',
         'La fecha debe salir en ISO YYYY-MM-DD y la hora en HH:MM:SS. Si el mes aparece como MAY, interpretalo como mayo.',
         'No inventes datos. Si un campo no se puede leer, usa "" o 0 y agrega una advertencia breve.',
         'Objeto JSON requerido: {"sale_date":"","sale_time":"","items":[{"plu":"","name":"","quantity":0,"unit":"g","unit_price":0,"line_total":0,"confidence":0}],"total":0,"confidence":0,"warnings":[],"raw_text":""}.',
@@ -264,7 +269,7 @@ function ticket_ocr_gemini_payload(string $mimeType, string $base64Image, string
         ],
         'generationConfig' => [
             'temperature' => 0,
-            'maxOutputTokens' => 2500,
+            'maxOutputTokens' => 4000,
         ],
     ];
 
@@ -610,8 +615,8 @@ function ticket_ocr_normalize_result(array $data): array
         $plu = is_string($plu) ? ltrim($plu, '0') : '';
 
         $name = ticket_ocr_clean_text((string)($rawItem['name'] ?? ''));
-        $quantity = ticket_ocr_number($rawItem['quantity'] ?? 0);
         $unit = ticket_ocr_normalize_unit((string)($rawItem['unit'] ?? ''));
+        $quantity = ticket_ocr_quantity_number($rawItem['quantity'] ?? 0, $unit);
         $unitPrice = ticket_ocr_number($rawItem['unit_price'] ?? 0);
         $lineTotal = ticket_ocr_number($rawItem['line_total'] ?? 0);
 
@@ -627,6 +632,12 @@ function ticket_ocr_normalize_result(array $data): array
         }
         if ($unit === '') {
             $unit = 'u';
+        }
+        if (($unit === 'kg' || $unit === 'l') && $quantity > 50 && $unitPrice > 0 && $lineTotal > 0) {
+            $expectedQuantity = $lineTotal / $unitPrice;
+            if ($expectedQuantity > 0 && abs($expectedQuantity - ($quantity / 1000.0)) < 0.01) {
+                $quantity = round($quantity / 1000.0, 3);
+            }
         }
         if ($lineTotal <= 0 && $quantity > 0 && $unitPrice > 0) {
             $lineTotal = ticket_ocr_compute_line_total($quantity, $unit, $unitPrice);
@@ -745,6 +756,8 @@ function ticket_ocr_number(mixed $value): float
         $s = str_replace(',', '.', $s);
     } elseif ($hasComma) {
         $s = str_replace(',', '.', $s);
+    } elseif (preg_match('/^\d{1,3}(?:\.\d{3})+$/', $s) === 1) {
+        $s = str_replace('.', '', $s);
     }
     $s = preg_replace('/[^0-9.\-]/', '', $s);
     if (!is_string($s) || $s === '' || $s === '-' || !is_numeric($s)) {
@@ -763,12 +776,47 @@ function ticket_ocr_normalize_unit(string $unit): string
     return match ($u) {
         '', 'cant', 'cantidad' => '',
         'u', 'un', 'uni', 'unidad', 'unidades', 'und' => 'u',
-        'g', 'gr', 'gramo', 'gramos' => 'g',
+        'g', 'gr', 'grs', 'gramo', 'gramos' => 'g',
         'kg', 'kilo', 'kilos', 'kgs' => 'kg',
         'ml', 'mililitro', 'mililitros' => 'ml',
         'l', 'lt', 'lts', 'litro', 'litros' => 'l',
         default => '',
     };
+}
+
+function ticket_ocr_quantity_number(mixed $value, string $unit): float
+{
+    if (is_int($value) || is_float($value)) {
+        $n = (float)$value;
+        return is_finite($n) ? $n : 0.0;
+    }
+
+    $s = trim((string)$value);
+    if ($s === '') {
+        return 0.0;
+    }
+
+    $s = str_replace(['$', ' '], '', $s);
+    $unit = ticket_ocr_normalize_unit($unit);
+    $hasDot = str_contains($s, '.');
+    $hasComma = str_contains($s, ',');
+
+    if (($unit === 'kg' || $unit === 'l') && $hasDot && !$hasComma) {
+        // En cantidades de balanza, 1.025kg significa 1.025 kg, no 1025.
+    } elseif ($hasDot && $hasComma) {
+        $s = str_replace('.', '', $s);
+        $s = str_replace(',', '.', $s);
+    } elseif ($hasComma) {
+        $s = str_replace(',', '.', $s);
+    }
+
+    $s = preg_replace('/[^0-9.\-]/', '', $s);
+    if (!is_string($s) || $s === '' || $s === '-' || !is_numeric($s)) {
+        return 0.0;
+    }
+
+    $n = (float)$s;
+    return is_finite($n) ? $n : 0.0;
 }
 
 function ticket_ocr_compute_line_total(float $quantity, string $unit, float $basePrice): float
