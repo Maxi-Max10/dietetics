@@ -17,6 +17,10 @@ function stock_create_item(PDO $pdo, int $createdBy, string $name, string $sku =
         throw new InvalidArgumentException('Cantidad inválida.');
     }
 
+    // Las cantidades de peso/volumen (g, kg, ml, l) necesitan 3 decimales de precisión.
+    // Las unidades simples (u) usan 2 decimales.
+    $decimalPlaces = in_array($unit, ['g', 'kg', 'ml', 'l'], true) ? 3 : 2;
+
     $stmt = $pdo->prepare(
         'INSERT INTO stock_items (created_by, name, sku, unit, quantity)
          VALUES (:created_by, :name, :sku, :unit, :quantity)'
@@ -27,7 +31,7 @@ function stock_create_item(PDO $pdo, int $createdBy, string $name, string $sku =
         'name' => $name,
         'sku' => ($sku === '' ? null : $sku),
         'unit' => ($unit === '' ? null : $unit),
-        'quantity' => number_format($qty, 2, '.', ''),
+        'quantity' => number_format($qty, $decimalPlaces, '.', ''),
     ]);
 
     return (int)$pdo->lastInsertId();
@@ -108,9 +112,16 @@ function stock_adjust(PDO $pdo, int $createdBy, int $itemId, string|int|float $d
             throw new InvalidArgumentException('El stock no puede quedar negativo.');
         }
 
+        // Las cantidades de peso/volumen necesitan 3 decimales.
+        $stmt2 = $pdo->prepare('SELECT unit FROM stock_items WHERE id = :id LIMIT 1');
+        $stmt2->execute(['id' => $itemId]);
+        $unitRow = $stmt2->fetch();
+        $unit = (string)($unitRow['unit'] ?? '');
+        $decimalPlaces = in_array($unit, ['g', 'kg', 'ml', 'l'], true) ? 3 : 2;
+
         $upd = $pdo->prepare('UPDATE stock_items SET quantity = :quantity WHERE id = :id AND created_by = :created_by');
         $upd->execute([
-            'quantity' => number_format($new, 2, '.', ''),
+            'quantity' => number_format($new, $decimalPlaces, '.', ''),
             'id' => $itemId,
             'created_by' => $createdBy,
         ]);

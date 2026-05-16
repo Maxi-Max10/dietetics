@@ -208,9 +208,12 @@ function sales_items_map_for_invoices(PDO $pdo, array $invoiceIds): array
     $stmt->execute($invoiceIds);
     $rows = $stmt->fetchAll();
 
-    $formatQty = static function ($qty): string {
+    // Formatea cantidad respetando precisión según la unidad (3 decimales para peso/volumen, 2 para unidades)
+    $formatQty = static function ($qty, $unit = ''): string {
         $n = (float)str_replace(',', '.', (string)$qty);
-        $s = number_format($n, 2, '.', '');
+        $unit = strtolower(trim((string)$unit));
+        $decimalPlaces = in_array($unit, ['g', 'kg', 'ml', 'l'], true) ? 3 : 2;
+        $s = number_format($n, $decimalPlaces, '.', '');
         return rtrim(rtrim($s, '0'), '.');
     };
 
@@ -225,8 +228,8 @@ function sales_items_map_for_invoices(PDO $pdo, array $invoiceIds): array
             continue;
         }
 
-        $qty = $formatQty($r['quantity'] ?? '1');
         $unit = strtolower(trim((string)($r['unit'] ?? '')));
+        $qty = $formatQty($r['quantity'] ?? '1', $unit);
         $qtyLabel = $qty;
         if ($unit !== '' && $unit !== 'u') {
             $qtyLabel .= ' ' . $unit;

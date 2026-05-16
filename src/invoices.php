@@ -286,10 +286,13 @@ function invoices_create(PDO $pdo, int $createdBy, string $customerName, string 
                 $desc .= ' (' . $unitKey . ')';
             }
 
+            // Las cantidades de peso/volumen (g, kg, ml, l) necesitan 3 decimales de precisión.
+            // Las unidades simples (u) usan 2 decimales.
+            $decimalPlaces = in_array($unitKey, ['g', 'kg', 'ml', 'l'], true) ? 3 : 2;
             $params = [
                 'invoice_id' => $invoiceId,
                 'description' => $desc,
-                'quantity' => number_format((float)$line['quantity'], 2, '.', ''),
+                'quantity' => number_format((float)$line['quantity'], $decimalPlaces, '.', ''),
                 'unit_price_cents' => $line['unit_price_cents'],
                 'line_total_cents' => $line['line_total_cents'],
             ];

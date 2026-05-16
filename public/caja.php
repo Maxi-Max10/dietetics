@@ -697,7 +697,6 @@ try {
           <div class="card-header card-header-clean bg-white px-4 py-3">
             <p class="muted-label mb-1">Modo caja</p>
             <h2 class="h5 mb-0">Ticket de balanza (OCR/IA visual)</h2>
-            <p class="small text-muted mb-0">Extrae PLU y cantidad desde el texto impreso del ticket, sin depender de codigos de barras.</p>
           </div>
           <div class="card-body px-4 py-4">
 
