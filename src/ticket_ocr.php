@@ -95,7 +95,7 @@ function ticket_ocr_schema(): array
     return [
         'type' => 'object',
         'additionalProperties' => false,
-        'required' => ['sale_date', 'sale_time', 'items', 'total', 'confidence', 'warnings', 'raw_text'],
+        'required' => ['sale_date', 'sale_time', 'items', 'confidence', 'warnings', 'raw_text'],
         'properties' => [
             'sale_date' => [
                 'type' => 'string',
@@ -110,32 +110,20 @@ function ticket_ocr_schema(): array
                 'items' => [
                     'type' => 'object',
                     'additionalProperties' => false,
-                    'required' => ['plu', 'name', 'quantity', 'unit', 'unit_price', 'line_total', 'confidence'],
+                    'required' => ['plu', 'cantidad', 'unidad', 'confidence'],
                     'properties' => [
                         'plu' => [
                             'type' => 'string',
-                            'description' => 'Codigo PLU numerico del producto. Vacio si no se ve.',
+                            'description' => 'Codigo PLU numerico tomado solo del numero entre corchetes al inicio del articulo. Vacio si no se ve.',
                         ],
-                        'name' => [
-                            'type' => 'string',
-                            'description' => 'Nombre o descripcion impresa del producto. Vacio si no se ve.',
-                        ],
-                        'quantity' => [
+                        'cantidad' => [
                             'type' => 'number',
-                            'description' => 'Cantidad vendida. Para peso en gramos, usar gramos. Para kg, usar kg.',
+                            'description' => 'Cantidad vendida impresa como peso o unidad. Ejemplo: para 0.245kg devolver 0.245.',
                         ],
-                        'unit' => [
+                        'unidad' => [
                             'type' => 'string',
                             'enum' => ['', 'u', 'g', 'kg', 'ml', 'l'],
-                            'description' => 'Unidad de la cantidad.',
-                        ],
-                        'unit_price' => [
-                            'type' => 'number',
-                            'description' => 'Precio base en ARS por unidad/kg/l si esta disponible; 0 si no se ve.',
-                        ],
-                        'line_total' => [
-                            'type' => 'number',
-                            'description' => 'Importe total del producto en ARS; 0 si no se ve.',
+                            'description' => 'Unidad exacta de la cantidad leida del ticket.',
                         ],
                         'confidence' => [
                             'type' => 'number',
@@ -143,10 +131,6 @@ function ticket_ocr_schema(): array
                         ],
                     ],
                 ],
-            ],
-            'total' => [
-                'type' => 'number',
-                'description' => 'Total general del ticket en ARS; 0 si no se ve.',
             ],
             'confidence' => [
                 'type' => 'number',
@@ -186,23 +170,20 @@ function ticket_ocr_prompt(): string
 {
     return implode("\n", [
         'Lee la foto de un ticket de balanza de comercio argentino y devolve solo JSON segun el esquema.',
-        'Extrae fecha y hora de venta, TODOS los productos, PLU, nombre si aparece, cantidad/peso vendido, precio unitario/base, importe por producto y total general.',
-        'Toma el PLU del numero entre corchetes al inicio de cada articulo, por ejemplo "[ 203]". No uses codigos de barras ni datos de la etiqueta de codigo de barras.',
-        'Toma la cantidad vendida del valor impreso como peso o unidad, por ejemplo "0.245kg" o "1u".',
-        'Para cada producto, si no aparece precio unitario en el ticket, busca el producto en el catalogo usando el PLU y calcula line_total = cantidad * precio unitario.',
+        'Extrae fecha y hora de venta si se ven y TODOS los productos, pero de cada producto extrae UNICAMENTE PLU, cantidad vendida y unidad.',
+        'Toma el PLU solo del numero entre corchetes al inicio de cada articulo, por ejemplo "[ 203]". No uses codigos de barras ni datos de la etiqueta de codigo de barras.',
+        'Toma la cantidad vendida del valor impreso como peso o unidad, por ejemplo "0.245kg", "245g" o "1u".',
+        'No extraigas ni calcules precio unitario, importe por producto, subtotal ni total general: esos datos se resolveran despues consultando la base de datos por PLU.',
         'El ticket puede ser largo y tener varios bloques de producto. Cada producto suele empezar con un PLU entre corchetes o parentesis, por ejemplo "[203] - Pistachos".',
-        'Despues de cada producto suele aparecer una linea con peso/cantidad, precio por kg/unidad y el importe: por ejemplo "0.245kg 50000$/kg = 12250$". Para ese caso usa quantity=0.245, unit="kg", unit_price=50000 y line_total=12250.',
+        'Despues de cada producto suele aparecer una linea con peso/cantidad, precio por kg/unidad e importe: por ejemplo "0.245kg 50000$/kg = 12250$". Para ese caso devuelve cantidad=0.245 y unidad="kg"; ignora 50000 y 12250.',
         'Si el ticket dice "ARTICULOS: 6", intenta devolver 6 items; si no podes leer alguno, agrega warning.',
-        'Ignora los codigos de barras y los numeros largos impresos debajo de cada producto. No uses codigos de barras como PLU ni como importe.',
+        'Ignora los codigos de barras y los numeros largos impresos debajo de cada producto. No uses codigos de barras como PLU, cantidad ni importe.',
         'Los PLU reales son cortos (normalmente 1 a 5 digitos) y estan cerca del nombre del producto.',
-        'Si la cantidad esta en kg, usa unit="kg"; si es por unidad, unit="u".',
-        'Todos los importes deben ser numeros en pesos argentinos, sin simbolo $, sin separadores de miles.',
-        'En Argentina un punto puede ser separador de miles: "50.000" significa 50000 y "107.390" significa 107390.',
-        'El total general es el numero que aparece junto a la palabra TOTAL, no la suma de codigos de barras.',
+        'Si la cantidad esta en kg, usa unidad="kg"; si esta en gramos usa unidad="g"; si es por unidad usa unidad="u".',
         'La fecha debe salir en ISO YYYY-MM-DD y la hora en HH:MM:SS. Si el mes aparece como MAY, interpretalo como mayo.',
         'No inventes datos. Si un campo no se puede leer, usa "" o 0 y agrega una advertencia breve.',
-        'Devuelve items con al menos {plu, quantity, unit}. Si falta algun campo importante, mantenlo en el objeto y agrega warnings para revision manual.',
-        'Objeto JSON requerido: {"sale_date":"","sale_time":"","items":[{"plu":"","name":"","quantity":0,"unit":"g","unit_price":0,"line_total":0,"confidence":0}],"total":0,"confidence":0,"warnings":[],"raw_text":""}.',
+        'Devuelve items con objetos {plu, cantidad, unidad, confidence}. Si falta PLU, cantidad o unidad, mantenlo en el objeto y agrega warnings para revision manual.',
+        'Objeto JSON requerido: {"sale_date":"","sale_time":"","items":[{"plu":"","cantidad":0,"unidad":"kg","confidence":0}],"confidence":0,"warnings":[],"raw_text":""}.',
         'JSON obligatorio.',
     ]);
 }
@@ -610,7 +591,12 @@ function ticket_ocr_response_text(array $decoded): string
 function ticket_ocr_normalize_result(array $data): array
 {
     $items = [];
-    foreach (($data['items'] ?? []) as $rawItem) {
+    $rawItems = $data['items'] ?? $data['productos'] ?? [];
+    if (!is_array($rawItems)) {
+        $rawItems = [];
+    }
+
+    foreach ($rawItems as $rawItem) {
         if (!is_array($rawItem)) {
             continue;
         }
@@ -619,12 +605,12 @@ function ticket_ocr_normalize_result(array $data): array
         $plu = is_string($plu) ? ltrim($plu, '0') : '';
 
         $name = ticket_ocr_clean_text((string)($rawItem['name'] ?? ''));
-        $unit = ticket_ocr_normalize_unit((string)($rawItem['unit'] ?? ''));
-        $quantity = ticket_ocr_quantity_number($rawItem['quantity'] ?? 0, $unit);
-        $unitPrice = ticket_ocr_number($rawItem['unit_price'] ?? 0);
-        $lineTotal = ticket_ocr_number($rawItem['line_total'] ?? 0);
+        $unitRaw = $rawItem['unidad'] ?? $rawItem['unit'] ?? '';
+        $unit = ticket_ocr_normalize_unit((string)$unitRaw);
+        $quantityRaw = $rawItem['cantidad'] ?? $rawItem['quantity'] ?? 0;
+        $quantity = ticket_ocr_quantity_number($quantityRaw, $unit);
 
-        if ($quantity <= 0 && $lineTotal <= 0 && $unitPrice <= 0 && $plu === '' && $name === '') {
+        if ($quantity <= 0 && $plu === '' && $name === '' && $unit === '') {
             continue;
         }
 
@@ -634,40 +620,26 @@ function ticket_ocr_normalize_result(array $data): array
         if ($name === '') {
             $name = 'Producto ticket';
         }
-        if ($unit === '') {
-            $unit = 'u';
-        }
-        if (($unit === 'kg' || $unit === 'l') && $quantity > 50 && $unitPrice > 0 && $lineTotal > 0) {
-            $expectedQuantity = $lineTotal / $unitPrice;
-            if ($expectedQuantity > 0 && abs($expectedQuantity - ($quantity / 1000.0)) < 0.01) {
-                $quantity = round($quantity / 1000.0, 3);
-            }
-        }
-        if ($lineTotal <= 0 && $quantity > 0 && $unitPrice > 0) {
-            $lineTotal = ticket_ocr_compute_line_total($quantity, $unit, $unitPrice);
-        }
-        if ($unitPrice <= 0 && $quantity > 0 && $lineTotal > 0) {
-            $unitPrice = ticket_ocr_compute_base_price($lineTotal, $quantity, $unit);
-        }
-
         $items[] = [
             'plu' => $plu,
             'name' => $name,
-            'quantity' => $quantity > 0 ? $quantity : 1.0,
+            'quantity' => $quantity,
             'unit' => $unit,
-            'unit_price' => $unitPrice,
-            'line_total' => $lineTotal,
+            'cantidad' => $quantity,
+            'unidad' => $unit,
+            'unit_price' => 0.0,
+            'line_total' => 0.0,
             'confidence' => max(0.0, min(1.0, ticket_ocr_number($rawItem['confidence'] ?? 0))),
             'product_id' => null,
             'catalog_name' => '',
             'catalog_price' => 0.0,
+            'catalog_unit' => '',
+            'needs_review' => false,
+            'review_reasons' => [],
         ];
     }
 
-    $total = ticket_ocr_number($data['total'] ?? 0);
-    if ($total <= 0 && count($items) > 0) {
-        $total = array_reduce($items, static fn(float $sum, array $item): float => $sum + (float)$item['line_total'], 0.0);
-    }
+    $total = array_reduce($items, static fn(float $sum, array $item): float => $sum + (float)$item['line_total'], 0.0);
 
     $warnings = [];
     foreach (($data['warnings'] ?? []) as $warning) {
@@ -677,7 +649,7 @@ function ticket_ocr_normalize_result(array $data): array
         }
     }
 
-    return [
+    $ticket = [
         'sale_date' => ticket_ocr_normalize_date((string)($data['sale_date'] ?? '')),
         'sale_time' => ticket_ocr_normalize_time((string)($data['sale_time'] ?? '')),
         'items' => $items,
@@ -686,11 +658,15 @@ function ticket_ocr_normalize_result(array $data): array
         'warnings' => $warnings,
         'raw_text' => ticket_ocr_clean_text((string)($data['raw_text'] ?? '')),
     ];
+
+    return ticket_ocr_sync_minimal_products($ticket);
 }
 
 function ticket_ocr_enrich_with_catalog(PDO $pdo, int $userId, array $ticket): array
 {
     if (!catalog_supports_table($pdo)) {
+        $ticket['warnings'][] = 'No se encontro la tabla del catalogo para resolver PLU y precios.';
+        $ticket['needs_review'] = true;
         return $ticket;
     }
 
@@ -698,41 +674,141 @@ function ticket_ocr_enrich_with_catalog(PDO $pdo, int $userId, array $ticket): a
         if (!is_array($item)) {
             continue;
         }
-        $plu = (int)($item['plu'] ?? 0);
+
+        $reasons = is_array($item['review_reasons'] ?? null) ? $item['review_reasons'] : [];
+        $pluRaw = preg_replace('/\D+/', '', (string)($item['plu'] ?? ''));
+        $pluRaw = is_string($pluRaw) ? ltrim($pluRaw, '0') : '';
+        $plu = (int)$pluRaw;
+        $unit = ticket_ocr_normalize_unit((string)($item['unit'] ?? $item['unidad'] ?? ''));
+        $quantity = ticket_ocr_quantity_number($item['quantity'] ?? $item['cantidad'] ?? 0, $unit);
+
         if ($plu <= 0) {
+            $reasons[] = 'No se pudo leer el PLU.';
+            $ticket['items'][$idx]['needs_review'] = true;
+            $ticket['items'][$idx]['review_reasons'] = ticket_ocr_unique_warnings($reasons);
             continue;
+        }
+        if ($quantity <= 0) {
+            $reasons[] = 'No se pudo leer la cantidad vendida.';
+        }
+        if ($unit === '') {
+            $reasons[] = 'No se pudo leer la unidad de la cantidad.';
         }
 
         try {
             $product = catalog_get($pdo, $userId, $plu);
         } catch (Throwable $e) {
+            $reasons[] = 'El PLU ' . $plu . ' no existe en el catalogo.';
+            $ticket['items'][$idx]['needs_review'] = true;
+            $ticket['items'][$idx]['review_reasons'] = ticket_ocr_unique_warnings($reasons);
             continue;
+        }
+
+        $catalogUnit = ticket_ocr_normalize_unit((string)($product['unit'] ?? ''));
+        if ($unit === '' && $catalogUnit !== '') {
+            $unit = $catalogUnit;
+        }
+
+        $price = round(((int)($product['price_cents'] ?? 0)) / 100, 2);
+        if ($price <= 0) {
+            $reasons[] = 'El PLU ' . $plu . ' no tiene precio configurado en el catalogo.';
+        }
+        if ($unit !== '' && $catalogUnit !== '' && !ticket_ocr_units_are_compatible($unit, $catalogUnit)) {
+            $reasons[] = 'La unidad leida (' . $unit . ') no coincide con la unidad del catalogo (' . $catalogUnit . ').';
         }
 
         $ticket['items'][$idx]['product_id'] = (int)($product['id'] ?? 0);
         $ticket['items'][$idx]['catalog_name'] = (string)($product['name'] ?? '');
-        $ticket['items'][$idx]['catalog_price'] = round(((int)($product['price_cents'] ?? 0)) / 100, 2);
+        $ticket['items'][$idx]['catalog_price'] = $price;
+        $ticket['items'][$idx]['catalog_unit'] = $catalogUnit;
+        $ticket['items'][$idx]['name'] = (string)($product['name'] ?? ('PLU ' . $plu));
+        $ticket['items'][$idx]['quantity'] = $quantity;
+        $ticket['items'][$idx]['unit'] = $unit;
+        $ticket['items'][$idx]['cantidad'] = $quantity;
+        $ticket['items'][$idx]['unidad'] = $unit;
+        $ticket['items'][$idx]['unit_price'] = $price;
 
-        $currentName = trim((string)($ticket['items'][$idx]['name'] ?? ''));
-        if ($currentName === '' || preg_match('/^PLU\s+\d+$/i', $currentName) === 1 || $currentName === 'Producto ticket') {
-            $ticket['items'][$idx]['name'] = (string)($product['name'] ?? $currentName);
+        if ($quantity > 0 && $unit !== '' && $price > 0 && ($catalogUnit === '' || ticket_ocr_units_are_compatible($unit, $catalogUnit))) {
+            $ticket['items'][$idx]['line_total'] = ticket_ocr_compute_line_total($quantity, $unit, $price);
+        } else {
+            $ticket['items'][$idx]['line_total'] = 0.0;
         }
 
-        $catalogPriceCents = (int)($product['price_cents'] ?? 0);
-        if ($catalogPriceCents > 0) {
-            if ((float)($ticket['items'][$idx]['unit_price'] ?? 0) <= 0) {
-                $ticket['items'][$idx]['unit_price'] = round($catalogPriceCents / 100, 2);
-            }
-            if (ticket_ocr_number($ticket['items'][$idx]['line_total'] ?? 0) <= 0 && (float)($ticket['items'][$idx]['quantity'] ?? 0) > 0) {
-                $ticket['items'][$idx]['line_total'] = ticket_ocr_compute_line_total(
-                    (float)$ticket['items'][$idx]['quantity'],
-                    (string)$ticket['items'][$idx]['unit'],
-                    (float)$ticket['items'][$idx]['unit_price']
-                );
-            }
-        }
+        $ticket['items'][$idx]['needs_review'] = count($reasons) > 0;
+        $ticket['items'][$idx]['review_reasons'] = ticket_ocr_unique_warnings($reasons);
     }
 
+    $ticket['total'] = round(array_reduce(
+        is_array($ticket['items'] ?? null) ? $ticket['items'] : [],
+        static fn(float $sum, array $item): float => $sum + ticket_ocr_number($item['line_total'] ?? 0),
+        0.0
+    ), 2);
+
+    $ticket['needs_review'] = false;
+    foreach (($ticket['items'] ?? []) as $idx => $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+        $reasons = is_array($item['review_reasons'] ?? null) ? $item['review_reasons'] : [];
+        foreach ($reasons as $reason) {
+            $ticket['warnings'][] = 'Item ' . ((int)$idx + 1) . ': ' . (string)$reason;
+        }
+        if (!empty($item['needs_review'])) {
+            $ticket['needs_review'] = true;
+        }
+    }
+    $ticket['warnings'] = ticket_ocr_unique_warnings($ticket['warnings'] ?? []);
+
+    return ticket_ocr_sync_minimal_products($ticket);
+}
+
+function ticket_ocr_unit_group(string $unit): string
+{
+    $unit = ticket_ocr_normalize_unit($unit);
+    return match ($unit) {
+        'g', 'kg' => 'mass',
+        'ml', 'l' => 'volume',
+        'u' => 'count',
+        default => '',
+    };
+}
+
+function ticket_ocr_units_are_compatible(string $readUnit, string $catalogUnit): bool
+{
+    $readGroup = ticket_ocr_unit_group($readUnit);
+    $catalogGroup = ticket_ocr_unit_group($catalogUnit);
+    return $readGroup !== '' && $catalogGroup !== '' && $readGroup === $catalogGroup;
+}
+
+function ticket_ocr_unique_warnings(array $warnings): array
+{
+    $out = [];
+    foreach ($warnings as $warning) {
+        $warning = ticket_ocr_clean_text((string)$warning);
+        if ($warning !== '' && !in_array($warning, $out, true)) {
+            $out[] = $warning;
+        }
+    }
+    return $out;
+}
+
+function ticket_ocr_sync_minimal_products(array $ticket): array
+{
+    $products = [];
+    foreach (($ticket['items'] ?? []) as $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+        $products[] = [
+            'plu' => (string)($item['plu'] ?? ''),
+            'cantidad' => ticket_ocr_quantity_number(
+                $item['quantity'] ?? $item['cantidad'] ?? 0,
+                ticket_ocr_normalize_unit((string)($item['unit'] ?? $item['unidad'] ?? ''))
+            ),
+            'unidad' => ticket_ocr_normalize_unit((string)($item['unit'] ?? $item['unidad'] ?? '')),
+        ];
+    }
+    $ticket['productos'] = $products;
     return $ticket;
 }
 

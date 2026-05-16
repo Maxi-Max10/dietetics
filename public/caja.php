@@ -40,7 +40,7 @@ function caja_decimal(mixed $value): float
 
 function caja_compute_line_total(float $quantity, string $unit, float $basePrice): float
 {
-    $unit = invoice_normalize_unit($unit);
+    $unit = caja_normalize_ticket_unit($unit);
     if ($quantity <= 0 || $basePrice <= 0) {
         return 0.0;
     }
@@ -50,9 +50,41 @@ function caja_compute_line_total(float $quantity, string $unit, float $basePrice
     return round($quantity * $basePrice, 2);
 }
 
+function caja_normalize_ticket_unit(string $unit): string
+{
+    $u = strtolower(trim($unit));
+    $u = str_replace(['.', ' '], '', $u);
+
+    return match ($u) {
+        'u', 'un', 'uni', 'unidad', 'unidades', 'und' => 'u',
+        'g', 'gr', 'grs', 'gramo', 'gramos' => 'g',
+        'kg', 'kilo', 'kilos', 'kgs' => 'kg',
+        'ml', 'mililitro', 'mililitros' => 'ml',
+        'l', 'lt', 'lts', 'litro', 'litros' => 'l',
+        default => '',
+    };
+}
+
+function caja_unit_group(string $unit): string
+{
+    return match (caja_normalize_ticket_unit($unit)) {
+        'g', 'kg' => 'mass',
+        'ml', 'l' => 'volume',
+        'u' => 'count',
+        default => '',
+    };
+}
+
+function caja_units_are_compatible(string $readUnit, string $catalogUnit): bool
+{
+    $readGroup = caja_unit_group($readUnit);
+    $catalogGroup = caja_unit_group($catalogUnit);
+    return $readGroup !== '' && $catalogGroup !== '' && $readGroup === $catalogGroup;
+}
+
 function caja_base_price_from_total(float $lineTotal, float $quantity, string $unit): float
 {
-    $unit = invoice_normalize_unit($unit);
+    $unit = caja_normalize_ticket_unit($unit);
     if ($lineTotal <= 0 || $quantity <= 0) {
         return 0.0;
     }
@@ -123,34 +155,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($saleDateTime !== null) {
         $detailLines[] = 'Fecha/hora ticket: ' . $saleDateTime->format('Y-m-d H:i:s');
     }
-    if ($ticketTotal > 0) {
-        $detailLines[] = 'Total ticket detectado: ' . caja_money_detail($ticketTotal);
-    }
     $detailItemLines = [];
+    $validationErrors = [];
+    $computedSaleTotal = 0.0;
 
-    foreach ($items as $it) {
+    try {
+        $pdo = db($config);
+
+        if (!catalog_supports_table($pdo)) {
+            throw new RuntimeException('No se encontro la tabla del catalogo para resolver PLU y precios.');
+        }
+
+        foreach ($items as $idx => $it) {
         $plu = preg_replace('/\D+/', '', (string)($it['plu'] ?? ''));
         $plu = is_string($plu) ? ltrim($plu, '0') : '';
 
-        $desc      = trim((string)($it['description'] ?? ''));
-        $qty       = caja_decimal($it['quantity'] ?? 0);
-        $unit      = invoice_normalize_unit((string)($it['unit'] ?? 'u'));
-        $price     = caja_decimal($it['unit_price'] ?? 0);
-        $lineTotal = caja_decimal($it['line_total'] ?? 0);
+        $rowLabel = 'Item ' . ((int)$idx + 1);
+        $qty       = caja_decimal($it['quantity'] ?? $it['cantidad'] ?? 0);
+        $unit      = caja_normalize_ticket_unit((string)($it['unit'] ?? $it['unidad'] ?? ''));
 
-        if ($desc === '' && $plu !== '') {
-            $desc = 'PLU ' . $plu;
+        if ($plu === '') {
+            $validationErrors[] = $rowLabel . ': falta PLU.';
+            continue;
+        }
+        if ($qty <= 0) {
+            $validationErrors[] = $rowLabel . ' (PLU ' . $plu . '): falta cantidad vendida.';
+            continue;
+        }
+        if ($unit === '') {
+            $validationErrors[] = $rowLabel . ' (PLU ' . $plu . '): falta unidad.';
+            continue;
         }
 
-        if ($price <= 0 && $lineTotal > 0 && $qty > 0) {
-            $price = caja_base_price_from_total($lineTotal, $qty, $unit);
+        try {
+            $product = catalog_get($pdo, $userId, (int)$plu);
+        } catch (Throwable $e) {
+            $validationErrors[] = $rowLabel . ': el PLU ' . $plu . ' no existe en el catalogo.';
+            continue;
         }
 
-        if ($price > 0 && $lineTotal > 0) {
-            $computed = caja_compute_line_total($qty, $unit, $price);
-            if ($computed > 0 && abs($computed - $lineTotal) > 0.05) {
-                $price = caja_base_price_from_total($lineTotal, $qty, $unit);
-            }
+        $desc = trim((string)($product['name'] ?? ''));
+        $catalogUnit = caja_normalize_ticket_unit((string)($product['unit'] ?? ''));
+        $price = round(((int)($product['price_cents'] ?? 0)) / 100, 2);
+
+        if ($desc === '') {
+            $validationErrors[] = $rowLabel . ' (PLU ' . $plu . '): el producto no tiene nombre en catalogo.';
+            continue;
+        }
+        if ($price <= 0) {
+            $validationErrors[] = $rowLabel . ' (PLU ' . $plu . '): el producto no tiene precio en catalogo.';
+            continue;
+        }
+        if ($catalogUnit !== '' && !caja_units_are_compatible($unit, $catalogUnit)) {
+            $validationErrors[] = $rowLabel . ' (PLU ' . $plu . '): la unidad leida (' . $unit . ') no coincide con la unidad del catalogo (' . $catalogUnit . ').';
+            continue;
+        }
+
+        $lineTotal = caja_compute_line_total($qty, $unit, $price);
+        if ($lineTotal <= 0) {
+            $validationErrors[] = $rowLabel . ' (PLU ' . $plu . '): no se pudo calcular el subtotal.';
+            continue;
         }
 
         if ($desc === '' || $qty <= 0 || $price <= 0) {
@@ -166,10 +230,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'unit_price'  => $price,
         ];
 
-        $detailItemLines[] = ($plu !== '' ? ('PLU ' . $plu . ' - ') : '') . $desc
+        $computedSaleTotal += $lineTotal;
+        $detailItemLines[] = 'PLU ' . $plu . ' - ' . $desc
             . ' | Cantidad: ' . (string)$qty . ' ' . $unit
-            . ' | Precio base: ' . caja_money_detail($price)
-            . ($lineTotal > 0 ? (' | Importe: ' . caja_money_detail($lineTotal)) : '');
+            . ' | Precio catalogo: ' . caja_money_detail($price) . ($catalogUnit !== '' ? (' / ' . $catalogUnit) : '')
+            . ' | Importe calculado: ' . caja_money_detail($lineTotal);
+        }
+
+    if (count($validationErrors) > 0) {
+        http_response_code(400);
+        echo json_encode([
+            'ok' => false,
+            'error' => 'Revisa los datos del ticket antes de guardar.',
+            'errors' => $validationErrors,
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    if (count($invoiceItems) === 0) {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'error' => 'No hay productos validos para guardar.'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    if ($computedSaleTotal > 0) {
+        $detailLines[] = 'Total calculado con catalogo: ' . caja_money_detail($computedSaleTotal);
+    }
+    if ($ticketTotal > 0 && abs($ticketTotal - $computedSaleTotal) > 0.05) {
+        $detailLines[] = 'Total editable recibido: ' . caja_money_detail($ticketTotal);
     }
 
     if (count($detailItemLines) > 0) {
@@ -179,8 +267,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    try {
-        $pdo = db($config);
         $invoiceId = invoices_create(
             $pdo,
             $userId,
@@ -214,6 +300,28 @@ try {
     $newOrdersCount = orders_count_new($pdoNav, $userId);
 } catch (Throwable $e) {
     // silencioso
+}
+
+$catalogByPlu = [];
+try {
+    $pdoCatalog = db($config);
+    if (catalog_supports_table($pdoCatalog)) {
+        foreach (catalog_list($pdoCatalog, $userId, '', 0) as $product) {
+            $plu = (string)((int)($product['id'] ?? 0));
+            if ($plu === '0') {
+                continue;
+            }
+            $catalogByPlu[$plu] = [
+                'id' => (int)($product['id'] ?? 0),
+                'name' => (string)($product['name'] ?? ''),
+                'unit' => caja_normalize_ticket_unit((string)($product['unit'] ?? '')),
+                'price' => round(((int)($product['price_cents'] ?? 0)) / 100, 2),
+                'currency' => (string)($product['currency'] ?? 'ARS'),
+            ];
+        }
+    }
+} catch (Throwable $e) {
+    $catalogByPlu = [];
 }
 
 ?><!DOCTYPE html>
@@ -793,7 +901,7 @@ try {
               <span id="cajaItemCount" class="fw-semibold">0</span>
             </div>
             <div class="d-flex justify-content-between align-items-center mb-1">
-              <span class="text-muted">Total detectado</span>
+              <span class="text-muted">Total calculado</span>
               <span id="cajaDetectedTotal" class="fw-semibold">-</span>
             </div>
             <div class="d-flex justify-content-between align-items-center mb-4">
@@ -825,6 +933,7 @@ try {
   'use strict';
 
   const CSRF = <?= json_encode($csrf) ?>;
+  const CATALOG_BY_PLU = <?= json_encode($catalogByPlu, JSON_UNESCAPED_UNICODE) ?> || {};
   const SAVE_URL = window.location.pathname || '/caja';
 
   const ticketInput      = document.getElementById('cajaTicketImage');
@@ -930,11 +1039,12 @@ try {
 
   function updateSummary() {
     const total = cartTotal();
+    const hasReview = cart.some(function (item) { return !validateCartItem(item); });
     itemCountEl.textContent = cart.length;
     totalDisplay.textContent = '$' + money.format(total);
     detectedTotalEl.textContent = detectedTicketTotal > 0 ? ('$' + money.format(detectedTicketTotal)) : '-';
     detectedTotalEl.classList.toggle('text-danger', detectedTicketTotal > 0 && Math.abs(total - detectedTicketTotal) > 0.10);
-    confirmBtn.disabled = cart.length === 0;
+    confirmBtn.disabled = cart.length === 0 || hasReview;
     clearBtn.style.display = cart.length === 0 ? 'none' : '';
     emptyRow.style.display = cart.length === 0 ? '' : 'none';
   }
@@ -946,6 +1056,7 @@ try {
   }
 
   function addCartRow(item, idx) {
+    validateCartItem(item);
     const tr = document.createElement('tr');
     tr.dataset.index = String(idx);
     cartBody.insertBefore(tr, emptyRow);
@@ -953,18 +1064,40 @@ try {
     const confidence = item.confidence > 0
       ? '<div class="confidence-chip mt-1">' + Math.round(item.confidence * 100) + '% IA</div>'
       : '';
+    const review = '<div class="small text-danger mt-1 row-review" style="display:' + (item.needs_review ? '' : 'none') + '">'
+      + escHtml((item.review_reasons || []).join(', ')) + '</div>';
 
     tr.innerHTML =
       '<td class="editable-cell"><input type="text" class="form-control form-control-sm cart-input" data-field="plu" value="' + escAttr(item.plu || '') + '" inputmode="numeric"></td>' +
-      '<td class="editable-cell editable-cell--product"><input type="text" class="form-control form-control-sm cart-input" data-field="description" value="' + escAttr(item.description) + '">' + confidence + '</td>' +
+      '<td class="editable-cell editable-cell--product"><input type="text" class="form-control form-control-sm cart-input bg-light" data-field="description" value="' + escAttr(item.description) + '" readonly>' + confidence + review + '</td>' +
       '<td class="editable-cell"><input type="number" min="0" step="0.001" class="form-control form-control-sm cart-input text-end" data-field="quantity" value="' + escAttr(formatInputNumber(item.quantity)) + '"></td>' +
       '<td><select class="form-select form-select-sm cart-input" data-field="unit">' + unitOptions(item.unit) + '</select></td>' +
-      '<td class="editable-cell"><input type="number" min="0" step="0.01" class="form-control form-control-sm cart-input text-end" data-field="unit_price" value="' + escAttr(formatInputNumber(item.unit_price)) + '"></td>' +
-      '<td class="editable-cell"><input type="number" min="0" step="0.01" class="form-control form-control-sm cart-input text-end fw-semibold" data-field="line_total" value="' + escAttr(formatInputNumber(item.line_total)) + '"></td>' +
+      '<td class="editable-cell"><input type="number" min="0" step="0.01" class="form-control form-control-sm cart-input text-end bg-light" data-field="unit_price" value="' + escAttr(formatInputNumber(item.unit_price)) + '" readonly></td>' +
+      '<td class="editable-cell"><input type="number" min="0" step="0.01" class="form-control form-control-sm cart-input text-end fw-semibold bg-light" data-field="line_total" value="' + escAttr(formatInputNumber(item.line_total)) + '" readonly></td>' +
       '<td><button type="button" class="btn btn-outline-danger btn-sm" data-remove aria-label="Quitar">&times;</button></td>';
 
+    tr.classList.toggle('table-warning', !!item.needs_review);
     tr.classList.add('row-scanned');
     setTimeout(function () { tr.classList.remove('row-scanned'); }, 900);
+  }
+
+  function syncRowComputedControls(tr, item) {
+    if (!tr || !item) return;
+    validateCartItem(item);
+    const descInput = tr.querySelector('[data-field="description"]');
+    const priceInput = tr.querySelector('[data-field="unit_price"]');
+    const lineInput = tr.querySelector('[data-field="line_total"]');
+    const unitSelect = tr.querySelector('[data-field="unit"]');
+    const reviewEl = tr.querySelector('.row-review');
+    if (descInput) descInput.value = item.description || '';
+    if (priceInput) priceInput.value = formatInputNumber(item.unit_price);
+    if (lineInput) lineInput.value = formatInputNumber(item.line_total);
+    if (unitSelect && unitSelect.value !== item.unit) unitSelect.value = item.unit || '';
+    if (reviewEl) {
+      reviewEl.textContent = (item.review_reasons || []).join(', ');
+      reviewEl.style.display = item.needs_review ? '' : 'none';
+    }
+    tr.classList.toggle('table-warning', !!item.needs_review);
   }
 
   function escHtml(str) {
@@ -988,61 +1121,134 @@ try {
     return String(Math.round(n * 1000) / 1000).replace(/\.0+$/, '');
   }
 
-  function normalizeUnit(unit) {
+  function normalizeOptionalUnit(unit) {
     const u = String(unit || '').toLowerCase().trim();
     if (['g', 'kg', 'ml', 'l', 'u'].includes(u)) return u;
     if (['gr', 'grs', 'gramo', 'gramos'].includes(u)) return 'g';
     if (['kilo', 'kilos'].includes(u)) return 'kg';
     if (['lt', 'lts', 'litro', 'litros'].includes(u)) return 'l';
     if (['un', 'uni', 'unidad', 'unidades'].includes(u)) return 'u';
+    return '';
+  }
+
+  function normalizeUnit(unit) {
+    const normalized = normalizeOptionalUnit(unit);
+    if (normalized) return normalized;
     return 'u';
   }
 
   function unitOptions(current) {
-    const unit = normalizeUnit(current);
-    return ['u', 'g', 'kg', 'ml', 'l'].map(function (opt) {
-      return '<option value="' + opt + '"' + (opt === unit ? ' selected' : '') + '>' + opt + '</option>';
+    const unit = normalizeOptionalUnit(current);
+    return ['', 'u', 'g', 'kg', 'ml', 'l'].map(function (opt) {
+      const label = opt === '' ? '-' : opt;
+      return '<option value="' + opt + '"' + (opt === unit ? ' selected' : '') + '>' + label + '</option>';
     }).join('');
   }
 
-  function normalizeTicketItem(raw) {
-    const unit = normalizeUnit(raw.unit);
-    const quantity = toNumber(raw.quantity);
-    let lineTotal = toNumber(raw.line_total);
-    let unitPrice = toNumber(raw.unit_price);
+  function unitGroup(unit) {
+    const u = normalizeOptionalUnit(unit);
+    if (u === 'g' || u === 'kg') return 'mass';
+    if (u === 'ml' || u === 'l') return 'volume';
+    if (u === 'u') return 'count';
+    return '';
+  }
 
-    if (unitPrice <= 0 && lineTotal > 0) {
-      unitPrice = computeBasePrice(lineTotal, quantity, unit);
-    }
-    if (lineTotal <= 0 && unitPrice > 0) {
-      lineTotal = computeLineTotal(quantity, unit, unitPrice);
-    }
-    if ((unit === 'kg' || unit === 'l') && quantity > 50 && unitPrice > 0 && lineTotal > 0) {
-      const expectedQuantity = lineTotal / unitPrice;
-      if (expectedQuantity > 0 && Math.abs(expectedQuantity - (quantity / 1000)) < 0.01) {
-        quantity = Math.round(quantity) / 1000;
-      }
-    }
+  function unitsCompatible(readUnit, catalogUnit) {
+    const readGroup = unitGroup(readUnit);
+    const catalogGroup = unitGroup(catalogUnit);
+    return readGroup !== '' && catalogGroup !== '' && readGroup === catalogGroup;
+  }
 
-    const plu = String(raw.plu || '').replace(/\D/g, '');
-    const name = String(raw.name || raw.catalog_name || '').trim() || (plu ? ('PLU ' + plu) : 'Producto ticket');
+  function catalogByPlu(plu) {
+    const key = String(plu || '').replace(/\D/g, '').replace(/^0+/, '');
+    return key ? (CATALOG_BY_PLU[key] || null) : null;
+  }
 
+  function fallbackCatalogFromItem(item) {
+    const price = toNumber(item.catalog_price);
+    const name = String(item.catalog_name || '').trim();
+    if (!name && price <= 0) return null;
     return {
+      id: toNumber(item.product_id),
+      name: name,
+      unit: normalizeOptionalUnit(item.catalog_unit || item.unit || item.unidad),
+      price: price,
+      currency: 'ARS',
+    };
+  }
+
+  function resolveItemFromCatalog(item) {
+    const catalog = catalogByPlu(item.plu) || fallbackCatalogFromItem(item);
+    item.catalog_found = !!catalog;
+    if (catalog) {
+      item.product_id = catalog.id || item.product_id || 0;
+      item.catalog_unit = normalizeOptionalUnit(catalog.unit);
+      item.description = String(catalog.name || item.description || '').trim();
+      item.unit_price = Math.round(toNumber(catalog.price) * 100) / 100;
+      if (item.catalog_unit && (!item.unit || !unitsCompatible(item.unit, item.catalog_unit))) item.unit = item.catalog_unit;
+    } else {
+      item.product_id = 0;
+      item.catalog_unit = '';
+      item.unit_price = 0;
+      if (!item.description) item.description = item.plu ? ('PLU ' + item.plu) : 'Producto ticket';
+    }
+
+    item.line_total = (item.quantity > 0 && item.unit && item.unit_price > 0 && (!item.catalog_unit || unitsCompatible(item.unit, item.catalog_unit)))
+      ? Math.round(computeLineTotal(item.quantity, item.unit, item.unit_price) * 100) / 100
+      : 0;
+    validateCartItem(item);
+    return item;
+  }
+
+  function validateCartItem(item) {
+    const reasons = [];
+    if (!item.plu) reasons.push('Falta PLU');
+    if (item.plu && !item.catalog_found && !catalogByPlu(item.plu) && toNumber(item.unit_price) <= 0) {
+      reasons.push('PLU no encontrado en catalogo');
+    }
+    if (toNumber(item.quantity) <= 0) reasons.push('Falta cantidad');
+    if (!normalizeOptionalUnit(item.unit)) reasons.push('Falta unidad');
+    if (item.catalog_unit && item.unit && !unitsCompatible(item.unit, item.catalog_unit)) {
+      reasons.push('Unidad incompatible con catalogo');
+    }
+    if (toNumber(item.unit_price) <= 0) reasons.push('Falta precio de catalogo');
+    if (toNumber(item.line_total) <= 0) reasons.push('Subtotal sin calcular');
+
+    item.review_reasons = reasons;
+    item.needs_review = reasons.length > 0;
+    return !item.needs_review;
+  }
+
+  function normalizeTicketItem(raw) {
+    const unit = normalizeOptionalUnit(raw.unit || raw.unidad);
+    let quantity = toNumber(raw.quantity || raw.cantidad);
+    const rawPlu = raw.plu || raw.PLU || '';
+    const plu = String(rawPlu || '').replace(/\D/g, '').replace(/^0+/, '');
+    const name = String(raw.name || raw.catalog_name || '').trim() || (plu ? ('PLU ' + plu) : 'Producto ticket');
+    const item = {
       plu: plu,
       description: name,
       quantity: quantity,
       unit: unit,
-      unit_price: Math.round(unitPrice * 100) / 100,
-      line_total: Math.round(lineTotal * 100) / 100,
+      unit_price: Math.round(toNumber(raw.catalog_price || raw.unit_price) * 100) / 100,
+      line_total: 0,
       confidence: Math.max(0, Math.min(1, toNumber(raw.confidence))),
+      product_id: toNumber(raw.product_id),
+      catalog_name: String(raw.catalog_name || '').trim(),
+      catalog_unit: normalizeOptionalUnit(raw.catalog_unit || ''),
+      catalog_price: Math.round(toNumber(raw.catalog_price || 0) * 100) / 100,
+      needs_review: !!raw.needs_review,
+      review_reasons: Array.isArray(raw.review_reasons) ? raw.review_reasons.slice() : [],
     };
+
+    return resolveItemFromCatalog(item);
   }
 
   function applyDetectedTicket(ticket, statusMessage) {
-    const items = Array.isArray(ticket.items) ? ticket.items : [];
+    const items = Array.isArray(ticket.items) ? ticket.items : (Array.isArray(ticket.productos) ? ticket.productos : []);
     cart.length = 0;
     items.forEach(function (raw) { cart.push(normalizeTicketItem(raw)); });
-    detectedTicketTotal = toNumber(ticket.total);
+    detectedTicketTotal = toNumber(ticket.total) || cartTotal();
 
     if (ticket.sale_date && ticket.sale_time) {
       saleDatetimeEl.value = String(ticket.sale_date) + 'T' + String(ticket.sale_time).slice(0, 5);
@@ -1050,15 +1256,12 @@ try {
 
     const warnings = Array.isArray(ticket.warnings) ? ticket.warnings.slice() : [];
     cart.forEach(function (item, idx) {
-      if (!item.plu || item.quantity <= 0 || !item.unit) {
-        warnings.push('Item ' + String(idx + 1) + ' necesita revision: falta PLU, cantidad o unidad.');
+      validateCartItem(item);
+      if (item.needs_review) {
+        warnings.push('Item ' + String(idx + 1) + ' necesita revision: ' + item.review_reasons.join(', ') + '.');
       }
     });
 
-    const total = cartTotal();
-    if (detectedTicketTotal > 0 && Math.abs(total - detectedTicketTotal) > 0.10) {
-      warnings.push('El total detectado no coincide con la suma editable. Revisalo antes de confirmar.');
-    }
     showWarnings(warnings);
     renderCart();
     showTicketStatus(statusMessage || 'Ticket leido. Revisa y edita la venta antes de confirmar.', 'success');
@@ -1210,7 +1413,7 @@ try {
     const name = cleanTicketProductName(headerName) || (plu ? ('PLU ' + plu) : 'Producto ticket');
     let quantity = 1;
     let unit = 'u';
-    const qtyMatch = block.match(/([0-9]+(?:[.,][0-9]+)?)\s*(kg|kilo|kilos|g|gr|grs|gramos|ml|l)\b/i);
+    const qtyMatch = block.match(/([0-9]+(?:[.,][0-9]+)?)\s*(kg|kilo|kilos|g|gr|grs|gramos|ml|l|u|un|unidad|unidades)\b/i);
     if (qtyMatch) {
       quantity = parseQuantity(qtyMatch[1]);
       unit = normalizeUnit(qtyMatch[2]);
@@ -1245,9 +1448,11 @@ try {
       name: name,
       quantity: quantity > 0 ? quantity : 1,
       unit: unit,
-      unit_price: unitPrice,
-      line_total: lineTotal,
-      confidence: lineTotal > 0 ? 0.62 : 0.42,
+      cantidad: quantity > 0 ? quantity : 0,
+      unidad: unit,
+      unit_price: 0,
+      line_total: 0,
+      confidence: quantity > 0 && unit ? 0.62 : 0.42,
     };
   }
 
@@ -1312,7 +1517,7 @@ try {
       sale_date: parseDateToIso(source),
       sale_time: parseTime(source),
       items: items,
-      total: total > 0 ? total : itemsSum,
+      total: 0,
       confidence: items.length > 1 ? 0.62 : 0.52,
       warnings: warnings,
       raw_text: source.slice(0, 900),
@@ -1397,11 +1602,14 @@ try {
         });
       })
       .then(function (result) {
-        setTicketProgress(Math.max(progressValue, 94), 'Interpretando importe y productos...');
+        setTicketProgress(Math.max(progressValue, 94), 'Interpretando PLU y cantidades...');
         const text = result && result.data ? String(result.data.text || '') : '';
         const ticket = parseTicketText(text);
-        if (!ticket.items.length || toNumber(ticket.total) <= 0) {
-          throw new Error('OCR local sin importes');
+        const hasUsableItem = ticket.items.some(function (item) {
+          return item && item.plu && toNumber(item.quantity || item.cantidad) > 0 && normalizeOptionalUnit(item.unit || item.unidad);
+        });
+        if (!hasUsableItem) {
+          throw new Error('OCR local sin PLU/cantidad');
         }
         ticket.warnings.unshift('Gemini respondio: ' + serverError);
         return ticket;
@@ -1455,27 +1663,22 @@ try {
 
     const field = control.dataset.field;
     if (field === 'plu') {
-      item.plu = String(control.value || '').replace(/\D/g, '');
+      item.plu = String(control.value || '').replace(/\D/g, '').replace(/^0+/, '');
       control.value = item.plu;
+      resolveItemFromCatalog(item);
     } else if (field === 'description') {
       item.description = String(control.value || '').trim();
     } else if (field === 'unit') {
-      item.unit = normalizeUnit(control.value);
-      item.line_total = computeLineTotal(item.quantity, item.unit, item.unit_price);
-      const lineInput = tr.querySelector('[data-field="line_total"]');
-      if (lineInput) lineInput.value = formatInputNumber(item.line_total);
+      item.unit = normalizeOptionalUnit(control.value);
+      resolveItemFromCatalog(item);
     } else if (field === 'line_total') {
       item.line_total = toNumber(control.value);
-      item.unit_price = computeBasePrice(item.line_total, item.quantity, item.unit);
-      const priceInput = tr.querySelector('[data-field="unit_price"]');
-      if (priceInput) priceInput.value = formatInputNumber(item.unit_price);
     } else {
       item[field] = toNumber(control.value);
-      item.line_total = computeLineTotal(item.quantity, item.unit, item.unit_price);
-      const lineInput = tr.querySelector('[data-field="line_total"]');
-      if (lineInput) lineInput.value = formatInputNumber(item.line_total);
+      resolveItemFromCatalog(item);
     }
 
+    syncRowComputedControls(tr, item);
     updateSummary();
   }
 
@@ -1625,7 +1828,8 @@ try {
           showResult('success', data.message || 'Venta guardada');
           clearCart();
         } else {
-          showResult('danger', data.error || 'Error al guardar la venta');
+          const details = Array.isArray(data.errors) && data.errors.length ? ('<br>' + data.errors.map(escHtml).join('<br>')) : '';
+          showResult('danger', escHtml(data.error || 'Error al guardar la venta') + details, true);
           confirmBtn.disabled = false;
         }
         confirmBtn.textContent = 'Confirmar venta';
@@ -1637,10 +1841,10 @@ try {
       });
   });
 
-  function showResult(type, msg) {
+  function showResult(type, msg, html) {
     saleResult.style.display = '';
     saleResult.innerHTML =
-      '<div class="alert alert-' + type + ' py-2 mb-0 rounded-3">' + escHtml(msg) + '</div>';
+      '<div class="alert alert-' + type + ' py-2 mb-0 rounded-3">' + (html ? msg : escHtml(msg)) + '</div>';
     if (type === 'success') {
       setTimeout(function () { saleResult.style.display = 'none'; }, 3000);
     }
