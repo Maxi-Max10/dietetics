@@ -271,18 +271,24 @@ try {
       box-shadow: 0 10px 30px rgba(15,23,42,0.06);
     }
 
-    .caja-page .page-shell {
+    .caja-page .caja-shell {
       display: block !important;
       min-height: auto !important;
+      height: auto !important;
       margin: 0 !important;
-      padding: 2rem 0 3rem !important;
+      padding: 1.25rem 0 3rem !important;
       align-items: initial !important;
       justify-content: initial !important;
+      place-items: initial !important;
+      transform: none !important;
+      top: auto !important;
     }
 
-    .caja-page .page-shell > .container {
+    .caja-page .caja-shell > .container {
       width: 100%;
       max-width: 1140px;
+      margin-top: 0 !important;
+      transform: none !important;
     }
 
     body.has-leaves-bg .bg-leaves {
@@ -442,7 +448,7 @@ try {
     .row-scanned { animation: row-flash .8s ease forwards; }
 
     @media (max-width: 768px) {
-      .caja-page .page-shell { padding: 1.5rem .75rem !important; }
+      .caja-page .caja-shell { padding: 1rem .75rem 2rem !important; }
       .card-lift { border-radius: 14px; }
     }
 
@@ -528,7 +534,7 @@ try {
   </div>
 </div>
 
-<main class="page-shell">
+<main class="caja-shell">
   <div class="container">
     <div class="row g-4">
 

@@ -17,16 +17,22 @@ body.has-leaves-bg {
   z-index: 1;
 }
 
-.caja-page .page-shell {
+.caja-page .caja-shell {
   display: block !important;
   min-height: auto !important;
+  height: auto !important;
   margin: 0 !important;
-  padding: 2rem 0 3rem !important;
+  padding: 1.25rem 0 3rem !important;
   align-items: initial !important;
   justify-content: initial !important;
+  place-items: initial !important;
+  transform: none !important;
+  top: auto !important;
 }
 
-.caja-page .page-shell > .container {
+.caja-page .caja-shell > .container {
   width: 100%;
   max-width: 1140px;
+  margin-top: 0 !important;
+  transform: none !important;
 }
