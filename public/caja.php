@@ -225,7 +225,8 @@ try {
   <title>Caja — <?= e($appName) ?></title>
   <link rel="icon" href="/logo.png" type="image/png">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-  <link rel="stylesheet" href="/brand.css?v=20260423">
+  <link rel="stylesheet" href="/brand.css?v=20260515">
+  <link rel="stylesheet" href="/public/brand.css?v=20260515">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -270,7 +271,32 @@ try {
       box-shadow: 0 10px 30px rgba(15,23,42,0.06);
     }
 
-    .page-shell { padding: 2.5rem 0; }
+    .caja-page .page-shell {
+      display: block !important;
+      min-height: auto !important;
+      margin: 0 !important;
+      padding: 2rem 0 3rem !important;
+      align-items: initial !important;
+      justify-content: initial !important;
+    }
+
+    .caja-page .page-shell > .container {
+      width: 100%;
+      max-width: 1140px;
+    }
+
+    body.has-leaves-bg .bg-leaves {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    body.has-leaves-bg > :not(.bg-leaves) {
+      position: relative;
+      z-index: 1;
+    }
 
     .card-lift {
       background: var(--card);
@@ -416,7 +442,7 @@ try {
     .row-scanned { animation: row-flash .8s ease forwards; }
 
     @media (max-width: 768px) {
-      .page-shell { padding: 1.5rem .75rem; }
+      .caja-page .page-shell { padding: 1.5rem .75rem !important; }
       .card-lift { border-radius: 14px; }
     }
 
@@ -425,7 +451,7 @@ try {
     }
   </style>
 </head>
-<body class="has-leaves-bg">
+<body class="has-leaves-bg caja-page">
 <div class="bg-leaves" aria-hidden="true">
   <div class="bg-leaf leaf-1"></div><div class="bg-leaf leaf-2"></div>
   <div class="bg-leaf leaf-3"></div><div class="bg-leaf leaf-4"></div>
@@ -738,6 +764,9 @@ try {
   function normalizeUnit(unit) {
     const u = String(unit || '').toLowerCase().trim();
     if (['g', 'kg', 'ml', 'l', 'u'].includes(u)) return u;
+    if (['gr', 'grs', 'gramo', 'gramos'].includes(u)) return 'g';
+    if (['kilo', 'kilos'].includes(u)) return 'kg';
+    if (['lt', 'lts', 'litro', 'litros'].includes(u)) return 'l';
     if (['un', 'uni', 'unidad', 'unidades'].includes(u)) return 'u';
     return 'u';
   }
@@ -774,6 +803,229 @@ try {
       line_total: Math.round(lineTotal * 100) / 100,
       confidence: Math.max(0, Math.min(1, toNumber(raw.confidence))),
     };
+  }
+
+  function applyDetectedTicket(ticket, statusMessage) {
+    const items = Array.isArray(ticket.items) ? ticket.items : [];
+    cart.length = 0;
+    items.forEach(function (raw) { cart.push(normalizeTicketItem(raw)); });
+    detectedTicketTotal = toNumber(ticket.total);
+
+    if (ticket.sale_date && ticket.sale_time) {
+      saleDatetimeEl.value = String(ticket.sale_date) + 'T' + String(ticket.sale_time).slice(0, 5);
+    }
+
+    const warnings = Array.isArray(ticket.warnings) ? ticket.warnings.slice() : [];
+    const total = cartTotal();
+    if (detectedTicketTotal > 0 && Math.abs(total - detectedTicketTotal) > 0.10) {
+      warnings.push('El total detectado no coincide con la suma editable. Revisalo antes de confirmar.');
+    }
+    showWarnings(warnings);
+    renderCart();
+    showTicketStatus(statusMessage || 'Ticket leido. Revisa y edita la venta antes de confirmar.', 'success');
+  }
+
+  function loadScriptOnce(src) {
+    return new Promise(function (resolve, reject) {
+      const existing = document.querySelector('script[src="' + src + '"]');
+      if (existing) {
+        existing.addEventListener('load', resolve, { once: true });
+        existing.addEventListener('error', reject, { once: true });
+        if (window.Tesseract) resolve();
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = src;
+      script.async = true;
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+  }
+
+  function parseMoney(raw) {
+    let s = String(raw || '').replace(/[^\d.,]/g, '');
+    if (!s) return 0;
+    if (s.includes('.') && s.includes(',')) {
+      s = s.replace(/\./g, '').replace(',', '.');
+    } else if (s.includes(',')) {
+      s = s.replace(',', '.');
+    } else if (/^\d{1,3}(?:\.\d{3})+$/.test(s) && !s.startsWith('0.')) {
+      s = s.replace(/\./g, '');
+    }
+    const n = Number(s);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function parseDateToIso(text) {
+    const months = {
+      ene: '01', jan: '01', feb: '02', mar: '03', abr: '04', apr: '04',
+      may: '05', jun: '06', jul: '07', ago: '08', aug: '08', sep: '09',
+      set: '09', oct: '10', nov: '11', dic: '12', dec: '12'
+    };
+    const m = String(text || '').toLowerCase().match(/(\d{1,2})[\/\-. ]?([a-z]{3}|\d{1,2})[\/\-. ]?(\d{2,4})/i);
+    if (!m) return '';
+    const day = String(m[1]).padStart(2, '0');
+    const month = months[m[2]] || String(m[2]).padStart(2, '0');
+    let year = String(m[3]);
+    if (year.length === 2) year = '20' + year;
+    return year + '-' + month + '-' + day;
+  }
+
+  function parseTime(text) {
+    const m = String(text || '').match(/([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?/);
+    if (!m) return '';
+    return String(m[1]).padStart(2, '0') + ':' + m[2] + ':' + (m[3] || '00');
+  }
+
+  function parseTicketText(text) {
+    const source = String(text || '');
+    const compact = source.replace(/\s+/g, ' ');
+    const totalMatch = compact.match(/total\s*\$?\s*([0-9][0-9.,]*)/i);
+    let total = totalMatch ? parseMoney(totalMatch[1]) : 0;
+
+    if (total <= 0) {
+      const amounts = Array.from(compact.matchAll(/\$?\s*([0-9]{3,}(?:[.,][0-9]{1,2})?)/g))
+        .map(function (m) { return parseMoney(m[1]); })
+        .filter(function (n) { return n > 0; });
+      if (amounts.length) total = Math.max.apply(null, amounts);
+    }
+
+    const pluMatch = compact.match(/(?:\[\s*|\b)(\d{2,5})(?:\s*\])?\s*[-: ]+\s*([A-Za-zÁÉÍÓÚÑáéíóúñ][A-Za-zÁÉÍÓÚÑáéíóúñ ]{2,40})?/);
+    const betterPluMatch = compact.match(/(?:plu|ic\.?plu)?\D{0,14}[\[(]?\s*(\d{2,5})\s*[\])]?\s*[-:]\s*([A-Za-z][A-Za-z .]{2,40})?/i)
+      || compact.match(/[\[(]\s*(\d{2,5})\s*[\])]\s*[-:]\s*([A-Za-z][A-Za-z .]{2,40})?/i);
+    const matchedPlu = betterPluMatch || pluMatch;
+    const plu = matchedPlu ? String(matchedPlu[1]).replace(/^0+/, '') : '';
+    let name = matchedPlu && matchedPlu[2] ? matchedPlu[2].trim() : '';
+    name = name.replace(/\b(cantidad|precio|unit|importe|total)\b.*$/i, '').trim();
+    if (!name && /pistach/i.test(compact)) name = 'Pistachos';
+    if (!name) name = plu ? ('PLU ' + plu) : 'Producto ticket';
+
+    let quantity = 1;
+    let unit = 'u';
+    const qtyMatch = compact.match(/([0-9]+(?:[.,][0-9]+)?)\s*(kg|kilo|g|gr|gramos|ml|l)\b/i);
+    if (qtyMatch) {
+      quantity = parseMoney(qtyMatch[1]);
+      unit = normalizeUnit(qtyMatch[2]);
+    }
+
+    let unitPrice = 0;
+    const unitPriceMatch = compact.match(/(?:x|por|\/)\s*\$?\s*([0-9][0-9.,]*)\s*(?:\/?\s*(kg|kilo|g|gr|ml|l))?/i)
+      || compact.match(/\$?\s*([0-9][0-9.,]*)\s*\$?\s*\/\s*(kg|kilo|g|gr|ml|l)/i);
+    if (unitPriceMatch) {
+      unitPrice = parseMoney(unitPriceMatch[1]);
+    }
+
+    if (unitPrice <= 0 && total > 0) {
+      unitPrice = computeBasePrice(total, quantity, unit);
+    }
+
+    const lineTotal = total > 0 ? total : computeLineTotal(quantity, unit, unitPrice);
+    return {
+      sale_date: parseDateToIso(source),
+      sale_time: parseTime(source),
+      items: [{
+        plu: plu,
+        name: name,
+        quantity: quantity,
+        unit: unit,
+        unit_price: unitPrice,
+        line_total: lineTotal,
+        confidence: 0.55,
+      }],
+      total: lineTotal,
+      confidence: 0.55,
+      warnings: ['Lectura local del navegador: revisa los campos antes de confirmar.'],
+      raw_text: source.slice(0, 500),
+    };
+  }
+
+  function parseScaleBarcode(code) {
+    const barcode = String(code || '').replace(/\D/g, '');
+    if (barcode.length !== 13) return null;
+    const prefix = barcode.slice(0, 2);
+    if (prefix === '20' || prefix === '21') {
+      return {
+        plu: String(Number(barcode.slice(2, 6))),
+        total: Number(barcode.slice(6, 12)),
+      };
+    }
+    if (prefix === '22') {
+      return {
+        plu: '',
+        total: Number(barcode.slice(6, 12)),
+      };
+    }
+    if (barcode[0] === '0') {
+      return {
+        plu: String(Number(barcode.slice(1, 4))),
+        total: Number(barcode.slice(4, 12)),
+      };
+    }
+    return null;
+  }
+
+  function detectBarcodesFromFile(file) {
+    if (!('BarcodeDetector' in window) || !window.createImageBitmap) {
+      return Promise.resolve(null);
+    }
+    return createImageBitmap(file)
+      .then(function (bitmap) {
+        const detector = new BarcodeDetector({ formats: ['ean_13', 'code_128'] });
+        return detector.detect(bitmap);
+      })
+      .then(function (codes) {
+        const parsed = (codes || []).map(function (c) { return parseScaleBarcode(c.rawValue); }).filter(Boolean);
+        if (!parsed.length) return null;
+        const item = parsed.find(function (p) { return p.plu; }) || parsed[0];
+        const total = parsed.reduce(function (max, p) { return Math.max(max, p.total || 0); }, item.total || 0);
+        return {
+          sale_date: '',
+          sale_time: '',
+          items: [{
+            plu: item.plu || '',
+            name: item.plu ? ('PLU ' + item.plu) : 'Ticket balanza',
+            quantity: 1,
+            unit: 'u',
+            unit_price: total,
+            line_total: total,
+            confidence: 0.50,
+          }],
+          total: total,
+          confidence: 0.50,
+          warnings: ['Lectura local por codigo detectado en la foto: completa peso/precio si hace falta.'],
+          raw_text: '',
+        };
+      })
+      .catch(function () { return null; });
+  }
+
+  function runLocalTicketRead(file, serverError) {
+    showTicketStatus('Gemini no esta disponible. Intentando lectura local...', 'warning');
+    return detectBarcodesFromFile(file)
+      .then(function (barcodeTicket) {
+        if (barcodeTicket && barcodeTicket.total > 0) return barcodeTicket;
+        return loadScriptOnce('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js')
+          .then(function () {
+            if (!window.Tesseract) throw new Error('OCR local no disponible');
+            return window.Tesseract.recognize(file, 'eng', {
+              logger: function (m) {
+                if (m && m.status === 'recognizing text' && m.progress) {
+                  showTicketStatus('Lectura local OCR ' + Math.round(m.progress * 100) + '%...', 'warning');
+                }
+              },
+            });
+          })
+          .then(function (result) {
+            const text = result && result.data ? String(result.data.text || '') : '';
+            const ticket = parseTicketText(text);
+            if (!ticket.items.length || toNumber(ticket.total) <= 0) {
+              throw new Error('OCR local sin importes');
+            }
+            ticket.warnings.unshift('Gemini respondio: ' + serverError);
+            return ticket;
+          });
+      });
   }
 
   function showTicketStatus(message, type) {
@@ -912,32 +1164,27 @@ try {
       .then(function (res) { return res.json(); })
       .then(function (data) {
         if (!data.ok) {
-          showTicketStatus(data.error || 'No se pudo leer el ticket.', 'danger');
-          if (data.ticket && data.ticket.warnings) showWarnings(data.ticket.warnings);
-          return;
+          const errorMessage = data.error || 'No se pudo leer el ticket.';
+          return runLocalTicketRead(file, errorMessage)
+            .then(function (ticket) {
+              applyDetectedTicket(ticket, 'Lectura local cargada. Revisa y edita la venta antes de confirmar.');
+            })
+            .catch(function () {
+              showTicketStatus(errorMessage + ' La lectura local tampoco pudo completarse.', 'danger');
+              if (data.ticket && data.ticket.warnings) showWarnings(data.ticket.warnings);
+            });
         }
 
-        const ticket = data.ticket || {};
-        const items = Array.isArray(ticket.items) ? ticket.items : [];
-        cart.length = 0;
-        items.forEach(function (raw) { cart.push(normalizeTicketItem(raw)); });
-        detectedTicketTotal = toNumber(ticket.total);
-
-        if (ticket.sale_date && ticket.sale_time) {
-          saleDatetimeEl.value = String(ticket.sale_date) + 'T' + String(ticket.sale_time).slice(0, 5);
-        }
-
-        const warnings = Array.isArray(ticket.warnings) ? ticket.warnings.slice() : [];
-        const total = cartTotal();
-        if (detectedTicketTotal > 0 && Math.abs(total - detectedTicketTotal) > 0.10) {
-          warnings.push('El total detectado no coincide con la suma editable. Revisalo antes de confirmar.');
-        }
-        showWarnings(warnings);
-        renderCart();
-        showTicketStatus('Ticket leido. Revisa y edita la venta antes de confirmar.', 'success');
+        applyDetectedTicket(data.ticket || {}, 'Ticket leido. Revisa y edita la venta antes de confirmar.');
       })
       .catch(function () {
-        showTicketStatus('Error de red al leer el ticket.', 'danger');
+        return runLocalTicketRead(file, 'Error de red al leer el ticket.')
+          .then(function (ticket) {
+            applyDetectedTicket(ticket, 'Lectura local cargada. Revisa y edita la venta antes de confirmar.');
+          })
+          .catch(function () {
+            showTicketStatus('Error de red al leer el ticket. La lectura local tampoco pudo completarse.', 'danger');
+          });
       })
       .finally(function () {
         analyzeBtn.disabled = !(ticketInput.files && ticketInput.files[0]);

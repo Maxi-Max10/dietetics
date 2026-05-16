@@ -1,0 +1,32 @@
+@import url('/public/brand.css?v=20260515');
+
+body.has-leaves-bg {
+  background-color: #f2f0e7 !important;
+}
+
+.has-leaves-bg .bg-leaves {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.has-leaves-bg > :not(.bg-leaves) {
+  position: relative;
+  z-index: 1;
+}
+
+.caja-page .page-shell {
+  display: block !important;
+  min-height: auto !important;
+  margin: 0 !important;
+  padding: 2rem 0 3rem !important;
+  align-items: initial !important;
+  justify-content: initial !important;
+}
+
+.caja-page .page-shell > .container {
+  width: 100%;
+  max-width: 1140px;
+}
