@@ -237,7 +237,7 @@ if ($error !== '') {
   <link rel="icon" type="image/png" href="/logo.png">
   <link rel="preload" as="image" href="/preload.png">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-  <link rel="stylesheet" href="/brand.css?v=20260423">
+  <link rel="stylesheet" href="/brand.css?v=20260515">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -304,7 +304,16 @@ if ($error !== '') {
     }
 
     .page-shell {
-      padding: 2.5rem 0;
+      display: block !important;
+      min-height: auto !important;
+      height: auto !important;
+      margin-top: 0 !important;
+      padding: 1.25rem 0 3rem !important;
+      align-items: initial !important;
+      justify-content: initial !important;
+      place-items: initial !important;
+      transform: none !important;
+      top: auto !important;
     }
 
     .card-lift {
