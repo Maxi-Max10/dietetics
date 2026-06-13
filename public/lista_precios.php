@@ -309,12 +309,14 @@ $mapsEmbedUrl = $mapsApiKey !== ''
       .table-mobile { border-collapse: separate; border-spacing: 0; }
       .table-mobile thead { display: none; }
       .table-mobile tbody tr {
-        display: block;
+        display: grid;
+        grid-template-columns: minmax(94px, 32%) minmax(0, 1fr);
+        column-gap: .85rem;
         overflow: hidden;
         background: #fff;
         border: 1px solid rgba(148,163,184,.24);
         border-radius: 16px;
-        padding: .95rem;
+        padding: 0;
         margin-bottom: .75rem;
         box-shadow: 0 12px 32px rgba(15,23,42,.08);
       }
@@ -338,22 +340,50 @@ $mapsEmbedUrl = $mapsApiKey !== ''
         letter-spacing: .04em;
       }
       .table-mobile tbody td[data-label="Producto"] {
-        display: block;
-        padding-bottom: .55rem;
+        display: contents;
+        padding: 0;
       }
       .table-mobile tbody td[data-label="Producto"]::before { display: none; }
 
-      .table-mobile .product-thumb { width: 72px; height: 72px; border-radius: 16px; }
+      .table-mobile .product-row { display: contents; }
+      .table-mobile .product-copy {
+        grid-column: 2;
+        padding: .9rem .95rem .1rem 0;
+        min-width: 0;
+      }
+      .table-mobile .product-thumb {
+        grid-column: 1;
+        grid-row: 1 / 5;
+        align-self: stretch;
+        width: 100%;
+        height: 100%;
+        min-height: 100%;
+        border: 0;
+        border-radius: 0;
+        object-fit: cover;
+      }
+      .table-mobile .product-thumb--empty {
+        display: inline-flex;
+        min-height: 100%;
+        background: rgba(var(--accent-rgb), .06);
+      }
 
       .table-mobile .price-cell {
+        grid-column: 2;
         justify-content: flex-start !important;
+        padding-right: .95rem;
+        text-align: left !important;
       }
       .table-mobile .price-chip {
         font-size: .9rem;
       }
 
       .table-mobile .qty-cell {
-        align-items: center;
+        grid-column: 2;
+        align-items: stretch;
+        flex-direction: column;
+        gap: .35rem;
+        padding-right: .95rem;
       }
       .table-mobile .qty-wrap {
         justify-content: flex-end !important;
@@ -364,11 +394,13 @@ $mapsEmbedUrl = $mapsApiKey !== ''
         box-shadow: inset 0 1px 0 rgba(255,255,255,.6);
       }
       .table-mobile .qty-wrap select { max-width: 110px !important; }
-      .table-mobile .qty-input { text-align: right; }
+      .table-mobile .qty-input { flex: 1 1 auto; min-width: 0; text-align: right; }
 
       .table-mobile .action-cell {
-        padding-top: .6rem;
+        grid-column: 2;
+        padding: .35rem .95rem .9rem 0;
       }
+      .table-mobile .action-cell::before { display: none; }
       .table-mobile .action-btn { width: 100%; }
       .table-mobile .btn-sm {
         padding: .65rem 1rem;
@@ -382,11 +414,6 @@ $mapsEmbedUrl = $mapsApiKey !== ''
       .table-mobile .product-cell .text-muted {
         font-size: .92rem;
       }
-
-      .table-mobile tbody td.product-cell { order: 1; }
-      .table-mobile tbody td.price-cell { order: 2; }
-      .table-mobile tbody td.qty-cell { order: 3; }
-      .table-mobile tbody td.action-cell { order: 4; }
     }
   </style>
 </head>
@@ -924,7 +951,7 @@ $mapsEmbedUrl = $mapsApiKey !== ''
         <td data-label="Producto" class="product-cell">
           <div class="product-row">
             ${thumbHtml}
-            <div>
+            <div class="product-copy">
               <div class="fw-semibold">${escapeHtml(displayName)}</div>
               ${displayDesc ? `<div class="text-muted" style="font-size:.9rem;">${escapeHtml(displayDesc)}</div>` : ''}
             </div>
