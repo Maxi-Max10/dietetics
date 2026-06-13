@@ -302,6 +302,38 @@ $mapsEmbedUrl = $mapsApiKey !== ''
       border-radius: 12px;
       font-weight: 700;
     }
+    #cartOffcanvas {
+      background: #f7f5ed;
+      color: var(--ink);
+    }
+    #cartOffcanvas .offcanvas-header,
+    #cartOffcanvas .offcanvas-body {
+      background: transparent;
+    }
+    #cartOffcanvas .form-label {
+      color: var(--ink);
+      font-weight: 600;
+    }
+    #cartOffcanvas .form-control {
+      min-height: 44px;
+      background-color: #fff !important;
+      border: 1px solid rgba(70,59,30,.22);
+      border-radius: 12px;
+      color: var(--ink);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.9);
+    }
+    #cartOffcanvas textarea.form-control {
+      min-height: 86px;
+    }
+    #cartOffcanvas .form-control::placeholder {
+      color: rgba(36,30,16,.52);
+      opacity: 1;
+    }
+    #cartOffcanvas .form-control:focus {
+      background-color: #fff !important;
+      border-color: rgba(var(--accent-rgb), .55);
+      box-shadow: 0 0 0 .22rem rgba(var(--accent-rgb), .12);
+    }
     @media (max-width: 768px) {
       .footer-bar { flex-direction: column; text-align: center; }
       .footer-col { justify-content: center; }
