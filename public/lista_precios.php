@@ -355,12 +355,16 @@ $mapsEmbedUrl = $mapsApiKey !== ''
         grid-column: 1;
         grid-row: 1 / 5;
         align-self: stretch;
+        display: block;
         width: 100%;
         height: 100%;
         min-height: 100%;
+        padding: .45rem;
         border: 0;
         border-radius: 0;
-        object-fit: cover;
+        background: #faf9f4;
+        object-fit: contain;
+        object-position: center;
       }
       .table-mobile .product-thumb--empty {
         display: inline-flex;
