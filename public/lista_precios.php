@@ -273,22 +273,27 @@ $mapsEmbedUrl = $mapsApiKey !== ''
 
     /* Mobile cart bar + offcanvas */
     .mobile-cartbar {
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      z-index: 1040; /* below offcanvas (1045), above content */
-      background: rgba(255,255,255,.92);
-      backdrop-filter: blur(12px);
-      border-top: 1px solid rgba(148,163,184,.35);
-      box-shadow: 0 -10px 30px rgba(15,23,42,.08);
+      position: fixed !important;
+      left: 50%;
+      right: auto;
+      bottom: calc(.8rem + env(safe-area-inset-bottom));
+      width: min(560px, calc(100vw - 1.5rem));
+      transform: translateX(-50%);
+      z-index: 1040 !important; /* below offcanvas (1045), above content */
+      background: rgba(255,255,255,.94);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(148,163,184,.35);
+      border-radius: 18px;
+      box-shadow: 0 16px 42px rgba(15,23,42,.16), 0 -8px 24px rgba(15,23,42,.08);
       padding: .65rem 0;
     }
+    .mobile-cartbar > .container { max-width: none; padding-inline: .9rem; }
     .mobile-cartbar .btn { border-radius: 14px; font-weight: 700; }
     .mobile-cartbar .total { font-weight: 800; }
 
-    @media (max-width: 576px) {
-      body { padding-bottom: 84px; } /* evita que la barra tape contenido */
+    @media (max-width: 991.98px) {
+      body { padding-bottom: calc(108px + env(safe-area-inset-bottom)); } /* evita que la barra tape contenido */
     }
 
     /* Mobile-first polish */
