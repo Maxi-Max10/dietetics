@@ -303,24 +303,29 @@ $mapsEmbedUrl = $mapsApiKey !== ''
       .card-body.p-4 { padding: 1rem !important; }
       .qty-input { width: 116px; }
       .hero-card { border-radius: 20px; }
+      .table-responsive { overflow: visible; }
 
       /* Table -> stacked cards */
+      .table-mobile { border-collapse: separate; border-spacing: 0; }
       .table-mobile thead { display: none; }
       .table-mobile tbody tr {
         display: block;
-        background: rgba(255,255,255,.7);
-        border: 1px solid rgba(148,163,184,.35);
+        overflow: hidden;
+        background: #fff;
+        border: 1px solid rgba(148,163,184,.24);
         border-radius: 16px;
         padding: .95rem;
         margin-bottom: .75rem;
-        box-shadow: 0 10px 30px rgba(15,23,42,.06);
+        box-shadow: 0 12px 32px rgba(15,23,42,.08);
       }
       .table-mobile tbody td {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: .85rem;
+        background: transparent !important;
         border: none !important;
+        box-shadow: none !important;
         padding: .35rem 0;
       }
       .table-mobile tbody td::before {
