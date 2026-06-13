@@ -183,6 +183,7 @@ $mapsEmbedUrl = $mapsApiKey !== ''
       gap: .75rem;
     }
     .product-thumb {
+      box-sizing: border-box;
       width: 56px;
       height: 56px;
       border-radius: 14px;
@@ -200,6 +201,147 @@ $mapsEmbedUrl = $mapsApiKey !== ''
       color: var(--accent);
       background: rgba(var(--accent-rgb), .08);
       border: 1px dashed rgba(var(--accent-rgb), .28);
+    }
+
+    @media (min-width: 577px) {
+      .table-responsive {
+        overflow: visible;
+      }
+      .table-mobile {
+        display: block;
+        margin-bottom: 0;
+        border-collapse: separate;
+        border-spacing: 0;
+      }
+      .table-mobile thead {
+        display: none;
+      }
+      .table-mobile tbody {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 1rem;
+      }
+      .table-mobile tbody tr {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        background: #fff;
+        border: 1px solid rgba(148,163,184,.22);
+        border-radius: 18px;
+        box-shadow: 0 14px 34px rgba(15,23,42,.08);
+        min-width: 0;
+      }
+      .table-mobile tbody tr:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 18px 42px rgba(15,23,42,.12);
+      }
+      .table-mobile tbody td {
+        display: block;
+        width: auto;
+        background: transparent !important;
+        border: 0 !important;
+        box-shadow: none !important;
+        padding: 0;
+      }
+      .table-mobile tbody td::before {
+        display: none;
+      }
+      .table-mobile tbody tr:has(td[colspan]) {
+        grid-column: 1 / -1;
+        padding: 1.5rem;
+      }
+      .table-mobile tbody td[colspan] {
+        text-align: center;
+        padding: .75rem !important;
+      }
+      .table-mobile .product-row {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+        min-width: 0;
+      }
+      .table-mobile .product-thumb {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1.18;
+        padding: .85rem;
+        border: 0;
+        border-radius: 0;
+        border-bottom: 1px solid rgba(148,163,184,.18);
+        background: #fff;
+        object-fit: contain;
+        object-position: center;
+      }
+      .table-mobile .product-thumb--empty {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1.18;
+        border: 0;
+        border-radius: 0;
+        border-bottom: 1px dashed rgba(var(--accent-rgb), .18);
+        background: #fff;
+      }
+      .table-mobile .product-copy {
+        min-width: 0;
+        padding: .85rem .9rem .15rem;
+      }
+      .table-mobile .product-cell .fw-semibold {
+        display: -webkit-box;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        min-height: 2.7em;
+        font-size: 1rem;
+        line-height: 1.35;
+      }
+      .table-mobile .product-cell .text-muted {
+        display: -webkit-box;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 1;
+      }
+      .table-mobile .price-cell {
+        padding: .55rem .9rem 0;
+        text-align: left !important;
+      }
+      .table-mobile .price-chip {
+        max-width: 100%;
+        font-size: .9rem;
+      }
+      .table-mobile .qty-cell {
+        padding: .75rem .9rem 0;
+      }
+      .table-mobile .qty-wrap {
+        justify-content: flex-start !important;
+        width: 100%;
+        gap: .5rem !important;
+      }
+      .table-mobile .qty-stepper {
+        flex: 1 1 auto;
+        min-width: 0;
+        height: 40px;
+      }
+      .table-mobile .qty-step-btn {
+        width: 36px;
+      }
+      .table-mobile .qty-input {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+      .table-mobile .qty-wrap select {
+        flex: 0 0 64px;
+        max-width: 64px !important;
+      }
+      .table-mobile .action-cell {
+        margin-top: auto;
+        padding: .75rem .9rem .95rem;
+      }
+      .table-mobile .action-btn {
+        width: 100%;
+        padding: .58rem .9rem;
+        border-radius: 12px;
+      }
     }
 
     .site-footer {
