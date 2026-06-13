@@ -76,6 +76,42 @@ $mapsEmbedUrl = $mapsApiKey !== ''
     .table td, .table th { border-color:rgba(148,163,184,.35); }
     .cart-sticky { position: sticky; top: 1rem; }
     .qty-input { width: 86px; }
+    .qty-stepper {
+      display: inline-flex;
+      align-items: stretch;
+      overflow: hidden;
+      border: 1px solid rgba(var(--accent-rgb), .22);
+      border-radius: 12px;
+      background: #fff;
+    }
+    .qty-step-btn {
+      width: 34px;
+      border: 0;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      font-size: 1.25rem;
+      line-height: 1;
+      font-weight: 500;
+    }
+    .qty-step-btn:active { background: var(--accent-dark); }
+    .qty-stepper .qty-input {
+      width: 58px;
+      border: 0;
+      border-radius: 0;
+      background: rgba(var(--accent-rgb), .10);
+      text-align: center;
+      font-weight: 700;
+      appearance: textfield;
+    }
+    .qty-stepper .qty-input::-webkit-outer-spin-button,
+    .qty-stepper .qty-input::-webkit-inner-spin-button {
+      margin: 0;
+      -webkit-appearance: none;
+    }
+    .qty-stepper .qty-input:focus {
+      box-shadow: inset 0 0 0 .2rem rgba(var(--accent-rgb), .12);
+    }
     .small-help { color: var(--muted); font-size: .9rem; }
     @media (max-width: 992px) { .cart-sticky { position: static; } }
 
@@ -398,7 +434,9 @@ $mapsEmbedUrl = $mapsApiKey !== ''
         box-shadow: inset 0 1px 0 rgba(255,255,255,.6);
       }
       .table-mobile .qty-wrap select { max-width: 110px !important; }
-      .table-mobile .qty-input { flex: 1 1 auto; min-width: 0; text-align: right; }
+      .table-mobile .qty-stepper { flex: 1 1 auto; min-width: 0; height: 42px; }
+      .table-mobile .qty-step-btn { width: 38px; font-size: 1.35rem; }
+      .table-mobile .qty-input { flex: 1 1 auto; min-width: 0; text-align: center; }
 
       .table-mobile .action-cell {
         grid-column: 2;
@@ -816,6 +854,13 @@ $mapsEmbedUrl = $mapsApiKey !== ''
     return { step: '0.01', min: '0.01' };
   };
 
+  const buttonStepFor = (displayUnit) => {
+    const u = String(displayUnit || '').trim();
+    if (u === 'g' || u === 'ml') return 100;
+    if (u === 'kg' || u === 'l') return 0.1;
+    return 1;
+  };
+
   const toBaseQty = (qtyDisplay, displayUnit, baseUnit) => {
     const q = Number(qtyDisplay);
     if (!Number.isFinite(q) || q <= 0) return null;
@@ -964,7 +1009,11 @@ $mapsEmbedUrl = $mapsApiKey !== ''
         <td class="text-end fw-semibold price-cell" data-label="Precio"><span class="price-chip">${escapeHtml(price)}</span></td>
         <td data-label="Cantidad" class="qty-cell">
           <div class="d-flex align-items-center gap-2 justify-content-end qty-wrap">
-            <input type="number" class="form-control qty-input" value="${escapeHtml(def.value)}" min="${escapeHtml(qtyConfig.min)}" step="${escapeHtml(qtyConfig.step)}">
+            <div class="qty-stepper">
+              <button type="button" class="qty-step-btn" data-qty-action="decrease" aria-label="Restar cantidad">-</button>
+              <input type="number" class="form-control qty-input" value="${escapeHtml(def.value)}" min="${escapeHtml(qtyConfig.min)}" step="${escapeHtml(qtyConfig.step)}" inputmode="decimal">
+              <button type="button" class="qty-step-btn" data-qty-action="increase" aria-label="Sumar cantidad">+</button>
+            </div>
             ${unitSelectHtml}
           </div>
         </td>
@@ -973,9 +1022,11 @@ $mapsEmbedUrl = $mapsApiKey !== ''
         </td>
       `;
 
-      const qtyInput = tr.querySelector('input');
+      const qtyInput = tr.querySelector('.qty-input');
       const unitSelect = tr.querySelector('select');
-      const btn = tr.querySelector('button');
+      const btn = tr.querySelector('.action-btn');
+      const decreaseBtn = tr.querySelector('[data-qty-action="decrease"]');
+      const increaseBtn = tr.querySelector('[data-qty-action="increase"]');
       const img = tr.querySelector('img.product-thumb');
       if (img) {
         img.addEventListener('error', () => {
@@ -1000,6 +1051,26 @@ $mapsEmbedUrl = $mapsApiKey !== ''
           }
         });
       }
+
+      const formatQtyValue = (value, stepValue) => {
+        const step = String(stepValue || qtyInput.step || '1');
+        const decimals = step.includes('.') ? step.split('.')[1].length : 0;
+        return Number(value).toFixed(decimals).replace(/\.?0+$/, '');
+      };
+
+      const bumpQty = (direction) => {
+        const displayUnit = unitSelect ? String(unitSelect.value || '').trim() : (unit || '');
+        const step = buttonStepFor(displayUnit);
+        const inputMin = Number(String(qtyInput.min || step).replace(',', '.')) || step;
+        const min = Math.max(inputMin, step);
+        const currentRaw = Number(String(qtyInput.value || min).replace(',', '.'));
+        const current = Number.isFinite(currentRaw) ? currentRaw : min;
+        const next = Math.max(min, current + (direction * step));
+        qtyInput.value = formatQtyValue(next, step);
+      };
+
+      if (decreaseBtn) decreaseBtn.addEventListener('click', () => bumpQty(-1));
+      if (increaseBtn) increaseBtn.addEventListener('click', () => bumpQty(1));
 
       btn.addEventListener('click', () => {
         const raw = String(qtyInput.value || '1').replace(',', '.');
