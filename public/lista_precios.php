@@ -362,14 +362,14 @@ $mapsEmbedUrl = $mapsApiKey !== ''
         padding: .45rem;
         border: 0;
         border-radius: 0;
-        background: #faf9f4;
+        background: #fff;
         object-fit: contain;
         object-position: center;
       }
       .table-mobile .product-thumb--empty {
         display: inline-flex;
         min-height: 100%;
-        background: rgba(var(--accent-rgb), .06);
+        background: #fff;
       }
 
       .table-mobile .price-cell {
