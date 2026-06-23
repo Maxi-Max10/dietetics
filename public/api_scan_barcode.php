@@ -13,6 +13,22 @@ function scale_amount_to_cents(string $digits): int
     return max(0, (int)$digits) * 100;
 }
 
+function scale_ean13_is_valid(string $barcode): bool
+{
+    if (preg_match('/^\d{13}$/', $barcode) !== 1) {
+        return false;
+    }
+
+    $sum = 0;
+    for ($i = 0; $i < 12; $i++) {
+        $digit = (int)$barcode[$i];
+        $sum += ($i % 2 === 0) ? $digit : ($digit * 3);
+    }
+
+    $checkDigit = (10 - ($sum % 10)) % 10;
+    return $checkDigit === (int)$barcode[12];
+}
+
 /**
  * @return array{type:string,candidates?:array<int,array{product_id:int,price_cents:int,format:string}>,price_cents?:int,format:string}|null
  */
@@ -23,12 +39,22 @@ function scale_parse_barcode(string $barcode): ?array
     if (in_array($prefix, ['20', '21'], true)) {
         return [
             'type' => 'item',
-            'format' => 'prefix_20_21_plu4_amount6',
-            'candidates' => [[
-                'product_id' => (int)substr($barcode, 2, 4),
-                'price_cents' => scale_amount_to_cents(substr($barcode, 6, 6)),
-                'format' => 'prefix_20_21_plu4_amount6',
-            ]],
+            'format' => 'prefix_2_plu6_amount5',
+            'candidates' => [
+                [
+                    // Formato de la balanza del local:
+                    // 2 + PLU(6) + importe en pesos(5) + digito verificador.
+                    'product_id' => (int)substr($barcode, 1, 6),
+                    'price_cents' => scale_amount_to_cents(substr($barcode, 7, 5)),
+                    'format' => 'prefix_2_plu6_amount5',
+                ],
+                [
+                    // Compatibilidad con etiquetas configuradas anteriormente.
+                    'product_id' => (int)substr($barcode, 2, 4),
+                    'price_cents' => scale_amount_to_cents(substr($barcode, 6, 6)),
+                    'format' => 'prefix_20_21_plu4_amount6',
+                ],
+            ],
         ];
     }
 
@@ -37,6 +63,18 @@ function scale_parse_barcode(string $barcode): ?array
             'type' => 'ticket_total',
             'format' => 'prefix_22_ticket_total',
             'price_cents' => scale_amount_to_cents(substr($barcode, 6, 6)),
+        ];
+    }
+
+    if ($barcode[0] === '2') {
+        return [
+            'type' => 'item',
+            'format' => 'prefix_2_plu6_amount5',
+            'candidates' => [[
+                'product_id' => (int)substr($barcode, 1, 6),
+                'price_cents' => scale_amount_to_cents(substr($barcode, 7, 5)),
+                'format' => 'prefix_2_plu6_amount5',
+            ]],
         ];
     }
 
@@ -80,6 +118,12 @@ $barcode = is_string($barcode) ? $barcode : '';
 if (!preg_match('/^\d{13}$/', $barcode)) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'El codigo no es una etiqueta de balanza valida (EAN-13 de 13 digitos)'], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if (!scale_ean13_is_valid($barcode)) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'El codigo EAN-13 tiene un digito verificador invalido'], JSON_UNESCAPED_UNICODE);
     exit;
 }
 

@@ -151,7 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $invoiceItems = [];
-    $detailLines = ['Venta cargada desde ticket de balanza (IA/OCR).'];
+    $detailLines = ['Venta cargada desde Caja (lector de codigo/OCR).'];
     if ($saleDateTime !== null) {
         $detailLines[] = 'Fecha/hora ticket: ' . $saleDateTime->format('Y-m-d H:i:s');
     }
@@ -505,6 +505,25 @@ try {
       box-shadow: inset 0 1px 0 rgba(255,255,255,.7);
     }
 
+    .barcode-reader {
+      border: 1px solid rgba(var(--accent-rgb), .18);
+      border-radius: 16px;
+      background: rgba(var(--accent-rgb), .06);
+      padding: 1.25rem;
+    }
+
+    .barcode-reader .input-group-text {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .barcode-reader .form-control:focus {
+      border-color: rgba(var(--accent-rgb), .55);
+      box-shadow: 0 0 0 .25rem rgba(var(--accent-rgb), .12);
+    }
+
     .ticket-upload-row {
       align-items: end;
     }
@@ -804,9 +823,20 @@ try {
         <div class="card card-lift">
           <div class="card-header card-header-clean bg-white px-4 py-3">
             <p class="muted-label mb-1">Modo caja</p>
-            <h2 class="h5 mb-0">Ticket de balanza (OCR/IA visual)</h2>
+            <h2 class="h5 mb-0">Venta por código o ticket de balanza</h2>
           </div>
           <div class="card-body px-4 py-4">
+
+            <div class="barcode-reader mb-3">
+              <label for="cajaBarcodeInput" class="form-label fw-semibold mb-1">Lector de código de barras</label>
+              <div class="input-group">
+                <span class="input-group-text">EAN-13</span>
+                <input type="text" id="cajaBarcodeInput" class="form-control" inputmode="numeric" autocomplete="off" maxlength="13" placeholder="Escaneá la etiqueta de balanza" autofocus>
+                <button type="button" id="cajaBarcodeSubmit" class="btn btn-primary">Cargar</button>
+              </div>
+              <div class="form-text">Formato: 2 + PLU de 6 dígitos + importe de 5 dígitos + verificador.</div>
+              <div id="cajaBarcodeStatus" class="small mt-2" role="status" aria-live="polite"></div>
+            </div>
 
             <div class="ticket-upload mb-3">
               <div class="row g-3 ticket-upload-row">
@@ -858,7 +888,7 @@ try {
                         <path d="M4 7h3l2-2h6l2 2h3v12H4z"/>
                         <circle cx="12" cy="13" r="3"/>
                       </svg>
-                      Carga una foto para detectar productos
+                      Escaneá un código o cargá una foto para detectar productos
                     </td>
                   </tr>
                 </tbody>
@@ -947,6 +977,9 @@ try {
   const progressText     = document.getElementById('cajaTicketProgressText');
   const progressPct      = document.getElementById('cajaTicketProgressPct');
   const addItemBtn       = document.getElementById('cajaAddItem');
+  const barcodeInput     = document.getElementById('cajaBarcodeInput');
+  const barcodeSubmit    = document.getElementById('cajaBarcodeSubmit');
+  const barcodeStatus    = document.getElementById('cajaBarcodeStatus');
   const cartBody         = document.getElementById('cajaCartBody');
   const emptyRow         = document.getElementById('cajaEmptyRow');
   const itemCountEl      = document.getElementById('cajaItemCount');
@@ -959,6 +992,7 @@ try {
   const currencyEl       = document.getElementById('cajaCurrency');
 
   const money = new Intl.NumberFormat('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const quantityNumber = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 3 });
 
   // ── Cart state ──────────────────────────────────────────────────────────────
   // Cada ítem: { description, quantity, unit, unit_price, line_total }
@@ -967,6 +1001,8 @@ try {
   let previewUrl = '';
   let progressTimer = 0;
   let progressValue = 0;
+  let barcodeTimer = 0;
+  let barcodeBusy = false;
 
   function setAnalyzeButton(text, loading) {
     if (analyzeBtnLabel) analyzeBtnLabel.textContent = text;
@@ -1031,6 +1067,26 @@ try {
       return (lineTotal * 1000) / quantity;
     }
     return lineTotal / quantity;
+  }
+
+  function quantityFromScannedTotal(lineTotal, basePrice, unit) {
+    const total = toNumber(lineTotal);
+    const price = toNumber(basePrice);
+    const normalizedUnit = normalizeOptionalUnit(unit);
+    if (total <= 0 || price <= 0 || !normalizedUnit) return 0;
+
+    const ratio = total / price;
+    if (normalizedUnit === 'g' || normalizedUnit === 'ml') {
+      return Math.round(ratio * 1000000) / 1000;
+    }
+    if (normalizedUnit === 'kg' || normalizedUnit === 'l') {
+      return Math.round(ratio * 1000) / 1000;
+    }
+
+    // Para articulos por unidad no se inventa peso. Solo se toma una cantidad
+    // mayor a uno cuando el importe es un multiplo exacto del precio base.
+    const wholeUnits = Math.round(ratio);
+    return wholeUnits >= 1 && Math.abs(ratio - wholeUnits) <= 0.01 ? wholeUnits : 1;
   }
 
   function cartTotal() {
@@ -1526,18 +1582,24 @@ try {
 
   function parseScaleBarcode(code) {
     const barcode = String(code || '').replace(/\D/g, '');
-    if (barcode.length !== 13) return null;
+    if (barcode.length !== 13 || !ean13IsValid(barcode)) return null;
     const prefix = barcode.slice(0, 2);
     if (prefix === '20' || prefix === '21') {
       return {
-        plu: String(Number(barcode.slice(2, 6))),
-        total: Number(barcode.slice(6, 12)),
+        plu: String(Number(barcode.slice(1, 7))),
+        total: Number(barcode.slice(7, 12)),
       };
     }
     if (prefix === '22') {
       return {
         plu: '',
         total: Number(barcode.slice(6, 12)),
+      };
+    }
+    if (barcode[0] === '2') {
+      return {
+        plu: String(Number(barcode.slice(1, 7))),
+        total: Number(barcode.slice(7, 12)),
       };
     }
     if (barcode[0] === '0') {
@@ -1547,6 +1609,16 @@ try {
       };
     }
     return null;
+  }
+
+  function ean13IsValid(barcode) {
+    if (!/^\d{13}$/.test(String(barcode || ''))) return false;
+    let sum = 0;
+    for (let i = 0; i < 12; i += 1) {
+      const digit = Number(barcode[i]);
+      sum += i % 2 === 0 ? digit : digit * 3;
+    }
+    return ((10 - (sum % 10)) % 10) === Number(barcode[12]);
   }
 
   function detectBarcodesFromFile(file) {
@@ -1564,21 +1636,25 @@ try {
         if (parsed.length > 1) return null;
         const item = parsed.find(function (p) { return p.plu; }) || parsed[0];
         const total = parsed.reduce(function (max, p) { return Math.max(max, p.total || 0); }, item.total || 0);
+        const catalog = catalogByPlu(item.plu);
+        const unit = catalog ? normalizeOptionalUnit(catalog.unit) : 'u';
+        const basePrice = catalog ? toNumber(catalog.price) : total;
+        const quantity = catalog ? quantityFromScannedTotal(total, basePrice, unit) : 1;
         return {
           sale_date: '',
           sale_time: '',
           items: [{
             plu: item.plu || '',
             name: item.plu ? ('PLU ' + item.plu) : 'Ticket balanza',
-            quantity: 1,
-            unit: 'u',
-            unit_price: total,
+            quantity: quantity,
+            unit: unit,
+            unit_price: basePrice,
             line_total: total,
             confidence: 0.50,
           }],
           total: total,
           confidence: 0.50,
-          warnings: ['Lectura local por codigo detectado en la foto: completa peso/precio si hace falta.'],
+          warnings: ['Lectura local por codigo de balanza: revisa la cantidad calculada antes de confirmar.'],
           raw_text: '',
         };
       })
@@ -1646,6 +1722,10 @@ try {
     const tr  = btn.closest('tr');
     const idx = Number(tr && tr.dataset ? tr.dataset.index : -1);
     if (idx < 0) return;
+    const removedItem = cart[idx];
+    if (removedItem && toNumber(removedItem.scanned_total) > 0) {
+      detectedTicketTotal = Math.max(0, Math.round((detectedTicketTotal - toNumber(removedItem.scanned_total)) * 100) / 100);
+    }
     cart.splice(idx, 1);
     renderCart();
   });
@@ -1693,6 +1773,113 @@ try {
       confidence: 0,
     });
     renderCart();
+  });
+
+  function showBarcodeStatus(message, type) {
+    if (!barcodeStatus) return;
+    barcodeStatus.className = 'small mt-2' + (type ? (' text-' + type) : '');
+    barcodeStatus.textContent = message || '';
+  }
+
+  function addScannedProduct(data) {
+    const plu = String(data.product_id || '').replace(/\D/g, '').replace(/^0+/, '');
+    const unit = normalizeOptionalUnit(data.unit);
+    const scannedTotal = toNumber(data.price);
+    const basePrice = toNumber(data.catalog_price);
+    const quantity = quantityFromScannedTotal(scannedTotal, basePrice, unit);
+
+    if (!plu || !unit || scannedTotal <= 0 || basePrice <= 0 || quantity <= 0) {
+      throw new Error('El producto no tiene PLU, unidad o precio configurado correctamente.');
+    }
+
+    const item = resolveItemFromCatalog({
+      plu: plu,
+      description: String(data.name || ('PLU ' + plu)),
+      quantity: quantity,
+      unit: unit,
+      unit_price: basePrice,
+      line_total: scannedTotal,
+      confidence: 1,
+      product_id: toNumber(data.product_id),
+      catalog_name: String(data.name || ''),
+      catalog_unit: unit,
+      catalog_price: basePrice,
+      catalog_found: true,
+      scanned_total: scannedTotal,
+      needs_review: false,
+      review_reasons: [],
+    });
+
+    cart.push(item);
+    detectedTicketTotal = Math.round((detectedTicketTotal + scannedTotal) * 100) / 100;
+    renderCart();
+
+    const quantityLabel = quantityNumber.format(quantity) + ' ' + unit;
+    const computedDiffers = Math.abs(item.line_total - scannedTotal) > 0.10;
+    showBarcodeStatus(
+      String(data.name || ('PLU ' + plu)) + ' · PLU ' + plu + ' · $' + money.format(scannedTotal) + ' · ' + quantityLabel
+        + (computedDiffers ? ' (revisar importe)' : ''),
+      computedDiffers ? 'warning' : 'success'
+    );
+  }
+
+  function processBarcode(rawBarcode) {
+    if (barcodeBusy) return;
+    const barcode = String(rawBarcode || '').replace(/\D/g, '');
+    if (barcode.length !== 13) {
+      showBarcodeStatus('El código debe tener 13 dígitos.', 'danger');
+      return;
+    }
+    if (!ean13IsValid(barcode)) {
+      showBarcodeStatus('El dígito verificador del código no es válido.', 'danger');
+      return;
+    }
+
+    barcodeBusy = true;
+    barcodeSubmit.disabled = true;
+    showBarcodeStatus('Buscando producto e importe...', 'muted');
+
+    fetch('/api_scan_barcode.php?barcode=' + encodeURIComponent(barcode), {
+      headers: { 'Accept': 'application/json' },
+      cache: 'no-store',
+    })
+      .then(function (res) {
+        return res.json().then(function (data) {
+          if (!res.ok || !data.ok) throw new Error(data.error || 'No se pudo leer el código.');
+          return data;
+        });
+      })
+      .then(addScannedProduct)
+      .catch(function (error) {
+        showBarcodeStatus(error && error.message ? error.message : 'No se pudo leer el código.', 'danger');
+      })
+      .finally(function () {
+        barcodeBusy = false;
+        barcodeSubmit.disabled = false;
+        barcodeInput.value = '';
+        barcodeInput.focus();
+      });
+  }
+
+  barcodeSubmit.addEventListener('click', function () {
+    window.clearTimeout(barcodeTimer);
+    processBarcode(barcodeInput.value);
+  });
+
+  barcodeInput.addEventListener('keydown', function (event) {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    window.clearTimeout(barcodeTimer);
+    processBarcode(barcodeInput.value);
+  });
+
+  barcodeInput.addEventListener('input', function () {
+    const digits = barcodeInput.value.replace(/\D/g, '').slice(0, 13);
+    barcodeInput.value = digits;
+    window.clearTimeout(barcodeTimer);
+    if (digits.length === 13) {
+      barcodeTimer = window.setTimeout(function () { processBarcode(digits); }, 100);
+    }
   });
 
   // ── Limpiar carrito ──────────────────────────────────────────────────────────
