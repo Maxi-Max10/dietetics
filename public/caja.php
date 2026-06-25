@@ -136,7 +136,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $currency     = 'ARS';
     $items        = $body['items'] ?? [];
     $ticketTotal  = caja_decimal($body['ticket_total'] ?? 0);
-    $saleDateTime = caja_parse_sale_datetime((string)($body['sale_datetime'] ?? ''));
+    $saleDateTime = caja_parse_sale_datetime((string)($body['sale_datetime'] ?? ''))
+        ?? new DateTimeImmutable('now', new DateTimeZone(date_default_timezone_get()));
 
     if (!csrf_verify($token)) {
         http_response_code(403);
@@ -153,7 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $invoiceItems = [];
     $detailLines = ['Venta cargada desde Caja (lector de codigo/OCR).'];
     if ($saleDateTime !== null) {
-        $detailLines[] = 'Fecha/hora ticket: ' . $saleDateTime->format('Y-m-d H:i:s');
+        $detailLines[] = 'Fecha/hora venta: ' . $saleDateTime->format('Y-m-d H:i:s');
     }
     $detailItemLines = [];
     $validationErrors = [];
@@ -993,6 +994,7 @@ try {
 
   const money = new Intl.NumberFormat('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const quantityNumber = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 3 });
+  const ARGENTINA_TIME_ZONE = 'America/Argentina/Buenos_Aires';
 
   // ── Cart state ──────────────────────────────────────────────────────────────
   // Cada ítem: { description, quantity, unit, unit_price, line_total }
@@ -1003,6 +1005,48 @@ try {
   let progressValue = 0;
   let barcodeTimer = 0;
   let barcodeBusy = false;
+  let saleDatetimeEdited = false;
+
+  function argentinaDatetimeLocalNow() {
+    const now = new Date();
+
+    try {
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: ARGENTINA_TIME_ZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+      }).formatToParts(now);
+
+      const values = {};
+      parts.forEach(function (part) {
+        if (part.type !== 'literal') values[part.type] = part.value;
+      });
+
+      if (values.year && values.month && values.day && values.hour && values.minute) {
+        const hour = values.hour === '24' ? '00' : values.hour;
+        return values.year + '-' + values.month + '-' + values.day + 'T' + hour + ':' + values.minute;
+      }
+    } catch (e) {
+      // Fallback simple: Argentina usa UTC-3.
+    }
+
+    return new Date(now.getTime() - (3 * 60 * 60 * 1000)).toISOString().slice(0, 16);
+  }
+
+  function setSaleDatetimeNow(force) {
+    if (!saleDatetimeEl) return;
+    if (!force && (saleDatetimeEdited || saleDatetimeEl.value)) return;
+    saleDatetimeEl.value = argentinaDatetimeLocalNow();
+  }
+
+  function resetSaleDatetime() {
+    saleDatetimeEdited = false;
+    if (saleDatetimeEl) saleDatetimeEl.value = '';
+  }
 
   function setAnalyzeButton(text, loading) {
     if (analyzeBtnLabel) analyzeBtnLabel.textContent = text;
@@ -1308,6 +1352,11 @@ try {
 
     if (ticket.sale_date && ticket.sale_time) {
       saleDatetimeEl.value = String(ticket.sale_date) + 'T' + String(ticket.sale_time).slice(0, 5);
+      saleDatetimeEdited = false;
+    } else if (cart.length > 0 && !saleDatetimeEdited) {
+      setSaleDatetimeNow(true);
+    } else if (cart.length === 0 && !saleDatetimeEdited) {
+      resetSaleDatetime();
     }
 
     const warnings = Array.isArray(ticket.warnings) ? ticket.warnings.slice() : [];
@@ -1744,8 +1793,18 @@ try {
   function clearCart() {
     cart.length = 0;
     detectedTicketTotal = 0;
+    resetSaleDatetime();
     renderCart();
     showWarnings([]);
+  }
+
+  if (saleDatetimeEl) {
+    saleDatetimeEl.addEventListener('input', function () {
+      saleDatetimeEdited = true;
+    });
+    saleDatetimeEl.addEventListener('change', function () {
+      saleDatetimeEdited = true;
+    });
   }
 
   // ── Eliminar ítem ────────────────────────────────────────────────────────────
@@ -1760,6 +1819,7 @@ try {
       detectedTicketTotal = Math.max(0, Math.round((detectedTicketTotal - toNumber(removedItem.scanned_total)) * 100) / 100);
     }
     cart.splice(idx, 1);
+    if (cart.length === 0 && !saleDatetimeEdited) resetSaleDatetime();
     renderCart();
   });
 
@@ -1796,6 +1856,7 @@ try {
   }
 
   addItemBtn.addEventListener('click', function () {
+    setSaleDatetimeNow(cart.length === 0 && !saleDatetimeEdited);
     cart.push({
       plu: '',
       description: 'Producto ticket',
@@ -1843,6 +1904,7 @@ try {
       review_reasons: [],
     });
 
+    setSaleDatetimeNow(cart.length === 0 && !saleDatetimeEdited);
     cart.push(item);
     detectedTicketTotal = Math.round((detectedTicketTotal + scannedTotal) * 100) / 100;
     renderCart();
