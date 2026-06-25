@@ -2108,7 +2108,7 @@ try {
       .then(function (data) {
         if (data.ok) {
           // Mostrar éxito, limpiar carrito
-          showResult('success', data.message || 'Venta guardada');
+          showResult('success', 'Venta cargada');
           clearCart();
         } else {
           const details = Array.isArray(data.errors) && data.errors.length ? ('<br>' + data.errors.map(escHtml).join('<br>')) : '';
