@@ -835,8 +835,6 @@ try {
                 <input type="text" id="cajaBarcodeInput" class="form-control" inputmode="numeric" autocomplete="off" maxlength="13" placeholder="Escaneá la etiqueta de balanza" autofocus>
                 <button type="button" id="cajaBarcodeSubmit" class="btn btn-primary">Cargar</button>
               </div>
-              <div class="form-text">Formatos: UPC-A 12 (2 + PLU de 5 digitos + importe de 5 digitos + verificador) o EAN-13.</div>
-              <div id="cajaBarcodeStatus" class="small mt-2" role="status" aria-live="polite"></div>
             </div>
 
             <div class="ticket-upload mb-3">
