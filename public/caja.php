@@ -830,11 +830,11 @@ try {
             <div class="barcode-reader mb-3">
               <label for="cajaBarcodeInput" class="form-label fw-semibold mb-1">Lector de código de barras</label>
               <div class="input-group">
-                <span class="input-group-text">EAN-13</span>
+                <span class="input-group-text">EAN/UPC</span>
                 <input type="text" id="cajaBarcodeInput" class="form-control" inputmode="numeric" autocomplete="off" maxlength="13" placeholder="Escaneá la etiqueta de balanza" autofocus>
                 <button type="button" id="cajaBarcodeSubmit" class="btn btn-primary">Cargar</button>
               </div>
-              <div class="form-text">Formato: 2 + PLU de 6 dígitos + importe de 5 dígitos + verificador.</div>
+              <div class="form-text">Formatos: UPC-A 12 (2 + PLU de 5 digitos + importe de 5 digitos + verificador) o EAN-13.</div>
               <div id="cajaBarcodeStatus" class="small mt-2" role="status" aria-live="polite"></div>
             </div>
 
@@ -1581,8 +1581,24 @@ try {
   }
 
   function parseScaleBarcode(code) {
-    const barcode = String(code || '').replace(/\D/g, '');
-    if (barcode.length !== 13 || !ean13IsValid(barcode)) return null;
+    const barcode = normalizeScaleBarcode(code);
+    if (!barcode) return null;
+
+    if (barcode.length === 12) {
+      if (barcode[0] !== '2') return null;
+      return {
+        plu: String(Number(barcode.slice(1, 6))),
+        total: Number(barcode.slice(6, 11)),
+      };
+    }
+
+    if (barcode.slice(0, 2) === '02') {
+      return {
+        plu: String(Number(barcode.slice(2, 7))),
+        total: Number(barcode.slice(7, 12)),
+      };
+    }
+
     const prefix = barcode.slice(0, 2);
     if (prefix === '20' || prefix === '21') {
       return {
@@ -1621,13 +1637,30 @@ try {
     return ((10 - (sum % 10)) % 10) === Number(barcode[12]);
   }
 
+  function upcaIsValid(barcode) {
+    if (!/^\d{12}$/.test(String(barcode || ''))) return false;
+    let sum = 0;
+    for (let i = 0; i < 11; i += 1) {
+      const digit = Number(barcode[i]);
+      sum += i % 2 === 0 ? digit * 3 : digit;
+    }
+    return ((10 - (sum % 10)) % 10) === Number(barcode[11]);
+  }
+
+  function normalizeScaleBarcode(code) {
+    const barcode = String(code || '').replace(/\D/g, '');
+    if (barcode.length === 12 && upcaIsValid(barcode)) return barcode;
+    if (barcode.length === 13 && ean13IsValid(barcode)) return barcode;
+    return '';
+  }
+
   function detectBarcodesFromFile(file) {
     if (!('BarcodeDetector' in window) || !window.createImageBitmap) {
       return Promise.resolve(null);
     }
     return createImageBitmap(file)
       .then(function (bitmap) {
-        const detector = new BarcodeDetector({ formats: ['ean_13', 'code_128'] });
+        const detector = new BarcodeDetector({ formats: ['ean_13', 'upc_a', 'code_128'] });
         return detector.detect(bitmap);
       })
       .then(function (codes) {
@@ -1825,13 +1858,14 @@ try {
 
   function processBarcode(rawBarcode) {
     if (barcodeBusy) return;
-    const barcode = String(rawBarcode || '').replace(/\D/g, '');
-    if (barcode.length !== 13) {
-      showBarcodeStatus('El código debe tener 13 dígitos.', 'danger');
+    const digits = String(rawBarcode || '').replace(/\D/g, '');
+    if (digits.length !== 12 && digits.length !== 13) {
+      showBarcodeStatus('El codigo debe tener 12 o 13 digitos.', 'danger');
       return;
     }
-    if (!ean13IsValid(barcode)) {
-      showBarcodeStatus('El dígito verificador del código no es válido.', 'danger');
+    const barcode = normalizeScaleBarcode(digits);
+    if (!barcode) {
+      showBarcodeStatus('El digito verificador del codigo no es valido.', 'danger');
       return;
     }
 
@@ -1877,7 +1911,7 @@ try {
     const digits = barcodeInput.value.replace(/\D/g, '').slice(0, 13);
     barcodeInput.value = digits;
     window.clearTimeout(barcodeTimer);
-    if (digits.length === 13) {
+    if (digits.length >= 12) {
       barcodeTimer = window.setTimeout(function () { processBarcode(digits); }, 100);
     }
   });

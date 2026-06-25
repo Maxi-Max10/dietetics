@@ -1,5 +1,5 @@
 <?php
-// Lookup de producto a partir del codigo de barras EAN-13 de balanza.
+// Lookup de producto a partir del codigo de barras de balanza (EAN-13 o UPC-A).
 // La balanza usada en el local imprime importes en pesos enteros: 003640 => $3640.
 require_once __DIR__ . '/../src/bootstrap.php';
 
@@ -29,11 +29,58 @@ function scale_ean13_is_valid(string $barcode): bool
     return $checkDigit === (int)$barcode[12];
 }
 
+function scale_upca_is_valid(string $barcode): bool
+{
+    if (preg_match('/^\d{12}$/', $barcode) !== 1) {
+        return false;
+    }
+
+    $sum = 0;
+    for ($i = 0; $i < 11; $i++) {
+        $digit = (int)$barcode[$i];
+        $sum += ($i % 2 === 0) ? ($digit * 3) : $digit;
+    }
+
+    $checkDigit = (10 - ($sum % 10)) % 10;
+    return $checkDigit === (int)$barcode[11];
+}
+
 /**
  * @return array{type:string,candidates?:array<int,array{product_id:int,price_cents:int,format:string}>,price_cents?:int,format:string}|null
  */
 function scale_parse_barcode(string $barcode): ?array
 {
+    if (preg_match('/^\d{12}$/', $barcode) === 1) {
+        if ($barcode[0] === '2') {
+            return [
+                'type' => 'item',
+                'format' => 'upca_2_plu5_amount5',
+                'candidates' => [[
+                    // UPC-A de balanza:
+                    // 2 + PLU(5) + importe en pesos(5) + digito verificador.
+                    'product_id' => (int)substr($barcode, 1, 5),
+                    'price_cents' => scale_amount_to_cents(substr($barcode, 6, 5)),
+                    'format' => 'upca_2_plu5_amount5',
+                ]],
+            ];
+        }
+
+        return null;
+    }
+
+    if (preg_match('/^\d{13}$/', $barcode) === 1 && substr($barcode, 0, 2) === '02') {
+        return [
+            'type' => 'item',
+            'format' => 'ean13_embedded_upca_2_plu5_amount5',
+            'candidates' => [[
+                // Algunos lectores expanden UPC-A a EAN-13 anteponiendo 0.
+                'product_id' => (int)substr($barcode, 2, 5),
+                'price_cents' => scale_amount_to_cents(substr($barcode, 7, 5)),
+                'format' => 'ean13_embedded_upca_2_plu5_amount5',
+            ]],
+        ];
+    }
+
     $prefix = substr($barcode, 0, 2);
 
     if (in_array($prefix, ['20', '21'], true)) {
@@ -115,13 +162,19 @@ $barcodeRaw = isset($_GET['barcode']) ? trim((string)$_GET['barcode']) : '';
 $barcode = preg_replace('/\D+/', '', $barcodeRaw);
 $barcode = is_string($barcode) ? $barcode : '';
 
-if (!preg_match('/^\d{13}$/', $barcode)) {
+if (!preg_match('/^\d{12,13}$/', $barcode)) {
     http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'El codigo no es una etiqueta de balanza valida (EAN-13 de 13 digitos)'], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['ok' => false, 'error' => 'El codigo no es una etiqueta de balanza valida (12 o 13 digitos)'], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
-if (!scale_ean13_is_valid($barcode)) {
+if (strlen($barcode) === 12 && !scale_upca_is_valid($barcode)) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'El codigo UPC-A tiene un digito verificador invalido'], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if (strlen($barcode) === 13 && !scale_ean13_is_valid($barcode)) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'El codigo EAN-13 tiene un digito verificador invalido'], JSON_UNESCAPED_UNICODE);
     exit;

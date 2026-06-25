@@ -1733,7 +1733,7 @@ if ($error !== '') {
   })();
 </script>
 <script>
-  // Escaneo de etiquetas de balanza (EAN-13 con prefijo 2)
+  // Escaneo de etiquetas de balanza (EAN-13 o UPC-A con prefijo 2)
   (function () {
     const input = document.getElementById('barcodeInput');
     if (!input) return;
@@ -1820,8 +1820,10 @@ if ($error !== '') {
 
     function processBarcode(barcode) {
       barcode = barcode.trim().replace(/\D/g, '');
-      if (barcode.length !== 13 || barcode[0] !== '2') {
-        showScanError('Código inválido: se esperan 13 dígitos con prefijo 2');
+      const isUpcaScale = barcode.length === 12 && barcode[0] === '2';
+      const isEanScale = barcode.length === 13 && (barcode[0] === '2' || barcode.slice(0, 2) === '02');
+      if (!isUpcaScale && !isEanScale) {
+        showScanError('Codigo invalido: se esperan 12 o 13 digitos de balanza');
         return;
       }
 
@@ -1871,11 +1873,11 @@ if ($error !== '') {
       }
     });
 
-    // Auto-disparar cuando se acumulan 13+ dígitos (lector USB típico)
+    // Auto-disparar cuando se acumulan 12+ digitos (lector USB tipico)
     input.addEventListener('input', function () {
       window.clearTimeout(scanTimer);
       const val = input.value.replace(/\D/g, '');
-      if (val.length >= 13) {
+      if (val.length >= 12) {
         scanTimer = window.setTimeout(function () {
           processBarcode(val);
         }, 80);
